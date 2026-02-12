@@ -1,0 +1,139 @@
+[build-system]
+requires = ["hatchling >= 1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "yasqat"
+version = "0.2.1"
+description = "Yet Another Sequence Analytics Toolkit - A modern Python library for sequence analysis with polars and plotnine"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "rexarski" }
+]
+keywords = [
+    "sequence-analysis",
+    "trajectory-analysis",
+    "temporal-data",
+    "polars",
+    "plotnine",
+    "state-sequences",
+    "event-sequences",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "polars>=1.0",
+    "plotnine>=0.13",
+    "numpy>=1.26",
+    "numba>=0.60",
+    "pyarrow>=15.0",  # Required for polars to_pandas() conversion
+    "scipy>=1.11",  # Required for hierarchical clustering
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.9",
+    "mypy>=1.14",
+]
+
+[project.urls]
+Homepage = "https://github.com/rexarski/yasqat"
+Repository = "https://github.com/rexarski/yasqat"
+Issues = "https://github.com/rexarski/yasqat/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/yasqat"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/", "tests/", "README.md", "LICENSE"]
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-markers"
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+src = ["src"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "F",      # pyflakes
+    "W",      # pycodestyle warnings
+    "I",      # isort
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "A",      # flake8-builtins
+    "C4",     # flake8-comprehensions
+    "DTZ",    # flake8-datetimez
+    "T10",    # flake8-debugger
+    "ISC",    # flake8-implicit-str-concat
+    "RUF",    # Ruff-specific rules
+]
+ignore = ["E501"]  # Line too long (handled by formatter)
+# Allow minus-sign (U+2212), greek-small-letter-rho (U+03C1), and the asterisk-operator (U+2217),
+# which could be confused for "-", "p", and "*", respectively.
+allowed-confusables = ["×"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["yasqat"]
+
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unused_configs = true
+mypy_path = "src"
+
+[[tool.mypy.overrides]]
+module = [
+    "polars.*",
+    "numpy.*",
+    "numba.*",
+    "plotnine.*",
+    "pyarrow.*",
+]
+ignore_missing_imports = true
+
+# Relax strict mode for visualization module (plotnine is untyped)
+[[tool.mypy.overrides]]
+module = "yasqat.visualization.*"
+disallow_untyped_calls = false
+disallow_untyped_defs = false
+warn_return_any = false
+
+# Relax for metrics module (numba decorators are untyped)
+[[tool.mypy.overrides]]
+module = "yasqat.metrics.*"
+disallow_untyped_decorators = false
+warn_return_any = false
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "@overload",
+    "raise NotImplementedError",
+]
