@@ -188,6 +188,14 @@ class TWEDMetric:
         sm: np.ndarray | str = "constant",
         sub_cost: float = 1.0,
     ) -> None:
+        """Initialize TWEDMetric.
+
+        Args:
+            nu: Stiffness parameter controlling elasticity (default 0.001).
+            lmbda: Penalty for deletion/insertion operations (default 1.0).
+            sm: Substitution cost matrix or strategy ("constant" for uniform costs).
+            sub_cost: Substitution cost when sm is "constant" (default 1.0).
+        """
         self.nu = nu
         self.lmbda = lmbda
         self.sm = sm
@@ -200,6 +208,17 @@ class TWEDMetric:
         timestamps_a: np.ndarray | None = None,
         timestamps_b: np.ndarray | None = None,
     ) -> float:
+        """Compute Time Warp Edit Distance between two sequences.
+
+        Args:
+            seq_a: First sequence (integer-encoded numpy array).
+            seq_b: Second sequence (integer-encoded numpy array).
+            timestamps_a: Timestamps for first sequence (defaults to uniform spacing).
+            timestamps_b: Timestamps for second sequence (defaults to uniform spacing).
+
+        Returns:
+            Distance value (0 = identical sequences).
+        """
         return twed_distance(
             seq_a,
             seq_b,

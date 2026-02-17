@@ -14,7 +14,7 @@ from yasqat.metrics.om_variants import (
     omspell_distance,
     omstran_distance,
 )
-from yasqat.metrics.optimal_matching import optimal_matching
+from yasqat.metrics.optimal_matching import optimal_matching_distance
 from yasqat.metrics.rlcp import rlcp_distance
 from yasqat.metrics.softdtw import softdtw_distance
 from yasqat.metrics.twed import twed_distance
@@ -34,7 +34,7 @@ __all__ = [
     "omloc_distance",
     "omspell_distance",
     "omstran_distance",
-    "optimal_matching",
+    "optimal_matching_distance",
     "rlcp_distance",
     "softdtw_distance",
     "svrspell_distance",

@@ -249,7 +249,7 @@ def infer_sequence_type(
         return "state"
 
 
-def read_wide_format(
+def load_wide_format(
     path: str | Path,
     id_column: str = "id",
     file_format: str = "csv",
@@ -274,8 +274,8 @@ def read_wide_format(
         DataFrame in long format.
 
     Example:
-        >>> from yasqat.io.loaders import read_wide_format
-        >>> df = read_wide_format("wide_data.csv")
+        >>> from yasqat.io.loaders import load_wide_format
+        >>> df = load_wide_format("wide_data.csv")
         >>> df.head()
         shape: (5, 3)
         ┌─────┬──────┬───────┐

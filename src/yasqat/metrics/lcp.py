@@ -140,5 +140,13 @@ class LCPMetric:
         self.normalize = normalize
 
     def compute(self, seq_a: np.ndarray, seq_b: np.ndarray) -> float:
-        """Compute distance between two sequences."""
+        """Compute longest common prefix distance between two sequences.
+
+        Args:
+            seq_a: First sequence (integer-encoded numpy array).
+            seq_b: Second sequence (integer-encoded numpy array).
+
+        Returns:
+            Distance value (0 = identical sequences).
+        """
         return lcp_distance(seq_a, seq_b, normalize=self.normalize)

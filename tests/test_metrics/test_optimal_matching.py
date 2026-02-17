@@ -2,7 +2,10 @@
 
 import numpy as np
 
-from yasqat.metrics.optimal_matching import OptimalMatchingMetric, optimal_matching
+from yasqat.metrics.optimal_matching import (
+    OptimalMatchingMetric,
+    optimal_matching_distance,
+)
 
 
 class TestOptimalMatching:
@@ -12,7 +15,7 @@ class TestOptimalMatching:
         """Test distance between identical sequences is zero."""
         seq = np.array([0, 1, 2, 3], dtype=np.int32)
 
-        dist = optimal_matching(seq, seq)
+        dist = optimal_matching_distance(seq, seq)
 
         assert dist == 0.0
 
@@ -22,7 +25,7 @@ class TestOptimalMatching:
         seq_b = np.array([0, 1, 1, 2], dtype=np.int32)
 
         # Default sub_cost = 2.0
-        dist = optimal_matching(seq_a, seq_b)
+        dist = optimal_matching_distance(seq_a, seq_b)
 
         assert dist == 2.0
 
@@ -32,7 +35,7 @@ class TestOptimalMatching:
         seq_b = np.array([0, 1, 2, 3], dtype=np.int32)
 
         # Default indel = 1.0
-        dist = optimal_matching(seq_a, seq_b)
+        dist = optimal_matching_distance(seq_a, seq_b)
 
         assert dist == 1.0
 
@@ -41,7 +44,7 @@ class TestOptimalMatching:
         seq_a = np.array([0, 1, 2], dtype=np.int32)
         seq_b = np.array([0, 1, 2, 3], dtype=np.int32)
 
-        dist = optimal_matching(seq_a, seq_b, indel=0.5)
+        dist = optimal_matching_distance(seq_a, seq_b, indel=0.5)
 
         assert dist == 0.5
 
@@ -50,7 +53,7 @@ class TestOptimalMatching:
         seq_a = np.array([0, 0], dtype=np.int32)
         seq_b = np.array([0, 1], dtype=np.int32)
 
-        dist = optimal_matching(seq_a, seq_b, sub_cost=1.0)
+        dist = optimal_matching_distance(seq_a, seq_b, sub_cost=1.0)
 
         assert dist == 1.0
 
@@ -60,11 +63,11 @@ class TestOptimalMatching:
         seq_b = np.array([1, 1, 1, 1], dtype=np.int32)
 
         # Unnormalized: 4 substitutions * 2 = 8
-        dist = optimal_matching(seq_a, seq_b, normalize=False)
+        dist = optimal_matching_distance(seq_a, seq_b, normalize=False)
         assert dist == 8.0
 
         # Normalized by max length (4)
-        dist_norm = optimal_matching(seq_a, seq_b, normalize=True)
+        dist_norm = optimal_matching_distance(seq_a, seq_b, normalize=True)
         assert dist_norm == 2.0
 
     def test_empty_sequences(self) -> None:
@@ -72,7 +75,7 @@ class TestOptimalMatching:
         seq_a = np.array([], dtype=np.int32)
         seq_b = np.array([], dtype=np.int32)
 
-        dist = optimal_matching(seq_a, seq_b)
+        dist = optimal_matching_distance(seq_a, seq_b)
 
         assert dist == 0.0
 
@@ -81,7 +84,7 @@ class TestOptimalMatching:
         seq_a = np.array([0, 1, 2], dtype=np.int32)
         seq_b = np.array([], dtype=np.int32)
 
-        dist = optimal_matching(seq_a, seq_b)
+        dist = optimal_matching_distance(seq_a, seq_b)
 
         # 3 deletions * indel_cost(1.0) = 3.0
         assert dist == 3.0
@@ -90,8 +93,8 @@ class TestOptimalMatching:
         """Test that distance is symmetric."""
         seq_a, seq_b = encoded_sequences
 
-        dist_ab = optimal_matching(seq_a, seq_b)
-        dist_ba = optimal_matching(seq_b, seq_a)
+        dist_ab = optimal_matching_distance(seq_a, seq_b)
+        dist_ba = optimal_matching_distance(seq_b, seq_a)
 
         assert dist_ab == dist_ba
 
@@ -109,7 +112,7 @@ class TestOptimalMatching:
             ]
         )
 
-        dist = optimal_matching(seq_a, seq_b, sm=sm)
+        dist = optimal_matching_distance(seq_a, seq_b, sm=sm)
 
         assert dist == 0.5
 

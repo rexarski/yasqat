@@ -55,7 +55,7 @@ def _optimal_matching_kernel(
     return dp[n, m]
 
 
-def optimal_matching(
+def optimal_matching_distance(
     seq_a: np.ndarray,
     seq_b: np.ndarray,
     indel: float = 1.0,
@@ -87,7 +87,7 @@ def optimal_matching(
         >>> import numpy as np
         >>> seq1 = np.array([0, 0, 1, 2])
         >>> seq2 = np.array([0, 1, 1, 2])
-        >>> optimal_matching(seq1, seq2)
+        >>> optimal_matching_distance(seq1, seq2)
         2.0
     """
     # Handle empty sequences
@@ -146,8 +146,16 @@ class OptimalMatchingMetric:
         self.normalize = normalize
 
     def compute(self, seq_a: np.ndarray, seq_b: np.ndarray) -> float:
-        """Compute distance between two sequences."""
-        return optimal_matching(
+        """Compute optimal matching distance between two sequences.
+
+        Args:
+            seq_a: First sequence (integer-encoded numpy array).
+            seq_b: Second sequence (integer-encoded numpy array).
+
+        Returns:
+            Distance value (0 = identical sequences).
+        """
+        return optimal_matching_distance(
             seq_a,
             seq_b,
             indel=self.indel,

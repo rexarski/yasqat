@@ -125,7 +125,15 @@ class EuclideanMetric:
         self.normalize = normalize
 
     def compute(self, seq_a: np.ndarray, seq_b: np.ndarray) -> float:
-        """Compute Euclidean distance between two sequences."""
+        """Compute Euclidean distance between two sequences.
+
+        Args:
+            seq_a: First sequence (integer-encoded numpy array).
+            seq_b: Second sequence (integer-encoded numpy array).
+
+        Returns:
+            Distance value (0 = identical sequences).
+        """
         return euclidean_distance(
             seq_a,
             seq_b,

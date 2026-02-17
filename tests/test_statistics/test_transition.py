@@ -9,8 +9,8 @@ from yasqat.statistics.transition import (
     first_occurrence_time,
     state_duration_stats,
     substitution_cost_matrix,
-    transition_rate_dataframe,
     transition_rate_matrix,
+    transition_rates,
 )
 
 
@@ -44,7 +44,7 @@ class TestTransitionRateMatrix:
 
     def test_transition_dataframe(self, sequence_pool: SequencePool) -> None:
         """Test transition rate DataFrame."""
-        df = transition_rate_dataframe(sequence_pool)
+        df = transition_rates(sequence_pool)
 
         assert "from_state" in df.columns
         assert "to_state" in df.columns

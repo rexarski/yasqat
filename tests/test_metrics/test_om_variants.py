@@ -29,12 +29,12 @@ class TestOMloc:
 
     def test_context_factor_zero_matches_om(self) -> None:
         """With context_factor=0, OMloc should behave like standard OM."""
-        from yasqat.metrics.optimal_matching import optimal_matching
+        from yasqat.metrics.optimal_matching import optimal_matching_distance
 
         a = np.array([0, 1, 2])
         b = np.array([0, 2, 1])
         d_omloc = omloc_distance(a, b, context_factor=0.0)
-        d_om = optimal_matching(a, b)
+        d_om = optimal_matching_distance(a, b)
         assert d_omloc == pytest.approx(d_om)
 
     def test_empty_sequences(self) -> None:
@@ -100,12 +100,12 @@ class TestOMstran:
 
     def test_transition_weight_zero_matches_om(self) -> None:
         """With otto=0, OMstran should behave like standard OM."""
-        from yasqat.metrics.optimal_matching import optimal_matching
+        from yasqat.metrics.optimal_matching import optimal_matching_distance
 
         a = np.array([0, 1, 2])
         b = np.array([0, 2, 1])
         d_omstran = omstran_distance(a, b, otto=0.0)
-        d_om = optimal_matching(a, b)
+        d_om = optimal_matching_distance(a, b)
         assert d_omstran == pytest.approx(d_om)
 
     def test_custom_transition_weights(self) -> None:

@@ -161,7 +161,7 @@ class SequencePool:
             omloc_distance,
             omspell_distance,
             omstran_distance,
-            optimal_matching,
+            optimal_matching_distance,
             rlcp_distance,
             svrspell_distance,
             twed_distance,
@@ -169,7 +169,7 @@ class SequencePool:
         from yasqat.metrics.dtw import dtw_distance
 
         methods: dict[str, Callable[..., float]] = {
-            "om": optimal_matching,
+            "om": optimal_matching_distance,
             "hamming": hamming_distance,
             "lcs": lcs_distance,
             "lcp": lcp_distance,
