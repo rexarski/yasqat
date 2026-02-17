@@ -232,7 +232,15 @@ class Chi2Metric:
         self.weights = weights
 
     def compute(self, seq_a: np.ndarray, seq_b: np.ndarray) -> float:
-        """Compute Chi2 distance between two sequences."""
+        """Compute Chi-squared distance between two sequences.
+
+        Args:
+            seq_a: First sequence (integer-encoded numpy array).
+            seq_b: Second sequence (integer-encoded numpy array).
+
+        Returns:
+            Distance value (0 = identical sequences).
+        """
         if self.weights is not None:
             return chi2_distance_weighted(
                 seq_a,

@@ -62,7 +62,7 @@ spells = spell_count(seq, per_sequence=True)
 log_prob = sequence_log_probability(seq)
 
 # Compute distance between sequences
-from yasqat.metrics import optimal_matching
+from yasqat.metrics import optimal_matching_distance
 pool = SequencePool(data)
 distances = pool.compute_distances(method="om")  # or "lcp", "rlcp", "euclidean", "chi2", "dtw", "twed", "omloc", "nms"
 

@@ -5,7 +5,7 @@
 
 | Feature | TraMineR | TanaT | yasqat | Status | Description |
 |---------|----------|-------|--------|--------|-------------|
-| Optimal Matching (OM) | `OM` | `edit` | `optimal_matching` | Implemented | Classic edit distance with configurable substitution cost matrix and indel costs. The standard metric for categorical sequence comparison (see TraMineR [`seqdist`](http://traminer.unige.ch/doc/seqdist.html)). |
+| Optimal Matching (OM) | `OM` | `edit` | `optimal_matching_distance` | Implemented | Classic edit distance with configurable substitution cost matrix and indel costs. The standard metric for categorical sequence comparison (see TraMineR [`seqdist`](http://traminer.unige.ch/doc/seqdist.html)). |
 | Hamming | `HAM` | `hamming` | `hamming_distance` | Implemented | Position-wise mismatch count for equal-length sequences. Only counts state differences at each position — no insertions or deletions allowed (see TraMineR [`HAM`](http://traminer.unige.ch/doc/seqdist.html)). |
 | LCS | `LCS` | `lcs` | `lcs_distance` | Implemented | Distance based on the Longest Common Subsequence, measuring how much two sequences share in common order. Suitable for variable-length sequences where ordering matters more than timing (see TraMineR [`LCS`](http://traminer.unige.ch/doc/seqdist.html)). |
 | LCP | `LCP` | `lcp` | `lcp_distance` | Implemented | Longest Common Prefix distance — measures shared initial segment between two sequences. Useful when early states are most important (see TraMineR [`LCP`](http://traminer.unige.ch/doc/seqdist.html)). |
@@ -146,7 +146,7 @@
 | CSV | `csv` loader | `load_csv` / `save_csv` | Implemented | Read and write sequence data in CSV format using polars for fast I/O. Supports configurable column names. |
 | JSON | `json` loader | `load_json` / `save_json` | Implemented | Read and write sequence data in JSON format. Useful for web integration and API-based workflows. |
 | Parquet | — | `load_parquet` / `save_parquet` | Implemented | Read and write sequence data in Apache Parquet columnar format. Best for large datasets and polars-native workflows. |
-| Wide format | — | `read_wide_format` / `to_wide_format` | Implemented | Convert between long format (one row per state-time) and wide format (one column per time position). Bridges different data conventions. |
+| Wide format | — | `load_wide_format` / `to_wide_format` | Implemented | Convert between long format (one row per state-time) and wide format (one column per time position). Bridges different data conventions. |
 | SQL | `sql` loader | — | Out of scope | Database connectivity for loading sequence data. Excluded as users can use polars' own SQL connectors. |
 
 ## Infrastructure (Out of Scope)

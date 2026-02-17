@@ -11,7 +11,7 @@ from yasqat.io.loaders import (
     load_csv,
     load_json,
     load_parquet,
-    read_wide_format,
+    load_wide_format,
     save_csv,
     save_json,
     save_parquet,
@@ -206,7 +206,7 @@ class TestWideFormat:
         assert "id" in wide.columns
         assert len(wide) == 2  # 2 sequences
 
-    def test_read_wide_format(self) -> None:
+    def test_load_wide_format(self) -> None:
         """Test reading wide format data."""
         # Create wide format data
         wide_data = pl.DataFrame(
@@ -221,7 +221,7 @@ class TestWideFormat:
         with tempfile.NamedTemporaryFile(suffix=".csv", delete=False, mode="w") as f:
             wide_data.write_csv(f.name)
 
-            long_data = read_wide_format(f.name)
+            long_data = load_wide_format(f.name)
 
             assert "id" in long_data.columns
             assert "time" in long_data.columns
@@ -240,7 +240,7 @@ class TestWideFormat:
         with tempfile.NamedTemporaryFile(suffix=".csv", delete=False, mode="w") as f:
             wide.write_csv(f.name)
 
-            long_data = read_wide_format(f.name)
+            long_data = load_wide_format(f.name)
 
             # Should have same number of records
             assert len(long_data) == len(state_sequence_data)

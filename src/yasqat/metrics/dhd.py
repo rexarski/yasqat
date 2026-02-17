@@ -181,7 +181,15 @@ class DHDMetric:
         self.normalize = normalize
 
     def compute(self, seq_a: np.ndarray, seq_b: np.ndarray) -> float:
-        """Compute DHD distance between two sequences."""
+        """Compute Dynamic Hamming Distance between two sequences.
+
+        Args:
+            seq_a: First sequence (integer-encoded numpy array).
+            seq_b: Second sequence (integer-encoded numpy array).
+
+        Returns:
+            Distance value (0 = identical sequences).
+        """
         return dhd_distance(
             seq_a,
             seq_b,

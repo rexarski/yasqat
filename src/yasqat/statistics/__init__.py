@@ -34,8 +34,8 @@ from yasqat.statistics.transition import (
     first_occurrence_time,
     state_duration_stats,
     substitution_cost_matrix,
-    transition_rate_dataframe,
     transition_rate_matrix,
+    transition_rates,
 )
 
 __all__ = [
@@ -65,8 +65,8 @@ __all__ = [
     "substitution_cost_matrix",
     "transition_count",
     "transition_proportion",
-    "transition_rate_dataframe",
     "transition_rate_matrix",
+    "transition_rates",
     "turbulence",
     "visited_proportion",
     "visited_states",

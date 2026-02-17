@@ -72,7 +72,7 @@ def transition_rate_matrix(
     return np.asarray(rates)
 
 
-def transition_rate_dataframe(
+def transition_rates(
     sequence: StateSequence | SequencePool,
 ) -> pl.DataFrame:
     """
