@@ -114,7 +114,11 @@ data/
 # Jupyter
 .ipynb_checkpoints/
 *.ipynb
-!demo_showcase.ipynb
+
+# Exclude from repo (local / planning only)
+CLAUDE.md
+demo_showcase.ipynb
+gap-report-2026-02-12.md
 
 # Ruff
 .ruff_cache/
