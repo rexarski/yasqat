@@ -1,0 +1,29 @@
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write   # required for OIDC trusted publishing
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Run tests
+        run: uv run pytest
+
+      - name: Build
+        run: uv build --no-sources
+
+      - name: Publish
+        run: uv publish
+        # Uses OIDC trusted publishing — no token needed if configured on PyPI
+        # Otherwise: env: UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
