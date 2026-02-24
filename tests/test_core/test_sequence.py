@@ -20,7 +20,7 @@ class TestStateSequence:
 
         assert len(seq) == 12
         assert seq.n_sequences() == 3
-        assert seq.sequence_ids() == [1, 2, 3]
+        assert seq.sequence_ids == [1, 2, 3]
 
     def test_sequence_with_custom_config(self) -> None:
         """Test creating sequence with custom column names."""
@@ -353,11 +353,12 @@ class TestIntervalSequence:
         seq = IntervalSequence(data)
         state_seq = seq.to_state_sequence(time_points=[0, 1, 2, 3, 4, 5])
 
-        assert "time" in state_seq.columns
-        assert "state" in state_seq.columns
+        assert isinstance(state_seq, StateSequence)
+        assert "time" in state_seq.data.columns
+        assert "state" in state_seq.data.columns
 
         # At t=0,1,2: A; at t=3,4,5: B
-        states = state_seq.sort("time")["state"].to_list()
+        states = state_seq.data.sort("time")["state"].to_list()
         assert states[:3] == ["A", "A", "A"]
         assert states[3:] == ["B", "B", "B"]
 

@@ -4,14 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "yasqat"
-version = "0.2.1"
+version = "0.3.0"
 description = "Yet Another Sequence Analytics Toolkit - A modern Python library for sequence analysis with polars and plotnine"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [
-    { name = "rexarski" }
+    { name = "rexarski", email = "rexarski@gmail.com" }
 ]
 keywords = [
     "sequence-analysis",

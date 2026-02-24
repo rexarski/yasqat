@@ -5,6 +5,7 @@ import polars as pl
 import pytest
 
 from yasqat.core.pool import SequencePool
+from yasqat.metrics.base import DistanceMatrix
 
 
 class TestSequencePool:
@@ -95,27 +96,31 @@ class TestSequencePool:
 
     def test_compute_distances_om(self, sequence_pool: SequencePool) -> None:
         """Test computing OM distances."""
-        distances = sequence_pool.compute_distances(method="om")
+        dm = sequence_pool.compute_distances(method="om")
 
-        assert distances.shape == (3, 3)
+        assert isinstance(dm, DistanceMatrix)
+        assert dm.values.shape == (3, 3)
+        assert dm.labels == [1, 2, 3]
         # Diagonal should be zero
-        assert np.allclose(np.diag(distances), 0)
+        assert np.allclose(np.diag(dm.values), 0)
         # Should be symmetric
-        assert np.allclose(distances, distances.T)
+        assert np.allclose(dm.values, dm.values.T)
 
     def test_compute_distances_hamming(self, sequence_pool: SequencePool) -> None:
         """Test computing Hamming distances."""
-        distances = sequence_pool.compute_distances(method="hamming")
+        dm = sequence_pool.compute_distances(method="hamming")
 
-        assert distances.shape == (3, 3)
-        assert np.allclose(np.diag(distances), 0)
+        assert isinstance(dm, DistanceMatrix)
+        assert dm.values.shape == (3, 3)
+        assert np.allclose(np.diag(dm.values), 0)
 
     def test_compute_distances_lcs(self, sequence_pool: SequencePool) -> None:
         """Test computing LCS distances."""
-        distances = sequence_pool.compute_distances(method="lcs")
+        dm = sequence_pool.compute_distances(method="lcs")
 
-        assert distances.shape == (3, 3)
-        assert np.allclose(np.diag(distances), 0)
+        assert isinstance(dm, DistanceMatrix)
+        assert dm.values.shape == (3, 3)
+        assert np.allclose(np.diag(dm.values), 0)
 
     def test_invalid_method(self, sequence_pool: SequencePool) -> None:
         """Test error on invalid distance method."""

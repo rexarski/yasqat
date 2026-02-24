@@ -77,6 +77,7 @@ class BaseSequence(ABC):
     def n_sequences(self) -> int:
         """Return the number of unique sequences."""
 
+    @property
     @abstractmethod
     def sequence_ids(self) -> list[int | str]:
         """Return the unique sequence IDs."""
@@ -132,6 +133,7 @@ class StateSequence(BaseSequence):
         """Return the number of unique sequences."""
         return self._data[self._config.id_column].n_unique()
 
+    @property
     def sequence_ids(self) -> list[int | str]:
         """Return the unique sequence IDs."""
         return self._data[self._config.id_column].unique().sort().to_list()
@@ -318,6 +320,7 @@ class EventSequence(BaseSequence):
         """Return the number of unique sequences."""
         return self._data[self._config.id_column].n_unique()
 
+    @property
     def sequence_ids(self) -> list[int | str]:
         """Return the unique sequence IDs."""
         return self._data[self._config.id_column].unique().sort().to_list()
@@ -424,6 +427,7 @@ class IntervalSequence(BaseSequence):
         """Return the number of unique sequences."""
         return self._data[self._config.id_column].n_unique()
 
+    @property
     def sequence_ids(self) -> list[int | str]:
         """Return the unique sequence IDs."""
         return self._data[self._config.id_column].unique().sort().to_list()
@@ -489,12 +493,12 @@ class IntervalSequence(BaseSequence):
 
     def has_overlaps(self) -> bool:
         """Check if any sequence has overlapping intervals."""
-        for seq_id in self.sequence_ids():
+        for seq_id in self.sequence_ids:
             if len(self.overlapping_intervals(seq_id)) > 0:
                 return True
         return False
 
-    def to_state_sequence(self, time_points: list[int] | None = None) -> pl.DataFrame:
+    def to_state_sequence(self, time_points: list[int] | None = None) -> StateSequence:
         """
         Convert interval sequence to state sequence by sampling at time points.
 
@@ -506,7 +510,7 @@ class IntervalSequence(BaseSequence):
                          range from min start to max end.
 
         Returns:
-            DataFrame in state sequence format (id, time, state).
+            StateSequence sampled at the given time points.
         """
         id_col = self._config.id_column
         start_col = self._config.start_column
@@ -517,8 +521,12 @@ class IntervalSequence(BaseSequence):
             min_start_val = self._data[start_col].min()
             max_end_val = self._data[end_col].max()
             if min_start_val is None or max_end_val is None:
-                return pl.DataFrame(
-                    schema={id_col: pl.Int64, "time": pl.Int64, state_col: pl.Utf8}
+                return StateSequence(
+                    data=pl.DataFrame(
+                        schema={id_col: pl.Int64, "time": pl.Int64, state_col: pl.Utf8}
+                    ),
+                    config=self._config,
+                    alphabet=self._alphabet,
                 )
             # Cast to int for range()
             min_start_int = int(float(min_start_val))  # type: ignore[arg-type]
@@ -530,7 +538,7 @@ class IntervalSequence(BaseSequence):
 
         # For each sequence, find the state at each time point
         results = []
-        for seq_id in self.sequence_ids():
+        for seq_id in self.sequence_ids:
             seq_data = self.get_sequence(seq_id)
 
             # Cross join with time points and filter
@@ -548,11 +556,13 @@ class IntervalSequence(BaseSequence):
             results.append(seq_states)
 
         if not results:
-            return pl.DataFrame(
+            df = pl.DataFrame(
                 schema={id_col: pl.Int64, "time": pl.Int64, state_col: pl.Utf8}
             )
+        else:
+            df = pl.concat(results).sort([id_col, "time"])
 
-        return pl.concat(results).sort([id_col, "time"])
+        return StateSequence(data=df, config=self._config, alphabet=self._alphabet)
 
     def to_event_sequence(self) -> EventSequence:
         """

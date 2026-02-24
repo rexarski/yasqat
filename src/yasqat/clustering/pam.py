@@ -298,8 +298,8 @@ def pam_clustering(
         array([0, 0, 1, 1])
     """
     # Extract numpy array from DistanceMatrix if needed
-    if hasattr(distance_matrix, "matrix"):
-        dist_array = distance_matrix.matrix
+    if hasattr(distance_matrix, "values"):
+        dist_array = distance_matrix.values
     else:
         dist_array = distance_matrix
 
