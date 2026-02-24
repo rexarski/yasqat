@@ -87,8 +87,8 @@ def clara_clustering(
         3
     """
     # Extract numpy array from DistanceMatrix if needed
-    if hasattr(distance_matrix, "matrix"):
-        dist_array = distance_matrix.matrix
+    if hasattr(distance_matrix, "values"):
+        dist_array = np.asarray(distance_matrix.values, dtype=np.float64)
     else:
         dist_array = np.asarray(distance_matrix, dtype=np.float64)
 

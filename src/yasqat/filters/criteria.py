@@ -36,7 +36,11 @@ class SequenceCriterion(ABC):
             sequence: Sequence object to filter.
 
         Returns:
-            Filtered DataFrame containing only matching sequences.
+            Filtered DataFrame containing only matching sequences. To continue
+            working with a typed sequence object, wrap the result::
+
+                df = criterion.filter(seq)
+                filtered = StateSequence(df, config=seq.config, alphabet=seq.alphabet)
         """
         matching_ids = self.get_matching_ids(sequence)
         id_col = sequence.config.id_column
@@ -205,7 +209,7 @@ class StartsWithCriterion(SequenceCriterion):
 
         matching_ids = []
 
-        for seq_id in sequence.sequence_ids():
+        for seq_id in sequence.sequence_ids:
             seq_data = sequence.data.filter(pl.col(id_col) == seq_id).sort(time_col)
             seq_states = seq_data[state_col].to_list()
 
@@ -256,7 +260,7 @@ class PatternCriterion(SequenceCriterion):
 
         compiled = re.compile(regex_pattern)
 
-        for seq_id in sequence.sequence_ids():
+        for seq_id in sequence.sequence_ids:
             seq_data = sequence.data.filter(pl.col(id_col) == seq_id).sort(time_col)
             seq_states = seq_data[state_col].to_list()
 
@@ -334,7 +338,11 @@ def filter_sequences(
             - "or": Any criterion must match (union)
 
     Returns:
-        Filtered DataFrame containing only matching sequences.
+        Filtered DataFrame containing only matching sequences. To continue
+        working with a typed sequence object, wrap the result::
+
+            df = filter_sequences(seq, criteria)
+            filtered = StateSequence(df, config=seq.config, alphabet=seq.alphabet)
 
     Example:
         >>> from yasqat.filters import filter_sequences, LengthCriterion, ContainsStateCriterion
@@ -348,7 +356,7 @@ def filter_sequences(
         criteria = [criteria]
 
     id_col = sequence.config.id_column
-    all_ids = set(sequence.sequence_ids())
+    all_ids = set(sequence.sequence_ids)
 
     matching_ids: set[int | str]
     if combine == "and":

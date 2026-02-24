@@ -90,13 +90,13 @@ class Trajectory:
         all_ids: set[int | str] = set()
 
         for state_seq in self.state_sequences.values():
-            all_ids.update(state_seq.sequence_ids())
+            all_ids.update(state_seq.sequence_ids)
 
         for event_seq in self.event_sequences.values():
-            all_ids.update(event_seq.sequence_ids())
+            all_ids.update(event_seq.sequence_ids)
 
         for interval_seq in self.interval_sequences.values():
-            all_ids.update(interval_seq.sequence_ids())
+            all_ids.update(interval_seq.sequence_ids)
 
         return sorted(all_ids)
 
@@ -110,13 +110,13 @@ class Trajectory:
         id_sets: list[set[int | str]] = []
 
         for state_seq in self.state_sequences.values():
-            id_sets.append(set(state_seq.sequence_ids()))
+            id_sets.append(set(state_seq.sequence_ids))
 
         for event_seq in self.event_sequences.values():
-            id_sets.append(set(event_seq.sequence_ids()))
+            id_sets.append(set(event_seq.sequence_ids))
 
         for interval_seq in self.interval_sequences.values():
-            id_sets.append(set(interval_seq.sequence_ids()))
+            id_sets.append(set(interval_seq.sequence_ids))
 
         if not id_sets:
             return []

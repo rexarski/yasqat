@@ -13,7 +13,7 @@ from yasqat.core.alphabet import Alphabet
 from yasqat.core.sequence import SequenceConfig, StateSequence
 
 if TYPE_CHECKING:
-    pass
+    from yasqat.metrics.base import DistanceMatrix
 
 
 @dataclass
@@ -139,16 +139,24 @@ class SequencePool:
         self,
         method: str = "om",
         **kwargs: float,
-    ) -> np.ndarray:
+    ) -> DistanceMatrix:
         """
         Compute pairwise distance matrix.
 
         Args:
-            method: Distance method ("om", "hamming", "lcs").
+            method: Distance method ("om", "hamming", "lcs", "lcp", "rlcp",
+                "euclidean", "chi2", "dtw", "twed", "omloc", "omspell",
+                "omstran", "nms", "nmsmst", "svrspell").
             **kwargs: Method-specific parameters.
 
         Returns:
-            Symmetric distance matrix as numpy array.
+            DistanceMatrix with pairwise distances and sequence ID labels.
+
+        Note:
+            This uses an O(n²) Python loop over sequence pairs. For large pools
+            (n > ~500) consider using :meth:`sample` to draw a representative
+            subset first, or use CLARA clustering which applies sampling
+            internally (see :func:`yasqat.clustering.clara_clustering`).
         """
         from yasqat.metrics import (
             chi2_distance,
@@ -166,6 +174,7 @@ class SequencePool:
             svrspell_distance,
             twed_distance,
         )
+        from yasqat.metrics.base import DistanceMatrix
         from yasqat.metrics.dtw import dtw_distance
 
         methods: dict[str, Callable[..., float]] = {
@@ -202,7 +211,7 @@ class SequencePool:
                 distances[i, j] = dist
                 distances[j, i] = dist
 
-        return distances
+        return DistanceMatrix(values=distances, labels=ids)
 
     def to_wide_format(self) -> pl.DataFrame:
         """
