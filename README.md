@@ -2,6 +2,11 @@
 
 **Yet Another Sequence Analytics Toolkit**
 
+[![PyPI](https://img.shields.io/pypi/v/yasqat)](https://pypi.org/project/yasqat/)
+[![Python](https://img.shields.io/pypi/pyversions/yasqat)](https://pypi.org/project/yasqat/)
+[![Docs](https://img.shields.io/badge/docs-rexarski.github.io%2Fyasqat-blue)](https://rexarski.github.io/yasqat/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 A modern Python library for sequence analysis, inspired by [TanaT](https://tanat.gitlabpages.inria.fr/core/tanat/) and [TraMineR](http://traminer.unige.ch/).
 
 ## Features
@@ -27,31 +32,24 @@ A modern Python library for sequence analysis, inspired by [TanaT](https://tanat
 
 ## Installation
 
-### Using uv (recommended)
+```bash
+pip install yasqat
+```
+
+### For development
 
 ```bash
-# Create virtual environment
+# Clone and install with dev dependencies
+git clone https://github.com/rexarski/yasqat.git
+cd yasqat
 uv venv
-source .venv/bin/activate.fish
-
-# Install in development mode
+source .venv/bin/activate   # or activate.fish on fish shell
 uv pip install -e ".[dev]"
 ```
 
 ## Development
 
 ```bash
-# Clone the repository
-git clone https://github.com/rexarski/yasqat.git
-cd yasqat
-
-# Create virtual environment with uv
-uv venv
-source .venv/bin/activate
-
-# Install with dev dependencies
-uv pip install -e ".[dev]"
-
 # Run tests
 pytest tests/ -v --cov=src/yasqat
 
@@ -115,7 +113,7 @@ quartodoc (API pages are pre-committed).
 
 ### Deployment
 
-Pushing to `main` triggers `.github/workflows/docs.yml`, which renders the
+Pushing to `main` triggers `.github/workflows/deploy-docs.yml`, which renders the
 site and pushes `docs/_site/` to the `gh-pages` branch. No manual step
 required after the initial GitHub Pages setup:
 
