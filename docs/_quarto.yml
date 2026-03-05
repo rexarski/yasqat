@@ -91,7 +91,7 @@ execute:
 
 quartodoc:
   package: yasqat
-  source_dir: src
+  source_dir: ../src
   dir: api
   title: "API Reference"
   sidebar: "api"
