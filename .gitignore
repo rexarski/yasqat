@@ -118,15 +118,9 @@ data/
 # Exclude from repo (local / planning only)
 CLAUDE.md
 demo_showcase.ipynb
-gap-report-2026-02-12.md
 
 # Ruff
 .ruff_cache/
-
-# Planning files (optional - remove if you want to track these)
-task_plan.md
-progress.md
-findings.md
 
 # tanat source code
 tanat*

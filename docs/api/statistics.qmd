@@ -1,0 +1,423 @@
+---
+title: "Statistics"
+sidebar: api
+---
+
+Descriptive statistics, normative indicators, transition analysis, and
+subsequence mining. All functions accept `SequencePool` and return
+`pl.DataFrame`.
+
+```python
+from yasqat.statistics import (
+    # Descriptive
+    state_distribution, longitudinal_entropy, turbulence,
+    complexity_index, spell_count, visited_states,
+    # Transitions
+    transition_rate_matrix, transition_rates, substitution_cost_matrix,
+    # Normative
+    badness, insecurity, precarity, degradation, volatility, integration,
+    # Other
+    discrepancy_analysis, frequent_subsequences,
+)
+```
+
+---
+
+## Descriptive statistics
+
+All functions take `pool: SequencePool` and return a `pl.DataFrame` with
+at minimum a `sequence_id` column (one row per sequence) or a `time` column
+(one row per time step).
+
+### `state_distribution`
+
+```python
+def state_distribution(pool: SequencePool) -> pl.DataFrame
+```
+
+Proportion of sequences in each state at each time point.
+Returns a long-format DataFrame with columns `time`, `state`, `proportion`.
+
+```python
+dist = state_distribution(pool)
+# time | state   | proportion
+# 0    | active  | 0.312
+# 0    | dormant | 0.185
+```
+
+### `longitudinal_entropy`
+
+```python
+def longitudinal_entropy(pool: SequencePool) -> pl.DataFrame
+```
+
+Shannon entropy of the state distribution at each time step, then averaged
+across time per sequence. Returns `sequence_id`, `entropy`.
+
+### `turbulence`
+
+```python
+def turbulence(pool: SequencePool) -> pl.DataFrame
+```
+
+Brzinsky-Fay (2007) turbulence — combines variance of spell durations with
+the number of distinct states visited. Returns `sequence_id`, `turbulence`.
+
+### `normalized_turbulence`
+
+```python
+def normalized_turbulence(pool: SequencePool) -> pl.DataFrame
+```
+
+Turbulence normalised to [0, 1] range across the pool.
+
+### `complexity_index`
+
+```python
+def complexity_index(pool: SequencePool) -> pl.DataFrame
+```
+
+Billari (2001) complexity index — weighted combination of spell count and
+number of distinct states. Returns `sequence_id`, `complexity`.
+
+### `spell_count`
+
+```python
+def spell_count(pool: SequencePool) -> pl.DataFrame
+```
+
+Number of distinct consecutive spells per sequence.
+Returns `sequence_id`, `spell_count`.
+
+### `visited_states`
+
+```python
+def visited_states(pool: SequencePool) -> pl.DataFrame
+```
+
+Number of distinct states visited per sequence.
+Returns `sequence_id`, `visited_states`.
+
+### `visited_proportion`
+
+```python
+def visited_proportion(pool: SequencePool) -> pl.DataFrame
+```
+
+`visited_states / total_states` — fraction of the alphabet visited.
+Returns `sequence_id`, `visited_proportion`.
+
+### `mean_time_in_state`
+
+```python
+def mean_time_in_state(pool: SequencePool) -> pl.DataFrame
+```
+
+Average time steps spent in each state, aggregated across all sequences.
+Returns `state`, `mean_time`.
+
+### `modal_states`
+
+```python
+def modal_states(pool: SequencePool) -> pl.DataFrame
+```
+
+The most common state at each time point. Returns `time`, `modal_state`,
+`proportion`.
+
+### `sequence_length`
+
+```python
+def sequence_length(pool: SequencePool) -> pl.DataFrame
+```
+
+Number of time steps per sequence. Returns `sequence_id`, `length`.
+
+### `sequence_frequency_table`
+
+```python
+def sequence_frequency_table(pool: SequencePool) -> pl.DataFrame
+```
+
+Unique sequences with their frequencies and relative frequencies. Useful
+for identifying dominant patterns. Returns `sequence`, `count`, `proportion`.
+
+### `transition_count`
+
+```python
+def transition_count(pool: SequencePool) -> pl.DataFrame
+```
+
+Number of state transitions per sequence. Returns `sequence_id`,
+`transition_count`.
+
+### `transition_proportion`
+
+```python
+def transition_proportion(pool: SequencePool) -> pl.DataFrame
+```
+
+Transitions per time step — normalised transition count.
+Returns `sequence_id`, `transition_proportion`.
+
+### `subsequence_count`
+
+```python
+def subsequence_count(
+    pool: SequencePool,
+    subsequence: list[str],
+) -> pl.DataFrame
+```
+
+Count occurrences of a specific subsequence in each sequence.
+Returns `sequence_id`, `count`.
+
+### `sequence_log_probability`
+
+```python
+def sequence_log_probability(
+    pool: SequencePool,
+    transition_matrix: np.ndarray | None = None,
+) -> pl.DataFrame
+```
+
+Log probability of each sequence under a (optionally provided) first-order
+Markov model. Returns `sequence_id`, `log_probability`.
+
+---
+
+## Transition analysis
+
+### `transition_rate_matrix`
+
+```python
+def transition_rate_matrix(pool: SequencePool) -> pl.DataFrame
+```
+
+Empirical first-order transition rates between all state pairs.
+Returns a wide-format DataFrame (states × states).
+
+```python
+rate_matrix = transition_rate_matrix(pool)
+```
+
+### `transition_rates`
+
+```python
+def transition_rates(pool: SequencePool) -> pl.DataFrame
+```
+
+Long-format tidy transition rates. Returns `from_state`, `to_state`, `rate`.
+
+```python
+rates = transition_rates(pool)
+rates.filter(pl.col("from_state") != pl.col("to_state"))\
+     .sort("rate", descending=True)\
+     .head(10)
+```
+
+### `substitution_cost_matrix`
+
+```python
+def substitution_cost_matrix(pool: SequencePool) -> np.ndarray
+```
+
+Data-driven substitution costs derived from empirical transition rates
+(TraMineR's `seqsubm` `"TRATE"` method). Returns a `(n_states, n_states)`
+numpy array ready for `OptimalMatchingMetric`.
+
+### `first_occurrence_time`
+
+```python
+def first_occurrence_time(
+    pool: SequencePool,
+    state: str,
+) -> pl.DataFrame
+```
+
+Time step at which each sequence first enters a given state.
+Returns `sequence_id`, `first_occurrence` (null if never entered).
+
+### `state_duration_stats`
+
+```python
+def state_duration_stats(pool: SequencePool) -> pl.DataFrame
+```
+
+Mean, median, min, max spell duration per state.
+Returns `state`, `mean_duration`, `median_duration`, `min_duration`,
+`max_duration`.
+
+---
+
+## Normative indicators
+
+Normative indicators require defining **positive** and/or **negative**
+states relevant to your domain. All functions return `sequence_id` + indicator
+column.
+
+```python
+positive = {"healthy", "active", "power_user"}
+negative = {"at_risk", "delinquent", "default", "churned"}
+```
+
+### `proportion_positive`
+
+```python
+def proportion_positive(
+    pool: SequencePool,
+    positive_states: set[str],
+) -> pl.DataFrame
+```
+
+Proportion of time steps spent in positive states.
+
+### `badness`
+
+```python
+def badness(
+    pool: SequencePool,
+    negative_states: set[str],
+) -> pl.DataFrame
+```
+
+Proportion of time steps in negative states.
+
+### `insecurity`
+
+```python
+def insecurity(
+    pool: SequencePool,
+    positive_states: set[str],
+) -> pl.DataFrame
+```
+
+Proportion of time NOT in positive states.
+
+### `precarity`
+
+```python
+def precarity(
+    pool: SequencePool,
+    positive_states: set[str],
+) -> pl.DataFrame
+```
+
+Combines low time in positive states with high variability (instability).
+
+### `degradation`
+
+```python
+def degradation(
+    pool: SequencePool,
+    positive_states: set[str],
+) -> pl.DataFrame
+```
+
+Decline from an initially positive state — whether trajectories trend negative.
+
+### `volatility`
+
+```python
+def volatility(
+    pool: SequencePool,
+    positive_states: set[str],
+) -> pl.DataFrame
+```
+
+Frequency of transitions between positive and non-positive states.
+
+### `integration`
+
+```python
+def integration(
+    pool: SequencePool,
+    positive_states: set[str],
+) -> pl.DataFrame
+```
+
+Opposite of insecurity — measures embeddedness in positive states.
+
+---
+
+## Discrepancy analysis
+
+### `discrepancy_analysis`
+
+```python
+def discrepancy_analysis(
+    distance_matrix: DistanceMatrix,
+    groups: np.ndarray | list[int],
+) -> DiscrepancyResult
+```
+
+ANOVA-like test for whether group membership explains sequence dissimilarity
+(Studer et al. 2011). Returns a `DiscrepancyResult` with:
+
+| Attribute | Type | Description |
+|---|---|---|
+| `pseudo_r2` | `float` | Proportion of total dissimilarity explained by groups. |
+| `f_stat` | `float` | Pseudo-F statistic. |
+| `p_value` | `float` | Permutation-based p-value. |
+
+```python
+disc = discrepancy_analysis(dist_matrix, groups=pam_result.labels)
+print(f"Pseudo-R² = {disc.pseudo_r2:.3f}")
+print(f"p-value   = {disc.p_value:.4f}")
+```
+
+### `multi_factor_discrepancy`
+
+```python
+def multi_factor_discrepancy(
+    distance_matrix: DistanceMatrix,
+    factors: dict[str, np.ndarray],
+) -> pl.DataFrame
+```
+
+Discrepancy analysis for multiple grouping factors simultaneously.
+Returns a DataFrame with one row per factor: `factor`, `pseudo_r2`,
+`f_stat`, `p_value`.
+
+---
+
+## Subsequence mining
+
+### `frequent_subsequences`
+
+```python
+def frequent_subsequences(
+    pool: SequencePool,
+    min_support: float = 0.1,
+    max_length: int = 5,
+) -> pl.DataFrame
+```
+
+Mine frequent state subsequences (PrefixSpan algorithm).
+Returns `subsequence` (list), `support` (proportion of sequences containing it).
+
+```python
+patterns = frequent_subsequences(pool, min_support=0.05, max_length=3)
+patterns.filter(pl.col("subsequence").list.len() == 2)\
+        .sort("support", descending=True)\
+        .head(10)
+```
+
+---
+
+## Dissimilarity tree
+
+### `dissimilarity_tree`
+
+```python
+def dissimilarity_tree(
+    distance_matrix: DistanceMatrix,
+    groups: np.ndarray | None = None,
+    max_depth: int = 5,
+    min_group_size: int = 10,
+) -> DissimilarityTree
+```
+
+CART-like recursive splitting on a distance matrix. At each node, finds the
+binary partition that maximises between-group dissimilarity (pseudo-R²).
+Useful for understanding the hierarchical structure of sequence variation.

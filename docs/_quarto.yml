@@ -1,0 +1,159 @@
+project:
+  type: website
+  output-dir: _site
+
+website:
+  title: "yasqat"
+  site-url: "https://rexarski.github.io/yasqat"
+  description: "Sequence analysis for social science — built on polars and plotnine"
+  repo-url: "https://github.com/rexarski/yasqat"
+  repo-actions: [issue]
+
+  navbar:
+    left:
+      - text: "**yasqat**"
+        href: index.qmd
+    right:
+      - text: "Get Started"
+        href: getting-started/installation.qmd
+      - text: "Tutorials"
+        href: tutorials/index.qmd
+      - text: "API"
+        href: api/index.qmd
+      - text: "Demo"
+        href: demo.qmd
+      - text: "Changelog"
+        href: changelog.qmd
+      - icon: github
+        href: https://github.com/rexarski/yasqat
+
+  sidebar:
+    - id: getting-started
+      title: "Get Started"
+      style: "docked"
+      contents:
+        - getting-started/installation.qmd
+        - getting-started/quickstart.qmd
+
+    - id: tutorials
+      title: "Tutorials"
+      style: "docked"
+      contents:
+        - tutorials/index.qmd
+        - tutorials/data-structures.qmd
+        - tutorials/statistics.qmd
+        - tutorials/distance.qmd
+        - tutorials/clustering.qmd
+        - tutorials/visualization.qmd
+
+    - id: api
+      title: "API Reference"
+      style: "docked"
+      contents:
+        - api/index.qmd
+        - section: "Core"
+          contents:
+            - api/core.qmd
+        - section: "Metrics"
+          contents:
+            - api/metrics.qmd
+        - section: "Statistics"
+          contents:
+            - api/statistics.qmd
+        - section: "Clustering"
+          contents:
+            - api/clustering.qmd
+        - section: "Visualization"
+          contents:
+            - api/visualization.qmd
+
+  page-footer:
+    center: "yasqat · MIT License · Built with [Quarto](https://quarto.org)"
+
+format:
+  html:
+    theme:
+      light: [flatly, styles.scss]
+      dark:  [darkly, styles-dark.scss]
+    highlight-style:
+      light: github
+      dark:  github-dark
+    code-copy: true
+    code-overflow: wrap
+    toc: true
+    toc-depth: 3
+    number-sections: false
+    smooth-scroll: true
+    link-external-newwindow: true
+    include-in-header:
+      - text: |
+          <link rel="preconnect" href="https://fonts.googleapis.com">
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+          <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+
+execute:
+  freeze: auto
+  echo: true
+  eval: false
+
+quartodoc:
+  package: yasqat
+  source_dir: ../src
+  dir: api
+  title: "API Reference"
+  sidebar: "api"
+  render_interlinks: true
+  sections:
+    - title: Core
+      desc: "Core data structures — Alphabet, SequencePool, sequence types, and trajectories"
+      contents:
+        - yasqat.core.alphabet
+        - yasqat.core.pool
+        - yasqat.core.sequence
+        - yasqat.core.trajectory
+
+    - title: Metrics
+      desc: "Pairwise distance metrics — OM, Hamming, LCS, DTW, and more"
+      contents:
+        - yasqat.metrics.base
+        - yasqat.metrics.hamming
+        - yasqat.metrics.optimal_matching
+        - yasqat.metrics.lcs
+        - yasqat.metrics.dtw
+        - yasqat.metrics.chi2
+        - yasqat.metrics.dhd
+        - yasqat.metrics.euclidean
+        - yasqat.metrics.lcp
+        - yasqat.metrics.nms
+        - yasqat.metrics.om_variants
+        - yasqat.metrics.rlcp
+        - yasqat.metrics.softdtw
+        - yasqat.metrics.twed
+
+    - title: Statistics
+      desc: "Descriptive statistics, normative indicators, transition analysis, and subsequence mining"
+      contents:
+        - yasqat.statistics.descriptive
+        - yasqat.statistics.normative
+        - yasqat.statistics.transition
+        - yasqat.statistics.discrepancy
+        - yasqat.statistics.disstree
+        - yasqat.statistics.subsequence_mining
+
+    - title: Clustering
+      desc: "Clustering algorithms and quality metrics"
+      contents:
+        - yasqat.clustering.pam
+        - yasqat.clustering.clara
+        - yasqat.clustering.hierarchical
+        - yasqat.clustering.quality
+        - yasqat.clustering.representatives
+
+    - title: Visualization
+      desc: "plotnine-based sequence visualization"
+      contents:
+        - yasqat.visualization.index_plot
+        - yasqat.visualization.timeline
+        - yasqat.visualization.distribution
+        - yasqat.visualization.modal
+        - yasqat.visualization.parallel

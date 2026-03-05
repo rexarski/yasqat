@@ -1,0 +1,44 @@
+name: Build and deploy docs
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:   # allow manual trigger from GitHub UI
+
+permissions:
+  contents: write      # needed to push to gh-pages branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Install yasqat and quartodoc
+        run: pip install -e ".[dev]"
+        # quartodoc is included in [dev] extras
+
+      - name: Render docs
+        run: quarto render docs/
+        # API pages (docs/api/) are pre-committed — quartodoc does not
+        # need to run in CI. Re-run quartodoc locally after API changes.
+
+      - name: Deploy to GitHub Pages
+        # Pushes docs/_site/ to the gh-pages branch (auto-created on first run).
+        # One-time repo setup: Settings → Pages → Source: gh-pages branch, / (root).
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: docs/_site
+          publish_branch: gh-pages
+          user_name: "github-actions[bot]"
+          user_email: "github-actions[bot]@users.noreply.github.com"

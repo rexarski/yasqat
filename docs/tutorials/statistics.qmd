@@ -1,0 +1,208 @@
+---
+title: "Descriptive Statistics"
+sidebar: tutorials
+execute:
+  eval: false
+---
+
+yasqat provides three families of statistics: **descriptive** measures of
+individual sequences, **normative indicators** that evaluate trajectories
+against a reference, and **transition** rates that characterise state-to-state
+dynamics.
+
+::: {.callout-note}
+All statistics functions accept a `SequencePool` and return **polars DataFrames**.
+You can chain `.filter()`, `.group_by()`, `.join()` and the full polars API
+directly on any result.
+:::
+
+## Setup
+
+```python
+from yasqat.synthetic.financial import generate_customer_sequences
+from yasqat.statistics import (
+    state_distribution, longitudinal_entropy, turbulence,
+    complexity_index, spell_count, visited_states,
+)
+
+df, alpha = generate_customer_sequences(n_customers=1_000, n_days=365, seed=42)
+pool = SequencePool.from_dataframe(df, alphabet=alpha, id_col="customer_id")
+```
+
+## Descriptive statistics
+
+### State distribution
+
+Proportion of sequences in each state at each time point. The workhorse
+for tracking cohort-level dynamics over time.
+
+```python
+dist = state_distribution(pool)
+# polars DataFrame: columns = states, rows = time points
+# values = proportion [0, 1]
+print(dist.head())
+```
+
+### Longitudinal entropy
+
+Shannon entropy computed across states at each time point. High entropy means
+the cohort is spread across many states; low entropy means most are in one state.
+
+```python
+entropy = longitudinal_entropy(pool)
+# polars DataFrame: time_point, entropy (float)
+```
+
+### Turbulence
+
+Per-sequence turbulence (Brzinsky-Fay 2007) — combines the number of distinct
+states visited with the variance in spell durations. Higher turbulence indicates
+more chaotic, unstable trajectories.
+
+```python
+turb = turbulence(pool)
+# polars DataFrame: sequence_id, turbulence (float)
+
+# Find the most turbulent sequences
+turb.sort("turbulence", descending=True).head(10)
+```
+
+::: {.callout-tip}
+**Entropy vs. turbulence**: entropy measures *state diversity* (how many
+different states), while turbulence measures *spell dynamics* (how often and
+how irregularly states change). A customer with high entropy but low turbulence
+visited many states but stayed in each for a long time. A customer with low
+entropy but high turbulence oscillated rapidly between a few states.
+:::
+
+### Complexity index
+
+Normalised count of state transitions relative to sequence length.
+
+```python
+complexity = complexity_index(pool)
+# polars DataFrame: sequence_id, complexity (float in [0, 1])
+```
+
+### Spell count and visited states
+
+```python
+spells = spell_count(pool)
+# polars DataFrame: sequence_id, n_spells (int)
+
+visited = visited_states(pool)
+# polars DataFrame: sequence_id, n_visited (int)
+```
+
+### State duration statistics
+
+Mean time and variance of time spent in each state per sequence:
+
+```python
+from yasqat.statistics import mean_time_in_state, state_distribution
+
+mean_time = mean_time_in_state(pool)
+# polars DataFrame: sequence_id × state — mean spell duration
+```
+
+## Transition analysis
+
+### Transition rate matrix
+
+The proportion of transitions from state *i* to state *j* across all sequences.
+Self-transitions (staying in the same state) are included by default.
+
+```python
+from yasqat.statistics import transition_rate_matrix, transition_rates
+
+# Full n_states × n_states matrix
+rate_matrix = transition_rate_matrix(pool)
+
+# Tidy long-format transition rates
+rates = transition_rates(pool)
+# polars DataFrame: from_state, to_state, rate, count
+rates.filter(pl.col("from_state") != pl.col("to_state")).sort("rate", descending=True)
+```
+
+### First occurrence time
+
+At what time point does each sequence first enter each state?
+
+```python
+from yasqat.statistics import first_occurrence_time
+
+fot = first_occurrence_time(pool)
+# polars DataFrame: sequence_id, state, first_t (int or null if never visited)
+```
+
+### State duration statistics
+
+```python
+from yasqat.statistics import state_duration_stats
+
+dur = state_duration_stats(pool)
+# polars DataFrame: state, mean_duration, std_duration, min_duration, max_duration
+```
+
+## Normative indicators
+
+Normative indicators evaluate each sequence against a *positive* reference state
+(or set of states). These originated in labour-market research but apply to any
+domain where some states are "better" than others.
+
+::: {.callout-note}
+These indicators follow TraMineR's naming conventions exactly.
+If you know `seqindic()` in R, these are the Python equivalents.
+:::
+
+```python
+from yasqat.statistics import (
+    badness, insecurity, degradation,
+    precarity, volatility, integration,
+    proportion_positive,
+)
+
+# Define which states are "positive" (domain-specific)
+positive_states = {"Employed", "Education"}
+```
+
+| Indicator | What it measures |
+|---|---|
+| `proportion_positive` | Time spent in positive states / total time |
+| `badness` | Weighted time in negative states (penalises duration) |
+| `insecurity` | Time at risk of entering a negative state |
+| `degradation` | Magnitude of downward moves away from positive states |
+| `precarity` | Combined insecurity + instability |
+| `volatility` | Frequency of up/down transitions across a threshold |
+| `integration` | Sustained time in positive states (rewards continuity) |
+
+```python
+results = pl.concat([
+    proportion_positive(pool, positive_states=positive_states),
+    badness(pool, negative_states={"Unemployed", "Inactive"}),
+    insecurity(pool, positive_states=positive_states),
+], how="horizontal")
+
+print(results.describe())
+```
+
+## Subsequence mining
+
+Find patterns that appear frequently across sequences — useful for identifying
+dominant lifecycle arcs.
+
+```python
+from yasqat.statistics import frequent_subsequences
+
+patterns = frequent_subsequences(
+    pool,
+    min_support=0.1,   # must appear in at least 10 % of sequences
+    max_length=3,      # up to 3-state patterns
+)
+# polars DataFrame: subsequence (list), support (float), count (int)
+
+# Top 10 most common 2-step patterns
+patterns.filter(pl.col("subsequence").list.len() == 2)\
+        .sort("support", descending=True)\
+        .head(10)
+```

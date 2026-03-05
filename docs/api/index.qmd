@@ -1,0 +1,46 @@
+---
+title: "API Reference"
+sidebar: api
+toc: false
+---
+
+Complete reference for all public symbols in **yasqat**.
+
+| Module | Description |
+|---|---|
+| [Core](core.qmd) | `Alphabet`, `SequencePool`, sequence types, trajectories |
+| [Metrics](metrics.qmd) | Pairwise distance functions and `DistanceMatrix` |
+| [Statistics](statistics.qmd) | Descriptive stats, normative indicators, transition analysis, subsequence mining |
+| [Clustering](clustering.qmd) | PAM, CLARA, hierarchical clustering, quality metrics |
+| [Visualization](visualization.qmd) | plotnine-based sequence plots |
+
+## Quick imports
+
+```python
+# Core
+from yasqat import Alphabet, SequencePool
+from yasqat.core.sequence import SequenceConfig
+
+# Metrics
+from yasqat.metrics import DistanceMatrix
+from yasqat.metrics.optimal_matching import OptimalMatchingMetric
+from yasqat.metrics.hamming import HammingMetric
+
+# Statistics
+from yasqat.statistics import (
+    state_distribution, longitudinal_entropy, turbulence,
+    transition_rate_matrix, badness, frequent_subsequences,
+    discrepancy_analysis,
+)
+
+# Clustering
+from yasqat.clustering import (
+    pam_clustering, pam_range, cluster_quality, extract_representatives,
+)
+
+# Visualization
+from yasqat.visualization import (
+    index_plot, distribution_plot, entropy_plot,
+    timeline_plot, parallel_coordinate_plot,
+)
+```

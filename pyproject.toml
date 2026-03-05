@@ -50,6 +50,7 @@ dev = [
     "pytest-cov>=5.0",
     "ruff>=0.9",
     "mypy>=1.14",
+    "quartodoc>=0.7",
 ]
 
 [project.urls]
