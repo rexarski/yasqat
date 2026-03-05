@@ -1,0 +1,344 @@
+---
+title: "Full Demo — Customer Lifecycle Analytics"
+subtitle: "One Year in the Life of 1,000 FinServe Bank Customers"
+toc: true
+toc-depth: 2
+execute:
+  eval: false
+---
+
+A complete end-to-end walkthrough of the yasqat workflow using a synthetic
+financial dataset. 1,000 customers are tracked daily across 15 lifecycle
+states for one year (365 days).
+
+> **Source:** [`yasqat_demo.py`](https://github.com/rexarski/yasqat/blob/dev/yasqat_demo.py)
+> on GitHub — importable directly as a Databricks notebook.
+
+---
+
+## Section 0: Imports
+
+```python
+import polars as pl
+import numpy as np
+from plotnine import theme_bw, labs, theme, element_text
+
+from yasqat import Alphabet, SequencePool
+from yasqat.core.sequence import SequenceConfig
+from yasqat.metrics.optimal_matching import OptimalMatchingMetric
+from yasqat.metrics.hamming import HammingMetric
+from yasqat.clustering import (
+    pam_clustering, clara_clustering, hierarchical_clustering,
+    pam_range, cluster_quality, extract_representatives,
+)
+from yasqat.statistics import (
+    state_distribution, longitudinal_entropy, turbulence,
+    complexity_index, spell_count, visited_states,
+    transition_rate_matrix, transition_rates,
+    badness, insecurity, degradation, precarity, volatility,
+    frequent_subsequences, discrepancy_analysis,
+)
+from yasqat.visualization import (
+    index_plot, timeline_plot, spell_duration_plot,
+    distribution_plot, entropy_plot, frequency_plot,
+    modal_state_plot, mean_time_plot, parallel_coordinate_plot,
+)
+from yasqat.synthetic.financial import generate_customer_sequences
+```
+
+---
+
+## Section 1: Synthetic Data Generation
+
+The synthetic generator produces realistic financial customer journeys using
+a calibrated Markov chain. States are collapsed from 35 granular raw states
+into 15 lifecycle stages.
+
+```python
+# Generate 1,000 customers × 365 days across 15 lifecycle states
+raw_df, _ = generate_customer_sequences(
+    n_customers=1_000,
+    n_days=365,
+    seed=42,
+)
+
+print(f"Shape: {raw_df.shape}")    # (365000, 3)
+print(raw_df.head(10))
+```
+
+The 15 lifecycle states span the full customer journey:
+
+| Category | States |
+|---|---|
+| Acquisition | `prospect`, `applying` |
+| Onboarding | `product_applied`, `new_member` |
+| Activity | `dormant`, `low_activity`, `active`, `power_user` |
+| Product depth | `product_expand` |
+| Digital | `digital` |
+| Financial health | `healthy`, `at_risk`, `delinquent`, `default` |
+| Exit | `churned` |
+
+```python
+# State recode map: 35 raw states → 15 lifecycle stages
+RECODE_MAP = {
+    "lead": "prospect",
+    "application_started": "applying",
+    # ... (see source for full mapping)
+}
+
+ORDERED_STATES = [
+    "prospect", "applying", "product_applied", "new_member",
+    "dormant", "low_activity", "active", "power_user",
+    "product_expand", "digital", "healthy",
+    "at_risk", "delinquent", "default", "churned",
+]
+
+STATE_COLORS = [
+    "#c8d8e4", "#a8c4d4", "#88b0c4", "#5a9ab5",
+    "#d4c5b0", "#c9a882", "#e8b84b", "#f0a500",
+    "#8ab89a", "#5a9a7a", "#2d7a55",
+    "#e88a5a", "#d45a2a", "#b02020", "#601010",
+]
+
+# Build pool: raw → recode → custom alphabet
+pool_raw = SequencePool(raw_df.select(["id", "time", "state"]))
+pool_recoded = pool_raw.recode_states(RECODE_MAP)
+
+alphabet = Alphabet(states=ORDERED_STATES, colors=STATE_COLORS)
+pool = pool_recoded.with_alphabet(alphabet)
+
+print(f"{len(pool)} sequences, {pool.length} time points")
+```
+
+---
+
+## Section 2: Core Data Structures
+
+```python
+# Access a single sequence
+seq = pool[0]
+print(seq.sequence_id)
+print(seq.states[:10])
+print(seq.spell_count())
+
+# Pool metadata
+print(pool.alphabet.states)
+print(pool.sequence_ids[:5])
+```
+
+---
+
+## Section 3: Descriptive Statistics
+
+```python
+# State distribution at each time point
+dist = state_distribution(pool)
+print(dist)
+
+# Sequence-level entropy and turbulence
+ent = longitudinal_entropy(pool)
+turb = turbulence(pool)
+
+# Joined summary
+summary = ent.join(turb, on="sequence_id")
+print(summary.describe())
+
+# Spell structure
+spells = spell_count(pool)
+visited = visited_states(pool)
+```
+
+---
+
+## Section 4: Transition Analysis
+
+```python
+# Full transition rate matrix
+rate_matrix = transition_rate_matrix(pool)
+print(rate_matrix)
+
+# Tidy transition rates — top 10 most common transitions
+rates = transition_rates(pool)
+rates.filter(pl.col("from_state") != pl.col("to_state"))\
+     .sort("rate", descending=True)\
+     .head(10)
+```
+
+---
+
+## Section 5: Normative Indicators
+
+```python
+# Positive states in this domain = financial health
+positive = {"healthy", "active", "power_user", "digital"}
+negative = {"at_risk", "delinquent", "default", "churned"}
+
+prop_pos  = proportion_positive(pool, positive_states=positive)
+bad       = badness(pool, negative_states=negative)
+insec     = insecurity(pool, positive_states=positive)
+prec      = precarity(pool, positive_states=positive)
+vol       = volatility(pool, positive_states=positive)
+
+results = pl.concat([prop_pos, bad, insec, prec, vol], how="horizontal")
+print(results.describe())
+```
+
+---
+
+## Section 6: Frequent Subsequence Mining
+
+```python
+patterns = frequent_subsequences(
+    pool,
+    min_support=0.05,   # in at least 5 % of sequences
+    max_length=3,
+)
+
+# Top 10 two-step patterns
+patterns.filter(pl.col("subsequence").list.len() == 2)\
+        .sort("support", descending=True)\
+        .head(10)
+```
+
+---
+
+## Section 7: Distance Computation
+
+```python
+# Data-driven substitution costs from transition rates
+from yasqat.statistics import substitution_cost_matrix
+sub_costs = substitution_cost_matrix(pool)
+
+# Optimal Matching with data-driven costs
+metric = OptimalMatchingMetric(substitution_costs=sub_costs, indel_cost=1.0)
+dist_matrix = metric.pairwise(pool)
+
+print(dist_matrix)
+print(f"Min: {dist_matrix.values.min():.2f}")
+print(f"Max: {dist_matrix.values.max():.2f}")
+print(f"Mean: {dist_matrix.values.mean():.2f}")
+```
+
+---
+
+## Section 8: Clustering
+
+```python
+# Select k by ASW
+quality_df = pam_range(dist_matrix, k_min=2, k_max=8)
+best_k = quality_df.filter(
+    pl.col("asw") == pl.col("asw").max()
+)["k"][0]
+print(f"Best k: {best_k}  (ASW = {quality_df['asw'].max():.3f})")
+
+# PAM clustering
+pam_result = pam_clustering(
+    distance_matrix=dist_matrix.values,
+    n_clusters=best_k,
+    sequence_ids=dist_matrix.labels,
+)
+
+print(f"Cluster sizes: {pl.Series(pam_result.labels).value_counts()}")
+
+# Extract medoid sequences
+reps = extract_representatives(pool, dist_matrix, labels=pam_result.labels)
+```
+
+---
+
+## Section 9: Discrepancy Analysis
+
+```python
+disc = discrepancy_analysis(dist_matrix, groups=pam_result.labels)
+print(f"Pseudo-R² = {disc.pseudo_r2:.3f}")
+print(f"F-statistic = {disc.f_stat:.3f}")
+print(f"p-value = {disc.p_value:.4f}")
+```
+
+---
+
+## Section 10: Built-in Visualizations
+
+```python
+# 1. Distribution plot — state proportions over time
+p1 = distribution_plot(pool)
+p1 + labs(title="State distribution over 365 days")
+
+# 2. Index plot — sorted by cluster
+p2 = index_plot(pool, group=pam_result.labels, sort_by_group=True)
+p2 + theme_bw() + labs(title=f"Trajectories ({best_k} clusters)")
+
+# 3. Entropy plot
+p3 = entropy_plot(pool)
+p3 + labs(title="Cross-sectional entropy over time")
+
+# 4. Frequency plot — top 20 most common sequences
+p4 = frequency_plot(pool, n=20)
+p4.draw()
+
+# 5. Modal state plot
+p5 = modal_state_plot(pool)
+p5.draw()
+
+# 6. Mean time per state
+p6 = mean_time_plot(pool)
+p6.draw()
+
+# 7. Timeline plot (first 50 sequences)
+p7 = timeline_plot(pool[:50])
+p7.draw()
+
+# 8. Spell duration distribution
+p8 = spell_duration_plot(pool)
+p8.draw()
+
+# 9. Parallel coordinates (first 100 sequences)
+p9 = parallel_coordinate_plot(pool[:100], alpha=0.05)
+p9.draw()
+```
+
+---
+
+## Section 11: Custom Visualizations
+
+plotnine's composability lets you build arbitrarily complex plots from
+yasqat outputs. A few examples:
+
+```python
+from plotnine import (
+    ggplot, aes, geom_tile, geom_point,
+    scale_fill_gradient2, facet_wrap,
+    element_blank,
+)
+
+# Entropy vs turbulence scatter coloured by cluster
+scatter_df = longitudinal_entropy(pool)\
+    .join(turbulence(pool), on="sequence_id")\
+    .with_columns(pl.Series("cluster", pam_result.labels))
+
+p = (
+    ggplot(scatter_df, aes("entropy", "turbulence", color="factor(cluster)"))
+    + geom_point(alpha=0.4, size=1.2)
+    + theme_bw()
+    + labs(
+        title="Entropy vs turbulence by cluster",
+        x="Longitudinal entropy",
+        y="Turbulence (Brzinsky-Fay)",
+        color="Cluster",
+    )
+)
+p.draw()
+```
+
+---
+
+## Section 12: Summary
+
+```python
+print("=== yasqat Demo Summary ===")
+print(f"  Sequences:        {len(pool):,}")
+print(f"  Time points:      {pool.length}")
+print(f"  States:           {pool.alphabet.n_states}")
+print(f"  Best k (PAM):     {best_k}")
+print(f"  Pseudo-R²:        {disc.pseudo_r2:.3f}")
+```
