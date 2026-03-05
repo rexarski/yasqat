@@ -63,6 +63,76 @@ ruff format src/ tests/
 mypy src/
 ```
 
+## Documentation
+
+The documentation site lives in `docs/` and is built with
+[Quarto](https://quarto.org). The live site is published to
+[rexarski.github.io/yasqat](https://rexarski.github.io/yasqat) automatically
+on every push to `main`.
+
+### Prerequisites
+
+```bash
+# 1. Install Quarto (macOS — needs your password)
+brew install --cask quarto
+
+# 2. Install dev dependencies (includes quartodoc)
+uv pip install -e ".[dev]"
+```
+
+### Preview locally
+
+```bash
+# Live-reload preview in the browser
+quarto preview docs/
+```
+
+### Render to static HTML
+
+```bash
+# Outputs to docs/_site/
+quarto render docs/
+```
+
+Open `docs/_site/index.html` in a browser to inspect the result.
+
+### Regenerate API reference
+
+The `docs/api/` pages are currently hand-authored (quartodoc is blocked by
+a `pydantic.v1` / Python 3.14 incompatibility). When that is resolved — or
+if you run this project with Python 3.11 — you can regenerate them
+automatically:
+
+```bash
+cd docs/
+quartodoc build
+cd ..
+quarto render docs/
+```
+
+Commit the regenerated `docs/api/` files; the CI workflow does **not** run
+quartodoc (API pages are pre-committed).
+
+### Deployment
+
+Pushing to `main` triggers `.github/workflows/docs.yml`, which renders the
+site and pushes `docs/_site/` to the `gh-pages` branch. No manual step
+required after the initial GitHub Pages setup:
+
+> **One-time setup:** Repository Settings → Pages → Source: `gh-pages`
+> branch, `/ (root)`.
+
+### Adding or editing pages
+
+| What to change | Where |
+|---|---|
+| Site structure, navbar, sidebar | `docs/_quarto.yml` |
+| Styles and theme | `docs/styles.scss` |
+| Landing page | `docs/index.qmd` |
+| Tutorials | `docs/tutorials/*.qmd` |
+| API reference | `docs/api/*.qmd` |
+| Changelog | `docs/changelog.qmd` |
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
