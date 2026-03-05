@@ -73,9 +73,11 @@ website:
 format:
   html:
     theme:
-      light: [cosmo, styles.scss]
+      light: [flatly, styles.scss]
       dark:  [darkly, styles-dark.scss]
-    highlight-style: github
+    highlight-style:
+      light: github
+      dark:  github-dark
     code-copy: true
     code-overflow: wrap
     toc: true
