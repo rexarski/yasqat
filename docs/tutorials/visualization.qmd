@@ -1,0 +1,152 @@
+---
+title: "Visualization"
+sidebar: tutorials
+execute:
+  eval: false
+---
+
+All nine visualization functions return a `plotnine.ggplot` object — composable
+with `+` exactly like ggplot2 in R. No side effects: nothing is displayed until
+you call `.draw()` or save with `.save()`.
+
+```python
+from yasqat.visualization import (
+    index_plot, timeline_plot, spell_duration_plot,
+    distribution_plot, entropy_plot, frequency_plot,
+    modal_state_plot, mean_time_plot, parallel_coordinate_plot,
+)
+from plotnine import theme_bw, labs, theme, element_text
+```
+
+## Index plot
+
+One row per sequence, one column per time step — coloured by state. The canonical
+sequence visualization. Best for small to medium pools (< 500 sequences).
+
+```python
+p = index_plot(pool)
+p.draw()
+
+# Sorted by cluster assignment
+p = index_plot(pool, group=cluster_labels, sort_by_group=True)
+p + theme_bw() + labs(title="Trajectories by cluster")
+```
+
+::: {.callout-tip}
+`sort_by_group=True` stacks sequences by cluster, making within-cluster
+homogeneity immediately visible. Combine with `group=` to add a cluster
+boundary line between groups.
+:::
+
+## Distribution plot
+
+State proportions at each time step — the cohort-level view. Stable bands
+mean long spells; thin bands mean transient states.
+
+```python
+p = distribution_plot(pool)
+p.draw()
+
+# Proportion of sequences in each state over time
+# Colour follows Alphabet.colors automatically
+```
+
+## Entropy plot
+
+Cross-sectional Shannon entropy at each time point. Peaks signal moments of
+maximum uncertainty in the cohort (e.g., at a policy change or economic shock).
+
+```python
+p = entropy_plot(pool)
+p + labs(y="Shannon entropy", x="Time point")
+```
+
+## Frequency plot
+
+The most common distinct sequences as horizontal bars. Useful for identifying
+whether a few dominant patterns account for most of the cohort.
+
+```python
+p = frequency_plot(pool, n=20)   # top-20 most frequent sequences
+p.draw()
+```
+
+## Modal state plot
+
+At each time point, the most common (modal) state. A smooth signal of the
+cohort's "central tendency" trajectory.
+
+```python
+p = modal_state_plot(pool)
+p.draw()
+```
+
+## Mean time plot
+
+Mean time spent in each state, as a bar chart — one bar per state.
+
+```python
+p = mean_time_plot(pool)
+p + labs(title="Average time in state (all sequences)")
+```
+
+## Timeline plot
+
+Horizontal Gantt-style bars — one row per sequence, coloured bars per spell.
+Shows spell structure and duration directly.
+
+```python
+# Subset to first 50 sequences for readability
+subset = pool[:50]
+p = timeline_plot(subset)
+p.draw()
+```
+
+## Spell duration plot
+
+Distribution of spell lengths per state — how long do sequences stay in each
+state before transitioning? Useful for identifying "sticky" vs transient states.
+
+```python
+p = spell_duration_plot(pool)
+p + labs(x="Spell length (time steps)", y="State")
+```
+
+## Parallel coordinate plot
+
+One line per sequence — each axis is a time step, the line traces the state
+transitions. Works best with a coarse alphabet (≤ 6 states) and small pools.
+
+```python
+p = parallel_coordinate_plot(pool, alpha=0.1)   # alpha for line transparency
+p.draw()
+```
+
+## Composing with plotnine
+
+Every function returns a bare `ggplot` object. Apply any plotnine layer:
+
+```python
+from plotnine import theme_bw, theme, element_text, labs, scale_fill_manual
+
+p = index_plot(pool, group=cluster_labels)
+
+p + theme_bw() \
+  + theme(axis_text_y=element_text(size=7)) \
+  + labs(title="Customer lifecycle trajectories", x="Day", y="Customer") \
+  + scale_fill_manual(values=pool.alphabet.colors)
+```
+
+## Saving plots
+
+```python
+p = index_plot(pool)
+p.save("trajectories.png", dpi=150, width=12, height=8)
+p.save("trajectories.pdf", width=12, height=8)
+```
+
+::: {.callout-note}
+`plotnine` uses matplotlib as its rendering backend. For interactive display
+in Jupyter, call `p.draw()`. In scripts, call `p.save()` or assign the output
+of `p.draw()` to a variable to suppress auto-display.
+:::
