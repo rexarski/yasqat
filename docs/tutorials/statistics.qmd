@@ -124,6 +124,17 @@ rates = transition_rates(pool)
 rates.filter(pl.col("from_state") != pl.col("to_state")).sort("rate", descending=True)
 ```
 
+Use `exclude_self=True` to filter out trivial self-transitions (A→A) directly:
+
+```python
+# Exclude self-transitions — cleaner than manual filtering
+rates_no_self = transition_rates(pool, exclude_self=True)
+rates_no_self.sort("count", descending=True).head(10)
+
+# Also works on the matrix form
+counts_no_self = transition_rate_matrix(pool, as_counts=True, exclude_self=True)
+```
+
 ### First occurrence time
 
 At what time point does each sequence first enter each state?

@@ -22,7 +22,7 @@ A modern Python library for sequence analysis, inspired by [TanaT](https://tanat
 - **Dissimilarity trees**: Recursive partitioning of distance matrices by covariates
 - **State recoding**: Merge or rename states with automatic alphabet rebuild
 - **Filtering**: Length, time, state-based, and pattern filtering
-- **Data I/O**: CSV, JSON, Parquet support with polars
+- **Data I/O**: CSV, JSON, Parquet, and DataFrame loading (Hive/Spark/Arrow) with polars
 - **Trajectory**: Multi-sequence entity analysis
 - **Descriptive statistics**: Entropy, transition rates, complexity, turbulence, normalized turbulence, spell counts, visited states, modal states, sequence frequencies, log-probabilities, subsequence count
 - **Normative indicators**: Volatility, precarity, insecurity, degradation, badness, integration, proportion positive

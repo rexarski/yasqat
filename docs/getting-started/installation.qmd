@@ -24,7 +24,7 @@ uv add yasqat
 
 ```python
 import yasqat
-print(yasqat.__version__)   # 0.3.0
+print(yasqat.__version__)   # 0.3.1
 ```
 
 ## Optional: Databricks / cloud notebooks

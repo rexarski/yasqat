@@ -3,6 +3,30 @@ title: "Changelog"
 toc: false
 ---
 
+## 0.3.1 (2026-03-09)
+
+### Performance
+
+- `SequencePool._extract_sequences()` replaced with O(N) `group_by().agg()`
+  approach (was O(N×U) — one full table scan per unique ID). Significant
+  speedup for large datasets (50k+ sequences).
+- `SequencePool.describe()` uses null-safe accessors for length statistics.
+
+### New features
+
+- `load_dataframe()` in `yasqat.io` — build a `SequencePool` directly from a
+  polars DataFrame. Recommended entry point for Hive/Spark/Arrow workflows.
+  Supports `drop_nulls` parameter for cleaning null states on ingestion.
+- `transition_rates()` and `transition_rate_matrix()` accept `exclude_self`
+  parameter to filter out trivial self-transitions (A→A). Defaults to `False`.
+- All visualization functions (`index_plot`, `distribution_plot`, `timeline_plot`,
+  `spell_duration_plot`) auto-suppress legends when the alphabet has >15 states.
+  Pass `show_legend=True` to override.
+
+### Removals
+
+- TanaT source code removed (was already unused in v0.3.0).
+
 ## 0.3.0 (2026-02-23) — first public release
 
 ### Breaking changes

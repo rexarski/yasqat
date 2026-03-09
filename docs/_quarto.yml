@@ -66,6 +66,9 @@ website:
         - section: "Visualization"
           contents:
             - api/visualization.qmd
+        - section: "IO"
+          contents:
+            - api/io.qmd
 
   page-footer:
     center: "yasqat · MIT License · Built with [Quarto](https://quarto.org)"
@@ -157,3 +160,8 @@ quartodoc:
         - yasqat.visualization.distribution
         - yasqat.visualization.modal
         - yasqat.visualization.parallel
+
+    - title: IO
+      desc: "Data loaders for CSV, Parquet, JSON, and in-memory DataFrames"
+      contents:
+        - yasqat.io.loaders

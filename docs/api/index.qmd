@@ -13,6 +13,7 @@ Complete reference for all public symbols in **yasqat**.
 | [Statistics](statistics.qmd) | Descriptive stats, normative indicators, transition analysis, subsequence mining |
 | [Clustering](clustering.qmd) | PAM, CLARA, hierarchical clustering, quality metrics |
 | [Visualization](visualization.qmd) | plotnine-based sequence plots |
+| [IO](io.qmd) | Data loaders — CSV, Parquet, JSON, DataFrame |
 
 ## Quick imports
 
@@ -20,6 +21,9 @@ Complete reference for all public symbols in **yasqat**.
 # Core
 from yasqat import Alphabet, SequencePool
 from yasqat.core.sequence import SequenceConfig
+
+# IO — load from files or existing DataFrames
+from yasqat.io import load_csv, load_parquet, load_dataframe
 
 # Metrics
 from yasqat.metrics import DistanceMatrix

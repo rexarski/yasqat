@@ -137,6 +137,25 @@ p + theme_bw() \
   + scale_fill_manual(values=pool.alphabet.colors)
 ```
 
+## Legend auto-suppression
+
+When the alphabet has more than 15 states, legends are automatically hidden to
+keep plots readable. All plot functions accept `show_legend`:
+
+```python
+# Auto (default) — hidden when >15 states, shown otherwise
+p = index_plot(pool)
+
+# Force legend on, even with many states
+p = index_plot(pool, show_legend=True)
+
+# Force legend off, even with few states
+p = index_plot(pool, show_legend=False)
+```
+
+This applies to `index_plot`, `distribution_plot`, `timeline_plot`, and
+`spell_duration_plot`.
+
 ## Saving plots
 
 ```python
