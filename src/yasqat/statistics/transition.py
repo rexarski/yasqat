@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 def transition_rate_matrix(
     sequence: StateSequence | SequencePool,
     as_counts: bool = False,
+    exclude_self: bool = False,
 ) -> np.ndarray:
     """
     Compute state-to-state transition rate matrix.
@@ -61,6 +62,9 @@ def transition_rate_matrix(
             j = state_to_idx[states[t + 1]]
             counts[i, j] += 1
 
+    if exclude_self:
+        np.fill_diagonal(counts, 0)
+
     if as_counts:
         return np.asarray(counts)
 
@@ -74,6 +78,7 @@ def transition_rate_matrix(
 
 def transition_rates(
     sequence: StateSequence | SequencePool,
+    exclude_self: bool = False,
 ) -> pl.DataFrame:
     """
     Get transition rates as a DataFrame.
@@ -97,8 +102,8 @@ def transition_rates(
         pool = sequence
 
     alphabet = pool.alphabet
-    counts = transition_rate_matrix(pool, as_counts=True)
-    rates = transition_rate_matrix(pool, as_counts=False)
+    counts = transition_rate_matrix(pool, as_counts=True, exclude_self=exclude_self)
+    rates = transition_rate_matrix(pool, as_counts=False, exclude_self=exclude_self)
 
     rows = []
     for i, from_state in enumerate(alphabet.states):
@@ -112,7 +117,10 @@ def transition_rates(
                 }
             )
 
-    return pl.DataFrame(rows)
+    result = pl.DataFrame(rows)
+    if exclude_self:
+        result = result.filter(pl.col("from_state") != pl.col("to_state"))
+    return result
 
 
 def first_occurrence_time(

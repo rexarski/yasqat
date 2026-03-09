@@ -95,6 +95,60 @@ class TestStateDurationStats:
         assert "n_spells" in stats.columns
 
 
+class TestExcludeSelfTransitions:
+    """Tests for exclude_self parameter."""
+
+    def test_exclude_self_transitions_removes_diagonal(self) -> None:
+        """Test that self-transitions are excluded from DataFrame."""
+        data = pl.DataFrame(
+            {
+                "id": [1, 1, 1, 1],
+                "time": [0, 1, 2, 3],
+                "state": ["A", "A", "B", "A"],
+            }
+        )
+        pool = SequencePool(data)
+        df = transition_rates(pool, exclude_self=True)
+
+        # No rows where from_state == to_state
+        self_rows = df.filter(pl.col("from_state") == pl.col("to_state"))
+        assert len(self_rows) == 0
+
+    def test_exclude_self_default_false(self) -> None:
+        """Test that exclude_self defaults to False (backward compat)."""
+        data = pl.DataFrame(
+            {
+                "id": [1, 1, 1],
+                "time": [0, 1, 2],
+                "state": ["A", "A", "B"],
+            }
+        )
+        pool = SequencePool(data)
+        df = transition_rates(pool)  # default exclude_self=False
+
+        # Should include A→A
+        self_rows = df.filter(
+            (pl.col("from_state") == "A") & (pl.col("to_state") == "A")
+        )
+        assert len(self_rows) == 1
+        assert self_rows["count"].item() == 1
+
+    def test_exclude_self_matrix(self) -> None:
+        """Test exclude_self on transition_rate_matrix."""
+        data = pl.DataFrame(
+            {
+                "id": [1, 1, 1, 1],
+                "time": [0, 1, 2, 3],
+                "state": ["A", "A", "B", "A"],
+            }
+        )
+        pool = SequencePool(data)
+        counts = transition_rate_matrix(pool, as_counts=True, exclude_self=True)
+
+        # Diagonal should be all zeros
+        assert np.allclose(np.diag(counts), 0)
+
+
 class TestSubstitutionCostMatrix:
     """Tests for substitution cost matrix generation."""
 
