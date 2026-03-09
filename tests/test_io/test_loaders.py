@@ -5,10 +5,16 @@ import tempfile
 import polars as pl
 import pytest
 
-from yasqat.core.sequence import EventSequence, IntervalSequence, StateSequence
+from yasqat.core.sequence import (
+    EventSequence,
+    IntervalSequence,
+    SequenceConfig,
+    StateSequence,
+)
 from yasqat.io.loaders import (
     infer_sequence_type,
     load_csv,
+    load_dataframe,
     load_json,
     load_parquet,
     load_wide_format,
@@ -244,3 +250,57 @@ class TestWideFormat:
 
             # Should have same number of records
             assert len(long_data) == len(state_sequence_data)
+
+
+class TestLoadDataFrame:
+    """Tests for load_dataframe function."""
+
+    def test_load_basic_dataframe(self) -> None:
+        """Test loading a polars DataFrame into a SequencePool."""
+        df = pl.DataFrame(
+            {
+                "id": [1, 1, 1, 2, 2, 2],
+                "time": [0, 1, 2, 0, 1, 2],
+                "state": ["A", "B", "C", "A", "A", "B"],
+            }
+        )
+        pool = load_dataframe(df)
+        assert len(pool) == 2
+        assert pool[1] == ["A", "B", "C"]
+
+    def test_load_with_custom_config(self) -> None:
+        """Test loading with custom column names."""
+        df = pl.DataFrame(
+            {
+                "user_id": [1, 1, 2, 2],
+                "ts": [0, 1, 0, 1],
+                "event": ["X", "Y", "X", "X"],
+            }
+        )
+        config = SequenceConfig(
+            id_column="user_id",
+            time_column="ts",
+            state_column="event",
+        )
+        pool = load_dataframe(df, config=config)
+        assert len(pool) == 2
+        assert pool[1] == ["X", "Y"]
+
+    def test_load_with_drop_nulls(self) -> None:
+        """Test that null states are dropped."""
+        df = pl.DataFrame(
+            {
+                "id": [1, 1, 1, 2, 2],
+                "time": [0, 1, 2, 0, 1],
+                "state": ["A", None, "B", "C", "C"],
+            }
+        )
+        pool = load_dataframe(df, drop_nulls=True)
+        assert pool[1] == ["A", "B"]
+        assert pool[2] == ["C", "C"]
+
+    def test_load_missing_column_raises(self) -> None:
+        """Test that missing columns raise ValueError."""
+        df = pl.DataFrame({"id": [1], "time": [0]})
+        with pytest.raises(ValueError, match="Missing required column"):
+            load_dataframe(df)

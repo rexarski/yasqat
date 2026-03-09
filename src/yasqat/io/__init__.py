@@ -3,6 +3,7 @@
 from yasqat.io.loaders import (
     infer_sequence_type,
     load_csv,
+    load_dataframe,
     load_json,
     load_parquet,
     load_wide_format,
@@ -15,6 +16,7 @@ from yasqat.io.loaders import (
 __all__ = [
     "infer_sequence_type",
     "load_csv",
+    "load_dataframe",
     "load_json",
     "load_parquet",
     "load_wide_format",
