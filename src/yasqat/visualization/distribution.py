@@ -31,7 +31,7 @@ def distribution_plot(
     title: str | None = None,
     x_label: str = "Time",
     y_label: str = "Proportion",
-    show_legend: bool = True,
+    show_legend: bool | None = None,
     figsize: tuple[float, float] = (10, 6),
 ) -> ggplot:
     """
@@ -46,7 +46,8 @@ def distribution_plot(
         title: Plot title.
         x_label: X-axis label.
         y_label: Y-axis label.
-        show_legend: Whether to show the legend.
+        show_legend: Whether to show the legend. None (default) auto-hides
+            when alphabet has more than 15 states.
         figsize: Figure size as (width, height).
 
     Returns:
@@ -112,6 +113,11 @@ def distribution_plot(
 
     if title:
         p = p + labs(title=title)
+
+    # Auto-suppress legend when alphabet has >15 states (unreadable).
+    # show_legend=None means "auto", True/False are explicit overrides.
+    if show_legend is None:
+        show_legend = len(alphabet) <= 15
 
     if not show_legend:
         p = p + theme(legend_position="none")

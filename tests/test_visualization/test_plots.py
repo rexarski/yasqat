@@ -1,5 +1,6 @@
 """Tests for visualization functions."""
 
+import polars as pl
 from plotnine import ggplot
 
 from yasqat.core.pool import SequencePool
@@ -162,3 +163,73 @@ class TestParallelCoordinatePlot:
     def test_with_title(self, sequence_pool: SequencePool) -> None:
         plot = parallel_coordinate_plot(sequence_pool, title="PC Plot")
         assert isinstance(plot, ggplot)
+
+
+def _make_many_state_pool(n_states: int = 20) -> SequencePool:
+    """Helper: build a pool with n_states distinct states."""
+    states = [f"S{i}" for i in range(n_states)]
+    rows = []
+    for seq_id in range(3):
+        for t, s in enumerate(states):
+            rows.append({"id": seq_id, "time": t, "state": s})
+    return SequencePool(pl.DataFrame(rows))
+
+
+def _has_legend_none(plot: ggplot) -> bool:
+    """Check whether the plot's theme sets legend_position to 'none'."""
+    items = plot.theme.themeables
+    if "legend_position" not in items:
+        return False
+    return items["legend_position"].properties["value"] == "none"
+
+
+class TestAutoLegendSuppression:
+    """Tests for automatic legend suppression with >15 categories."""
+
+    def test_index_plot_auto_hidden(self) -> None:
+        """Test that index_plot auto-hides legend for >15 states."""
+        pool = _make_many_state_pool(20)
+        plot = index_plot(pool)
+        assert _has_legend_none(plot)
+
+    def test_index_plot_explicit_true_overrides(self) -> None:
+        """Test that show_legend=True forces legend even with >15 states."""
+        pool = _make_many_state_pool(20)
+        plot = index_plot(pool, show_legend=True)
+        assert not _has_legend_none(plot)
+
+    def test_index_plot_explicit_false(self, sequence_pool: SequencePool) -> None:
+        """Test that show_legend=False hides legend even with few states."""
+        plot = index_plot(sequence_pool, show_legend=False)
+        assert _has_legend_none(plot)
+
+    def test_index_plot_shown_for_few_states(
+        self, sequence_pool: SequencePool
+    ) -> None:
+        """Test that legend is shown for <=15 states by default."""
+        plot = index_plot(sequence_pool)
+        assert not _has_legend_none(plot)
+
+    def test_distribution_plot_auto_hidden(self) -> None:
+        """Test that distribution_plot auto-hides legend for >15 states."""
+        pool = _make_many_state_pool(20)
+        plot = distribution_plot(pool)
+        assert _has_legend_none(plot)
+
+    def test_timeline_plot_auto_hidden(self) -> None:
+        """Test that timeline_plot auto-hides legend for >15 states."""
+        pool = _make_many_state_pool(20)
+        plot = timeline_plot(pool)
+        assert _has_legend_none(plot)
+
+    def test_spell_duration_plot_auto_hidden(self) -> None:
+        """Test that spell_duration_plot auto-hides legend for >15 states."""
+        pool = _make_many_state_pool(20)
+        plot = spell_duration_plot(pool)
+        assert _has_legend_none(plot)
+
+    def test_spell_duration_plot_explicit_true(self) -> None:
+        """Test that spell_duration_plot respects show_legend=True."""
+        pool = _make_many_state_pool(20)
+        plot = spell_duration_plot(pool, show_legend=True)
+        assert not _has_legend_none(plot)

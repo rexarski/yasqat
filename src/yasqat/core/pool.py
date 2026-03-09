@@ -68,16 +68,17 @@ class SequencePool:
         return Alphabet.from_series(self._data[self._config.state_column])
 
     def _extract_sequences(self) -> dict[int | str, list[str]]:
-        """Extract sequences as lists of states."""
-        sequences: dict[int | str, list[str]] = {}
+        """Extract sequences as lists of states using a single group_by pass."""
         id_col = self._config.id_column
         state_col = self._config.state_column
 
-        for seq_id in self.sequence_ids:
-            states = self._data.filter(pl.col(id_col) == seq_id)[state_col].to_list()
-            sequences[seq_id] = states
+        # Data is already sorted by [id, time] from _validate_and_prepare.
+        # maintain_order=True preserves that row order within each group.
+        grouped = self._data.group_by(id_col, maintain_order=True).agg(
+            pl.col(state_col)
+        )
 
-        return sequences
+        return {row[id_col]: row[state_col] for row in grouped.iter_rows(named=True)}
 
     @property
     def data(self) -> pl.DataFrame:
@@ -97,7 +98,7 @@ class SequencePool:
     @property
     def sequence_ids(self) -> list[int | str]:
         """Return sorted list of unique sequence IDs."""
-        return self._data[self._config.id_column].unique().sort().to_list()
+        return sorted(self._sequences.keys())
 
     def __len__(self) -> int:
         """Return the number of sequences in the pool."""
@@ -301,14 +302,18 @@ class SequencePool:
     def describe(self) -> dict[str, int | float | list[str]]:
         """Get summary statistics about the pool."""
         lengths = self.sequence_lengths()["length"]
+        min_len = lengths.min()
+        max_len = lengths.max()
+        mean_len = lengths.mean()
+        median_len = lengths.median()
 
         return {
             "n_sequences": len(self),
             "n_states": len(self._alphabet),
             "states": list(self._alphabet.states),
-            "total_observations": len(self._data),
-            "min_length": int(lengths.min()),  # type: ignore[arg-type]
-            "max_length": int(lengths.max()),  # type: ignore[arg-type]
-            "mean_length": float(lengths.mean()),  # type: ignore[arg-type]
-            "median_length": float(lengths.median()),  # type: ignore[arg-type]
+            "total_observations": self._data.height,
+            "min_length": int(min_len) if isinstance(min_len, (int, float)) else 0,
+            "max_length": int(max_len) if isinstance(max_len, (int, float)) else 0,
+            "mean_length": float(mean_len) if isinstance(mean_len, (int, float)) else 0.0,
+            "median_length": float(median_len) if isinstance(median_len, (int, float)) else 0.0,
         }

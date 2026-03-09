@@ -115,12 +115,12 @@ data/
 .ipynb_checkpoints/
 *.ipynb
 
-# Exclude from repo (local / planning only)
-CLAUDE.md
-demo_showcase.ipynb
-
 # Ruff
 .ruff_cache/
+
+# Exclude from repo (local / planning only)
+CLAUDE.md
+plans/
 
 # tanat source code
 tanat*

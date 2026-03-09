@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import polars as pl
 
@@ -13,6 +13,10 @@ from yasqat.core.sequence import (
     SequenceConfig,
     StateSequence,
 )
+
+if TYPE_CHECKING:
+    from yasqat.core.alphabet import Alphabet
+    from yasqat.core.pool import SequencePool
 
 
 def load_csv(
@@ -184,6 +188,44 @@ def save_parquet(
         >>> save_parquet(sequence, "output.parquet")
     """
     sequence.data.write_parquet(path, compression=compression, **kwargs)
+
+
+def load_dataframe(
+    df: pl.DataFrame,
+    config: SequenceConfig | None = None,
+    alphabet: Alphabet | None = None,
+    drop_nulls: bool = False,
+) -> SequencePool:
+    """
+    Build a SequencePool directly from a polars DataFrame.
+
+    This is the recommended entry point when loading data from Hive tables,
+    Spark (via parquet export or Arrow bridge), or any other source that
+    already produces a polars DataFrame.
+
+    Args:
+        df: Polars DataFrame in long format with id, time, and state columns.
+        config: Column configuration. Defaults to id/time/state.
+        alphabet: State alphabet. Inferred from data if not provided.
+        drop_nulls: If True, drop rows where the state column is null.
+
+    Returns:
+        A SequencePool ready for analysis.
+
+    Example:
+        >>> df = pl.read_parquet("s3://bucket/events_export/")
+        >>> pool = load_dataframe(df, config=SequenceConfig(
+        ...     id_column="user_id", time_column="ts", state_column="event"
+        ... ))
+    """
+    from yasqat.core.pool import SequencePool
+
+    config = config or SequenceConfig()
+
+    if drop_nulls:
+        df = df.drop_nulls(subset=[config.state_column])
+
+    return SequencePool(data=df, config=config, alphabet=alphabet)
 
 
 def _create_sequence(

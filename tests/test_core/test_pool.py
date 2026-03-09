@@ -128,6 +128,35 @@ class TestSequencePool:
             sequence_pool.compute_distances(method="invalid")
 
 
+class TestExtractSequencesPerformance:
+    """Tests that _extract_sequences uses efficient group_by approach."""
+
+    def test_sequences_match_original_order(
+        self, simple_sequence_data: pl.DataFrame
+    ) -> None:
+        """Test that extracted sequences preserve time order within each ID."""
+        pool = SequencePool(simple_sequence_data)
+        assert pool[1] == ["A", "A", "B", "C"]
+        assert pool[2] == ["A", "B", "B", "C"]
+        assert pool[3] == ["B", "B", "C", "D"]
+
+    def test_sequence_ids_are_sorted(self, simple_sequence_data: pl.DataFrame) -> None:
+        """Test that sequence_ids returns sorted IDs."""
+        pool = SequencePool(simple_sequence_data)
+        assert pool.sequence_ids == [1, 2, 3]
+
+    def test_describe_handles_nulls_gracefully(
+        self, simple_sequence_data: pl.DataFrame
+    ) -> None:
+        """Test that describe() never returns None for length stats."""
+        pool = SequencePool(simple_sequence_data)
+        desc = pool.describe()
+        assert desc["min_length"] is not None
+        assert desc["max_length"] is not None
+        assert desc["mean_length"] is not None
+        assert desc["median_length"] is not None
+
+
 class TestRecodeStates:
     """Tests for SequencePool.recode_states method."""
 
