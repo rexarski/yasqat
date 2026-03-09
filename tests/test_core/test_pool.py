@@ -140,9 +140,7 @@ class TestExtractSequencesPerformance:
         assert pool[2] == ["A", "B", "B", "C"]
         assert pool[3] == ["B", "B", "C", "D"]
 
-    def test_sequence_ids_are_sorted(
-        self, simple_sequence_data: pl.DataFrame
-    ) -> None:
+    def test_sequence_ids_are_sorted(self, simple_sequence_data: pl.DataFrame) -> None:
         """Test that sequence_ids returns sorted IDs."""
         pool = SequencePool(simple_sequence_data)
         assert pool.sequence_ids == [1, 2, 3]

@@ -74,16 +74,11 @@ class SequencePool:
 
         # Data is already sorted by [id, time] from _validate_and_prepare.
         # maintain_order=True preserves that row order within each group.
-        grouped = (
-            self._data
-            .group_by(id_col, maintain_order=True)
-            .agg(pl.col(state_col))
+        grouped = self._data.group_by(id_col, maintain_order=True).agg(
+            pl.col(state_col)
         )
 
-        return {
-            row[id_col]: row[state_col]
-            for row in grouped.iter_rows(named=True)
-        }
+        return {row[id_col]: row[state_col] for row in grouped.iter_rows(named=True)}
 
     @property
     def data(self) -> pl.DataFrame:
@@ -317,8 +312,8 @@ class SequencePool:
             "n_states": len(self._alphabet),
             "states": list(self._alphabet.states),
             "total_observations": self._data.height,
-            "min_length": int(min_len) if min_len is not None else 0,
-            "max_length": int(max_len) if max_len is not None else 0,
-            "mean_length": float(mean_len) if mean_len is not None else 0.0,
-            "median_length": float(median_len) if median_len is not None else 0.0,
+            "min_length": int(min_len) if isinstance(min_len, (int, float)) else 0,
+            "max_length": int(max_len) if isinstance(max_len, (int, float)) else 0,
+            "mean_length": float(mean_len) if isinstance(mean_len, (int, float)) else 0.0,
+            "median_length": float(median_len) if isinstance(median_len, (int, float)) else 0.0,
         }

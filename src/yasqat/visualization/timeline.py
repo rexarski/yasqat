@@ -29,7 +29,7 @@ def timeline_plot(
     title: str | None = None,
     x_label: str = "Time",
     y_label: str = "Sequence",
-    show_legend: bool = True,
+    show_legend: bool | None = None,
     figsize: tuple[float, float] = (12, 8),
 ) -> ggplot:
     """
@@ -46,7 +46,8 @@ def timeline_plot(
         title: Plot title.
         x_label: X-axis label.
         y_label: Y-axis label.
-        show_legend: Whether to show the legend.
+        show_legend: Whether to show the legend. None (default) auto-hides
+            when alphabet has more than 15 states.
         figsize: Figure size as (width, height).
 
     Returns:
@@ -130,6 +131,11 @@ def timeline_plot(
     if title:
         p = p + labs(title=title)
 
+    # Auto-suppress legend when alphabet has >15 states (unreadable).
+    # show_legend=None means "auto", True/False are explicit overrides.
+    if show_legend is None:
+        show_legend = len(alphabet) <= 15
+
     if not show_legend:
         p = p + theme(legend_position="none")
 
@@ -142,7 +148,7 @@ def _event_timeline_plot(
     title: str | None = None,
     x_label: str = "Time",
     y_label: str = "Sequence",
-    show_legend: bool = True,
+    show_legend: bool | None = None,
     figsize: tuple[float, float] = (12, 8),
 ) -> ggplot:
     """Create timeline plot for event sequences."""
@@ -188,6 +194,11 @@ def _event_timeline_plot(
     if title:
         p = p + labs(title=title)
 
+    # Auto-suppress legend when alphabet has >15 states (unreadable).
+    # show_legend=None means "auto", True/False are explicit overrides.
+    if show_legend is None:
+        show_legend = len(alphabet) <= 15
+
     if not show_legend:
         p = p + theme(legend_position="none")
 
@@ -199,6 +210,7 @@ def spell_duration_plot(
     title: str | None = None,
     x_label: str = "State",
     y_label: str = "Duration",
+    show_legend: bool | None = None,
     figsize: tuple[float, float] = (10, 6),
 ) -> ggplot:
     """
@@ -211,6 +223,8 @@ def spell_duration_plot(
         title: Plot title.
         x_label: X-axis label.
         y_label: Y-axis label.
+        show_legend: Whether to show the legend. None (default) auto-hides
+            when alphabet has more than 15 states.
         figsize: Figure size as (width, height).
 
     Returns:
@@ -246,14 +260,19 @@ def spell_duration_plot(
         + geom_boxplot(alpha=0.8)
         + scale_fill_manual(values=colors)
         + theme_minimal()
-        + theme(
-            figure_size=figsize,
-            legend_position="none",
-        )
+        + theme(figure_size=figsize)
         + labs(x=x_label, y=y_label)
     )
 
     if title:
         p = p + labs(title=title)
+
+    # Auto-suppress legend when alphabet has >15 states (unreadable).
+    # show_legend=None means "auto", True/False are explicit overrides.
+    if show_legend is None:
+        show_legend = len(alphabet) <= 15
+
+    if not show_legend:
+        p = p + theme(legend_position="none")
 
     return p

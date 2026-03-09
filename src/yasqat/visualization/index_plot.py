@@ -28,7 +28,7 @@ def index_plot(
     title: str | None = None,
     x_label: str = "Time",
     y_label: str = "Sequence",
-    show_legend: bool = True,
+    show_legend: bool | None = None,
     figsize: tuple[float, float] = (10, 8),
 ) -> ggplot:
     """
@@ -48,7 +48,8 @@ def index_plot(
         title: Plot title.
         x_label: X-axis label.
         y_label: Y-axis label.
-        show_legend: Whether to show the legend.
+        show_legend: Whether to show the legend. None (default) auto-hides
+            when alphabet has more than 15 states.
         figsize: Figure size as (width, height).
 
     Returns:
@@ -86,7 +87,12 @@ def index_plot(
     seq_ids = plot_data[id_col].unique(maintain_order=True).to_list()
     id_to_pos = {seq_id: i for i, seq_id in enumerate(seq_ids)}
 
-    plot_data = plot_data.with_columns(pl.col(id_col).replace(id_to_pos).alias("y_pos"))
+    # replace() preserves the source column dtype (Utf8 for string IDs), so
+    # integer positions land as strings.  Cast to Int64 so pandas sees a
+    # numeric column — required for scale_y_reverse() (continuous scale).
+    plot_data = plot_data.with_columns(
+        pl.col(id_col).replace(id_to_pos).cast(pl.Int64).alias("y_pos")
+    )
 
     # Convert to pandas for plotnine
     pdf = plot_data.to_pandas()
@@ -111,6 +117,11 @@ def index_plot(
 
     if title:
         p = p + labs(title=title)
+
+    # Auto-suppress legend when alphabet has >15 states (unreadable).
+    # show_legend=None means "auto", True/False are explicit overrides.
+    if show_legend is None:
+        show_legend = len(alphabet) <= 15
 
     if not show_legend:
         p = p + theme(legend_position="none")
