@@ -79,7 +79,7 @@ format:
       light: [flatly, styles.scss]
       dark:  [darkly, styles-dark.scss]
     highlight-style:
-      light: github
+      light: pygments
       dark:  github-dark
     code-copy: true
     code-overflow: wrap
