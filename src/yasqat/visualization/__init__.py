@@ -8,7 +8,9 @@ from yasqat.visualization.distribution import (
 from yasqat.visualization.index_plot import index_plot
 from yasqat.visualization.modal import mean_time_plot, modal_state_plot
 from yasqat.visualization.parallel import parallel_coordinate_plot
+from yasqat.visualization.sunburst import sunburst_plot
 from yasqat.visualization.timeline import spell_duration_plot, timeline_plot
+from yasqat.visualization.tree_plot import tree_plot
 
 __all__ = [
     "distribution_plot",
@@ -19,5 +21,7 @@ __all__ = [
     "modal_state_plot",
     "parallel_coordinate_plot",
     "spell_duration_plot",
+    "sunburst_plot",
     "timeline_plot",
+    "tree_plot",
 ]

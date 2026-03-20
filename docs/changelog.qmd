@@ -3,6 +3,35 @@ title: "Changelog"
 toc: false
 ---
 
+## 0.3.2 (unreleased)
+
+### Bug fixes
+
+- `frequent_subsequences()` now returns a `pl.DataFrame` with columns
+  `[subsequence, support, proportion]` instead of a list of dataclass objects.
+  The `subsequence` column is a `list[str]`, enabling polars filtering like
+  `results.filter(pl.col("subsequence").list.len() == 2)`.
+- `OptimalMatchingMetric` is now exported from `yasqat.metrics` (previously
+  only the function `optimal_matching_distance` was re-exported).
+
+### Performance
+
+- `longitudinal_entropy()` rewritten with polars `group_by` pipeline — replaces
+  per-sequence Python loop and `collections.Counter` with a single-pass
+  vectorized computation.
+- `turbulence()` rewritten with polars `group_by` over spell data — eliminates
+  per-sequence DataFrame filtering.
+- `normalized_turbulence()` uses polars join + expressions instead of row-by-row
+  iteration.
+
+### New features
+
+- `sunburst_plot()` — concentric-ring visualisation showing hierarchical state
+  transitions over time. Each ring represents a time position; arc widths are
+  proportional to the number of sequences following each path.
+- `tree_plot()` — prefix-tree visualisation showing how sequences branch over
+  time. Supports `min_support` pruning to focus on the most common paths.
+
 ## 0.3.1 (2026-03-09)
 
 ### Performance
