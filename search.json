@@ -1,0 +1,1289 @@
+[
+  {
+    "objectID": "api/metrics.html",
+    "href": "api/metrics.html",
+    "title": "Metrics",
+    "section": "",
+    "text": "Pairwise distance functions for sequence comparison. All functions accept integer-encoded numpy arrays and return a scalar distance. Metric classes implement compute() (one pair) and pairwise() (full pool).",
+    "crumbs": [
+      "**yasqat**",
+      "Metrics",
+      "Metrics"
+    ]
+  },
+  {
+    "objectID": "api/metrics.html#distancematrix",
+    "href": "api/metrics.html#distancematrix",
+    "title": "Metrics",
+    "section": "DistanceMatrix",
+    "text": "DistanceMatrix\n@dataclass\nclass DistanceMatrix(values, labels=None)\nWrapper for a symmetric pairwise distance matrix.\nParameters\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\nvalues\nnp.ndarray\nSquare symmetric matrix of shape (n, n).\n\n\nlabels\nlist[int \\| str] \\| None\nSequence IDs corresponding to rows/columns.\n\n\n\nMethods\n\n\n\n\n\n\n\n\nMethod\nReturns\nDescription\n\n\n\n\nto_condensed()\nnp.ndarray\nUpper-triangle condensed form for scipy.\n\n\nfrom_condensed(condensed, labels)\nDistanceMatrix\nClass method — build from condensed form.\n\n\n\nExample\ndist = pool.compute_distances(\"om\", indel_cost=1.0)\nprint(dist.values.shape)   # (n, n)\nprint(dist.labels[:5])     # sequence IDs",
+    "crumbs": [
+      "**yasqat**",
+      "Metrics",
+      "Metrics"
+    ]
+  },
+  {
+    "objectID": "api/metrics.html#sequencemetric",
+    "href": "api/metrics.html#sequencemetric",
+    "title": "Metrics",
+    "section": "SequenceMetric",
+    "text": "SequenceMetric\nclass SequenceMetric(ABC)\nAbstract base class for all metric classes. Subclass this to implement custom metrics.\nAbstract methods\ndef compute(self, seq_a: np.ndarray, seq_b: np.ndarray, **kwargs) -&gt; float: ...\ndef pairwise(self, pool: SequencePool) -&gt; DistanceMatrix: ...\nCustom metric example\nfrom yasqat.metrics.base import SequenceMetric, DistanceMatrix\nimport numpy as np\n\nclass MyMetric(SequenceMetric):\n    name = \"my_metric\"\n\n    def compute(self, seq_a, seq_b, **kwargs):\n        return float(np.sum(seq_a != seq_b))\n\n    def pairwise(self, pool):\n        ids = pool.sequence_ids\n        seqs = [pool[i].get_encoded() for i in range(len(pool))]\n        n = len(seqs)\n        mat = np.zeros((n, n))\n        for i in range(n):\n            for j in range(i + 1, n):\n                d = self.compute(seqs[i], seqs[j])\n                mat[i, j] = mat[j, i] = d\n        return DistanceMatrix(values=mat, labels=ids)",
+    "crumbs": [
+      "**yasqat**",
+      "Metrics",
+      "Metrics"
+    ]
+  },
+  {
+    "objectID": "api/metrics.html#build_substitution_matrix",
+    "href": "api/metrics.html#build_substitution_matrix",
+    "title": "Metrics",
+    "section": "build_substitution_matrix",
+    "text": "build_substitution_matrix\ndef build_substitution_matrix(\n    n_states,\n    method=\"constant\",\n    cost=2.0,\n    transition_rates=None,\n    state_frequencies=None,\n) -&gt; np.ndarray\nBuild a substitution cost matrix for use with Optimal Matching.\n\n\n\nmethod\nDescription\n\n\n\n\n\"constant\"\nAll substitutions cost cost (default 2.0).\n\n\n\"trate\"\nCosts derived from empirical transition rates.\n\n\n\"indels\"\n1/freq(a) + 1/freq(b) — requires state_frequencies.\n\n\n\"indelslog\"\nLog variant of \"indels\".\n\n\n\"future\"\nChi-squared distance between next-state distributions.\n\n\n\"features\"\nGower distance on user-defined state feature vectors.",
+    "crumbs": [
+      "**yasqat**",
+      "Metrics",
+      "Metrics"
+    ]
+  },
+  {
+    "objectID": "api/metrics.html#metric-reference",
+    "href": "api/metrics.html#metric-reference",
+    "title": "Metrics",
+    "section": "Metric reference",
+    "text": "Metric reference\n\nOptimal Matching (OM)\ndef optimal_matching_distance(\n    seq_a: np.ndarray,\n    seq_b: np.ndarray,\n    indel_cost: float = 1.0,\n    substitution_costs: np.ndarray | None = None,\n) -&gt; float\nEdit distance with custom insertion/deletion and substitution costs. The gold-standard metric for categorical sequence analysis (Abbott & Forrest 1986).\nclass OptimalMatchingMetric(indel_cost=1.0, substitution_costs=None)\n    def compute(seq_a, seq_b) -&gt; float\n    def pairwise(pool) -&gt; DistanceMatrix\nExample\nfrom yasqat.metrics.optimal_matching import OptimalMatchingMetric\nfrom yasqat.statistics import substitution_cost_matrix\n\nsub = substitution_cost_matrix(pool)          # data-driven costs\nmetric = OptimalMatchingMetric(substitution_costs=sub, indel_cost=1.0)\ndist = metric.pairwise(pool)\n\n\n\nHamming\ndef hamming_distance(\n    seq_a: np.ndarray,\n    seq_b: np.ndarray,\n    normalize: bool = False,\n) -&gt; float\nCounts positions where sequences differ. Both sequences must have equal length. Numba-accelerated inner loop.\nclass HammingMetric(normalize=False)\n    def compute(seq_a, seq_b) -&gt; float\n    def pairwise(pool) -&gt; DistanceMatrix\n\n\n\nLongest Common Subsequence (LCS)\ndef lcs_distance(seq_a: np.ndarray, seq_b: np.ndarray) -&gt; float\n1 − LCS_length / max(len_a, len_b). Invariant to insertions/deletions.\nclass LCSMetric\n\n\n\nLongest Common Prefix (LCP)\ndef lcp_distance(seq_a: np.ndarray, seq_b: np.ndarray) -&gt; float\nMeasures how early two sequences diverge. Sensitive to early-life differences.\nclass LCPMetric\n\n\n\nReversed LCP (RLCP)\ndef rlcp_distance(seq_a: np.ndarray, seq_b: np.ndarray) -&gt; float\nLCP applied from the end — sensitive to late-trajectory differences.\nclass RLCPMetric\n\n\n\nDynamic Time Warping (DTW)\ndef dtw_distance(seq_a: np.ndarray, seq_b: np.ndarray) -&gt; float\nElastic alignment — stretches or compresses time to find the best match.\nclass DTWMetric\n\n\n\nSoft-DTW\ndef softdtw_distance(\n    seq_a: np.ndarray,\n    seq_b: np.ndarray,\n    gamma: float = 1.0,\n) -&gt; float\nDifferentiable relaxation of DTW (Cuturi & Blondel 2017). Useful as a smooth training loss.\n\n\n\nTime-Warp Edit Distance (TWED)\ndef twed_distance(\n    seq_a: np.ndarray,\n    seq_b: np.ndarray,\n    nu: float = 0.001,\n    lmbda: float = 1.0,\n) -&gt; float\nCombines edit distance with time-warping; nu controls stiffness, lmbda is the deletion cost.\n\n\n\nChi-squared (Chi2)\ndef chi2_distance(seq_a: np.ndarray, seq_b: np.ndarray) -&gt; float\nChi-squared distance between the state frequency distributions of two sequences. Order-invariant — treats sequences as bags of states.\n\n\n\nDiscrepancy-based Hamming Distance (DHD)\ndef dhd_distance(seq_a: np.ndarray, seq_b: np.ndarray) -&gt; float\nWeighted Hamming distance accounting for state-level discrepancy.\n\n\n\nEuclidean\ndef euclidean_distance(seq_a: np.ndarray, seq_b: np.ndarray) -&gt; float\nStandard L2 norm between integer-encoded sequences.\n\n\n\nOM Variants\ndef omloc_distance(seq_a, seq_b, indel_cost=1.0) -&gt; float\ndef omspell_distance(seq_a, seq_b, indel_cost=1.0) -&gt; float\ndef omstran_distance(seq_a, seq_b, indel_cost=1.0) -&gt; float\nOM extensions (Halpin 2010) that penalise state changes differently:\n\nOMLoc — position-sensitive OM; earlier mismatches cost more.\nOMSpell — spell-duration-sensitive OM.\nOMStran — penalises transition-heavy sequences more strongly.\n\n\n\n\nNMS family\ndef nms_distance(seq_a: np.ndarray, seq_b: np.ndarray) -&gt; float\ndef nmsmst_distance(seq_a: np.ndarray, seq_b: np.ndarray) -&gt; float\ndef svrspell_distance(seq_a: np.ndarray, seq_b: np.ndarray) -&gt; float\nNon-metric spell-based distances (Studer & Ritschard 2016):\n\nNMS — number of matching subsequences.\nNMSMst — NMS on the most frequent subsequence.\nSVRSpell — Spell variant.",
+    "crumbs": [
+      "**yasqat**",
+      "Metrics",
+      "Metrics"
+    ]
+  },
+  {
+    "objectID": "api/metrics.html#metric-comparison",
+    "href": "api/metrics.html#metric-comparison",
+    "title": "Metrics",
+    "section": "Metric comparison",
+    "text": "Metric comparison\n\n\n\n\n\n\n\n\n\nMetric\nHandles variable length\nOrder-sensitive\nKey tuning param\n\n\n\n\nOM\nYes\nYes\nindel_cost, substitution_costs\n\n\nHamming\nNo\nYes\nnormalize\n\n\nLCS\nYes\nYes\n—\n\n\nLCP / RLCP\nYes\nYes (prefix)\n—\n\n\nDTW\nYes\nYes\n—\n\n\nSoft-DTW\nYes\nYes\ngamma\n\n\nTWED\nYes\nYes\nnu, lmbda\n\n\nChi2\nYes\nNo\n—\n\n\nOMLoc/Spell/Stran\nYes\nYes\nindel_cost\n\n\nNMS / SVRSpell\nYes\nYes\n—",
+    "crumbs": [
+      "**yasqat**",
+      "Metrics",
+      "Metrics"
+    ]
+  },
+  {
+    "objectID": "api/clustering.html",
+    "href": "api/clustering.html",
+    "title": "Clustering",
+    "section": "",
+    "text": "Partitional and hierarchical clustering for sequences, plus quality indices and representative extraction. All clustering functions accept a DistanceMatrix (or its .values numpy array).",
+    "crumbs": [
+      "**yasqat**",
+      "Clustering",
+      "Clustering"
+    ]
+  },
+  {
+    "objectID": "api/clustering.html#pam-partitioning-around-medoids",
+    "href": "api/clustering.html#pam-partitioning-around-medoids",
+    "title": "Clustering",
+    "section": "PAM — Partitioning Around Medoids",
+    "text": "PAM — Partitioning Around Medoids\nPAM (Kaufman & Rousseeuw 1990) is the standard algorithm for clustering distance matrices. It finds k medoid sequences that minimise total within-cluster dissimilarity.\n\npam_clustering\ndef pam_clustering(\n    distance_matrix: np.ndarray,\n    n_clusters: int,\n    sequence_ids: list[int | str] | None = None,\n    max_iter: int = 100,\n    random_state: int | None = None,\n) -&gt; PAMClusteringResult\nParameters\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\ndistance_matrix\nnp.ndarray\nSquare pairwise distance matrix (pass dist.values).\n\n\nn_clusters\nint\nNumber of clusters k.\n\n\nsequence_ids\nlist \\| None\nRow/column labels. Defaults to integer indices.\n\n\nmax_iter\nint\nMaximum swap iterations.\n\n\nrandom_state\nint \\| None\nSeed for reproducible medoid initialisation.\n\n\n\nReturns — PAMClusteringResult with attributes:\n\n\n\n\n\n\n\n\nAttribute\nType\nDescription\n\n\n\n\nlabels\nnp.ndarray\nCluster assignment per sequence (0-indexed).\n\n\nmedoid_indices\nnp.ndarray\nIndex positions of medoid sequences.\n\n\ncluster_sizes\ndict[int, int]\nSize of each cluster.\n\n\n\nMethods on result\n\n\n\n\n\n\n\n\nMethod\nReturns\nDescription\n\n\n\n\nget_cluster_members(k)\nlist[int \\| str]\nSequence IDs in cluster k.\n\n\nget_medoid_ids()\nlist[int \\| str]\nSequence IDs of medoids.\n\n\nto_dataframe()\npl.DataFrame\nLong-format table with sequence_id, cluster.\n\n\n\nExample\nfrom yasqat.clustering import pam_clustering\n\nresult = pam_clustering(\n    distance_matrix=dist.values,\n    n_clusters=4,\n    sequence_ids=dist.labels,\n    random_state=42,\n)\n\nprint(result.cluster_sizes)\nprint(result.get_medoid_ids())\n\n\nPAMClustering (class API)\nclass PAMClustering(n_clusters, max_iter=100, random_state=None)\n    def fit(distance_matrix: np.ndarray, sequence_ids=None) -&gt; PAMClustering\n    @property labels -&gt; np.ndarray | None\n    @property medoid_indices -&gt; np.ndarray | None\n    @property result -&gt; PAMClusteringResult | None\nScikit-learn-style class interface; equivalent to pam_clustering but reusable (call .fit() to train).",
+    "crumbs": [
+      "**yasqat**",
+      "Clustering",
+      "Clustering"
+    ]
+  },
+  {
+    "objectID": "api/clustering.html#clara-clustering-large-applications",
+    "href": "api/clustering.html#clara-clustering-large-applications",
+    "title": "Clustering",
+    "section": "CLARA — Clustering Large Applications",
+    "text": "CLARA — Clustering Large Applications\nCLARA (Kaufman & Rousseeuw 1990) scales PAM to large datasets by sampling. Repeatedly draws random subsets, runs PAM on each, keeps the best result.\n\nclara_clustering\ndef clara_clustering(\n    distance_matrix: np.ndarray,\n    n_clusters: int,\n    sequence_ids: list[int | str] | None = None,\n    n_samples: int = 5,\n    sample_size: int | None = None,\n    max_iter: int = 100,\n    random_state: int | None = None,\n) -&gt; PAMClusteringResult\nParameters\n\n\n\n\n\n\n\n\n\nName\nType\nDefault\nDescription\n\n\n\n\nn_samples\nint\n5\nNumber of random sub-samples to try.\n\n\nsample_size\nint \\| None\nNone\nSize of each sub-sample. Defaults to 40 + 2k.\n\n\n\nReturns the same PAMClusteringResult as pam_clustering.\nfrom yasqat.clustering import clara_clustering\n\nresult = clara_clustering(\n    distance_matrix=dist.values,\n    n_clusters=5,\n    sequence_ids=dist.labels,\n    n_samples=10,\n    random_state=42,\n)",
+    "crumbs": [
+      "**yasqat**",
+      "Clustering",
+      "Clustering"
+    ]
+  },
+  {
+    "objectID": "api/clustering.html#hierarchical-clustering",
+    "href": "api/clustering.html#hierarchical-clustering",
+    "title": "Clustering",
+    "section": "Hierarchical clustering",
+    "text": "Hierarchical clustering\n\nhierarchical_clustering\ndef hierarchical_clustering(\n    distance_matrix: np.ndarray,\n    method: str = \"ward\",\n    n_clusters: int | None = None,\n    threshold: float | None = None,\n) -&gt; np.ndarray\nWraps scipy.cluster.hierarchy. Returns a 1-D cluster label array.\nParameters\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\nmethod\nstr\nLinkage: \"ward\", \"complete\", \"average\", \"single\".\n\n\nn_clusters\nint \\| None\nCut the dendrogram to this many clusters.\n\n\nthreshold\nfloat \\| None\nCut at this distance threshold instead.\n\n\n\n\n\nHierarchicalClustering (class API)\nclass HierarchicalClustering(method=\"ward\")\n    def fit(distance_matrix, n_clusters=None, threshold=None) -&gt; HierarchicalClustering\n    @property labels -&gt; np.ndarray | None\n    @property linkage_matrix -&gt; np.ndarray | None\nStores the linkage matrix for downstream dendrogram plotting.",
+    "crumbs": [
+      "**yasqat**",
+      "Clustering",
+      "Clustering"
+    ]
+  },
+  {
+    "objectID": "api/clustering.html#quality-metrics",
+    "href": "api/clustering.html#quality-metrics",
+    "title": "Clustering",
+    "section": "Quality metrics",
+    "text": "Quality metrics\n\npam_range\ndef pam_range(\n    distance_matrix: DistanceMatrix,\n    k_min: int = 2,\n    k_max: int = 10,\n    random_state: int | None = None,\n) -&gt; pl.DataFrame\nRun PAM for each k in [k_min, k_max] and compute quality metrics. Returns a DataFrame with columns k, asw, hubert_c, total_cost.\n\n\n\n\n\n\nTip\n\n\n\nSelect k by maximising asw (Average Silhouette Width). An asw &gt; 0.5 indicates a reasonable structure; &gt; 0.7 is strong.\n\n\nquality_df = pam_range(dist, k_min=2, k_max=8)\nbest_k = quality_df.filter(\n    pl.col(\"asw\") == pl.col(\"asw\").max()\n)[\"k\"][0]\n\n\ncluster_quality\ndef cluster_quality(\n    distance_matrix: np.ndarray,\n    labels: np.ndarray,\n) -&gt; pl.DataFrame\nCompute quality metrics for a given clustering. Returns a one-row DataFrame:\n\n\n\nColumn\nDescription\n\n\n\n\nasw\nAverage Silhouette Width (−1 to 1; higher is better).\n\n\nhubert_c\nHubert’s C coefficient (0 to 1; lower is better).\n\n\ntotal_cost\nSum of within-cluster distances to medoids.\n\n\n\n\n\nsilhouette_scores\ndef silhouette_scores(\n    distance_matrix: np.ndarray,\n    labels: np.ndarray,\n) -&gt; np.ndarray\nPer-sequence silhouette values. Shape (n,).\n\n\nsilhouette_score\ndef silhouette_score(\n    distance_matrix: np.ndarray,\n    labels: np.ndarray,\n) -&gt; float\nMean silhouette width across all sequences (the asw).\n\n\ndistance_to_center\ndef distance_to_center(\n    distance_matrix: np.ndarray,\n    labels: np.ndarray,\n) -&gt; np.ndarray\nDistance of each sequence to its cluster medoid. Shape (n,).",
+    "crumbs": [
+      "**yasqat**",
+      "Clustering",
+      "Clustering"
+    ]
+  },
+  {
+    "objectID": "api/clustering.html#representatives",
+    "href": "api/clustering.html#representatives",
+    "title": "Clustering",
+    "section": "Representatives",
+    "text": "Representatives\n\nextract_representatives\ndef extract_representatives(\n    pool: SequencePool,\n    distance_matrix: DistanceMatrix,\n    labels: np.ndarray,\n) -&gt; dict[int, StateSequence]\nExtract the medoid sequence for each cluster — the sequence that minimises total within-cluster dissimilarity.\nReturns {cluster_id: StateSequence}.\nreps = extract_representatives(pool, dist, labels=result.labels)\n\nfor cluster_id, seq in reps.items():\n    print(f\"Cluster {cluster_id} medoid: {seq.sequence_id}\")\n    print(seq.states[:10])",
+    "crumbs": [
+      "**yasqat**",
+      "Clustering",
+      "Clustering"
+    ]
+  },
+  {
+    "objectID": "api/core.html",
+    "href": "api/core.html",
+    "title": "Core",
+    "section": "",
+    "text": "Core data structures: state vocabularies, sequence representations, and sequence collections.",
+    "crumbs": [
+      "**yasqat**",
+      "Core",
+      "Core"
+    ]
+  },
+  {
+    "objectID": "api/core.html#alphabet",
+    "href": "api/core.html#alphabet",
+    "title": "Core",
+    "section": "Alphabet",
+    "text": "Alphabet\n@dataclass(frozen=True)\nclass Alphabet(states, labels=None, colors=None)\nImmutable state alphabet — defines valid states, display labels, and colour mappings for a SequencePool.\nParameters\n\n\n\n\n\n\n\n\n\nName\nType\nDefault\nDescription\n\n\n\n\nstates\ntuple[str, ...]\n—\nOrdered, unique state identifiers.\n\n\nlabels\nMapping[str, str] \\| None\nNone\nOptional display labels for each state.\n\n\ncolors\nMapping[str, str] \\| None\nNone\nOptional hex colour per state. Defaults to a 17-colour categorical palette.\n\n\n\nProperties\n\n\n\n\n\n\n\n\nName\nReturns\nDescription\n\n\n\n\nn_states\nint\nNumber of states in the alphabet.\n\n\nstate_to_index\ndict[str, int]\nMaps state strings to integer codes.\n\n\n\nMethods\n\n\n\n\n\n\n\n\nMethod\nReturns\nDescription\n\n\n\n\nencode(states)\nnp.ndarray\nConvert a list of state strings to integer codes.\n\n\ndecode(codes)\nlist[str]\nConvert integer codes back to state strings.\n\n\n\nExample\nalphabet = Alphabet(\n    states=(\"active\", \"dormant\", \"churned\"),\n    colors={\"active\": \"#2d7a55\", \"dormant\": \"#c9a882\", \"churned\": \"#601010\"},\n)\n\npool = pool.with_alphabet(alphabet)\n\n\n\n\n\n\nNote\n\n\n\nAlphabet is frozen — create a new one when you need to change states. If you do not supply colors, yasqat assigns a default categorical palette automatically.",
+    "crumbs": [
+      "**yasqat**",
+      "Core",
+      "Core"
+    ]
+  },
+  {
+    "objectID": "api/core.html#sequenceconfig",
+    "href": "api/core.html#sequenceconfig",
+    "title": "Core",
+    "section": "SequenceConfig",
+    "text": "SequenceConfig\n@dataclass\nclass SequenceConfig(\n    id_column=\"id\",\n    time_column=\"time\",\n    state_column=\"state\",\n    start_column=\"start\",\n    end_column=\"end\",\n)\nColumn name configuration for sequence DataFrames. Pass a custom instance when your data uses non-default column names.\nParameters\n\n\n\n\n\n\n\n\nName\nDefault\nDescription\n\n\n\n\nid_column\n\"id\"\nSequence identifier column.\n\n\ntime_column\n\"time\"\nTime step column.\n\n\nstate_column\n\"state\"\nState value column.\n\n\nstart_column\n\"start\"\nSpell start column (IntervalSequence).\n\n\nend_column\n\"end\"\nSpell end column (IntervalSequence).\n\n\n\nExample\nconfig = SequenceConfig(id_column=\"customer_id\", time_column=\"day\")\npool = SequencePool(df, config=config)",
+    "crumbs": [
+      "**yasqat**",
+      "Core",
+      "Core"
+    ]
+  },
+  {
+    "objectID": "api/core.html#sequencepool",
+    "href": "api/core.html#sequencepool",
+    "title": "Core",
+    "section": "SequencePool",
+    "text": "SequencePool\nclass SequencePool(data, config=None, alphabet=None)\nThe primary analysis unit. A collection of sequences stored as a long-format polars DataFrame, with shared Alphabet and batch operations.\nParameters\n\n\n\n\n\n\n\n\n\nName\nType\nDefault\nDescription\n\n\n\n\ndata\npl.DataFrame\n—\nLong-format DataFrame: one row per (sequence, time) pair.\n\n\nconfig\nSequenceConfig \\| None\nNone\nColumn name mapping.\n\n\nalphabet\nAlphabet \\| None\nNone\nState vocabulary (inferred from data if omitted).\n\n\n\nProperties\n\n\n\n\n\n\n\n\nName\nReturns\nDescription\n\n\n\n\ndata\npl.DataFrame\nUnderlying long-format DataFrame.\n\n\nalphabet\nAlphabet\nState alphabet.\n\n\nsequence_ids\nlist[int \\| str]\nOrdered list of unique sequence identifiers.\n\n\nlength\nint\nNumber of time steps (assumes uniform length).\n\n\nn_sequences\nint\nNumber of sequences in the pool.\n\n\n\nMethods\n\n\n\n\n\n\n\n\nMethod\nSignature\nDescription\n\n\n\n\n__len__\n() -&gt; int\nNumber of sequences.\n\n\n__getitem__\n(idx) -&gt; StateSequence\nGet one sequence by position or ID.\n\n\n__iter__\n() -&gt; Iterator[StateSequence]\nIterate over sequences.\n\n\ncompute_distances\n(method=\"om\", **kwargs) -&gt; DistanceMatrix\nCompute pairwise distances. See table below.\n\n\nrecode_states\n(mapping: dict) -&gt; SequencePool\nRemap state values, returning a new pool.\n\n\nwith_alphabet\n(alphabet: Alphabet) -&gt; SequencePool\nAttach a custom alphabet.\n\n\nsample\n(n: int, seed=None) -&gt; SequencePool\nRandom subsample of n sequences.\n\n\nsequence_lengths\n() -&gt; pl.DataFrame\nPer-sequence length DataFrame.\n\n\n\ncompute_distances method parameter\npool.compute_distances(method=\"om\", indel_cost=1.0)\n\n\n\n\n\n\n\n\nmethod\nClass\nKey kwargs\n\n\n\n\n\"om\"\nOptimalMatchingMetric\nindel_cost, substitution_costs\n\n\n\"hamming\"\nHammingMetric\nnormalize\n\n\n\"lcs\"\nLCSMetric\n—\n\n\n\"lcp\"\nLCPMetric\n—\n\n\n\"rlcp\"\nRLCPMetric\n—\n\n\n\"dtw\"\nDTWMetric\n—\n\n\n\"chi2\"\nChi2Metric\n—\n\n\n\"twed\"\nTWEDMetric\nnu, lmbda\n\n\n\"euclidean\"\n—\n—\n\n\n\"omloc\", \"omspell\", \"omstran\"\nOM variants\n—\n\n\n\"nms\", \"nmsmst\", \"svrspell\"\nNMS family\n—\n\n\n\nExample\nimport polars as pl\nfrom yasqat import Alphabet, SequencePool\n\ndf = pl.read_csv(\"sequences.csv\")   # columns: id, time, state\npool = SequencePool(df)\n\ndist = pool.compute_distances(\"om\", indel_cost=1.0)\nprint(pool.sequence_ids[:5])\nprint(pool.length)          # time points",
+    "crumbs": [
+      "**yasqat**",
+      "Core",
+      "Core"
+    ]
+  },
+  {
+    "objectID": "api/core.html#statesequence",
+    "href": "api/core.html#statesequence",
+    "title": "Core",
+    "section": "StateSequence",
+    "text": "StateSequence\nclass StateSequence(data, config=None, alphabet=None)\nA single sequence where each time step has one categorical state. Obtained from pool[i] or constructed directly.\nKey properties\n\n\n\n\n\n\n\n\nName\nReturns\nDescription\n\n\n\n\nsequence_id\nint \\| str\nThe sequence identifier.\n\n\nsequence_ids\nlist[int \\| str]\nAlways a single-element list (for API consistency).\n\n\nstates\nlist[str]\nOrdered list of state values.\n\n\nalphabet\nAlphabet\nSequence alphabet.\n\n\n\nKey methods\n\n\n\n\n\n\n\n\nMethod\nReturns\nDescription\n\n\n\n\nspell_count()\nint\nNumber of distinct consecutive spells.\n\n\nto_spells()\npl.DataFrame\nDataFrame of (state, start, end, length) spells.\n\n\nget_encoded()\nnp.ndarray\nInteger-encoded state array.",
+    "crumbs": [
+      "**yasqat**",
+      "Core",
+      "Core"
+    ]
+  },
+  {
+    "objectID": "api/core.html#eventsequence",
+    "href": "api/core.html#eventsequence",
+    "title": "Core",
+    "section": "EventSequence",
+    "text": "EventSequence\nclass EventSequence(data, config=None, alphabet=None)\nA sequence of discrete events at specific time points (not all time steps need to have an event). Useful for event-history data.",
+    "crumbs": [
+      "**yasqat**",
+      "Core",
+      "Core"
+    ]
+  },
+  {
+    "objectID": "api/core.html#intervalsequence",
+    "href": "api/core.html#intervalsequence",
+    "title": "Core",
+    "section": "IntervalSequence",
+    "text": "IntervalSequence\nclass IntervalSequence(data, config=None, alphabet=None)\nA spell-based sequence representation: each row is a (state, start, end) triple. More compact than state sequences for long spells.\nKey method\n\n\n\n\n\n\n\n\nMethod\nReturns\nDescription\n\n\n\n\nto_state_sequence()\nStateSequence\nExpand to a uniform-grid state sequence.",
+    "crumbs": [
+      "**yasqat**",
+      "Core",
+      "Core"
+    ]
+  },
+  {
+    "objectID": "api/core.html#trajectory-trajectorypool",
+    "href": "api/core.html#trajectory-trajectorypool",
+    "title": "Core",
+    "section": "Trajectory / TrajectoryPool",
+    "text": "Trajectory / TrajectoryPool\nclass Trajectory(data, config=None, alphabet=None)\nclass TrajectoryPool(data, config=None, alphabet=None)\nTime-stamped variants of StateSequence / SequencePool for data where time steps are actual timestamps rather than integer indices. API mirrors StateSequence / SequencePool.",
+    "crumbs": [
+      "**yasqat**",
+      "Core",
+      "Core"
+    ]
+  },
+  {
+    "objectID": "api/index.html",
+    "href": "api/index.html",
+    "title": "API Reference",
+    "section": "",
+    "text": "Complete reference for all public symbols in yasqat.",
+    "crumbs": [
+      "**yasqat**",
+      "API Reference"
+    ]
+  },
+  {
+    "objectID": "api/index.html#quick-imports",
+    "href": "api/index.html#quick-imports",
+    "title": "API Reference",
+    "section": "Quick imports",
+    "text": "Quick imports\n# Core\nfrom yasqat import Alphabet, SequencePool\nfrom yasqat.core.sequence import SequenceConfig\n\n# IO — load from files or existing DataFrames\nfrom yasqat.io import load_csv, load_parquet, load_dataframe\n\n# Metrics\nfrom yasqat.metrics import DistanceMatrix\nfrom yasqat.metrics.optimal_matching import OptimalMatchingMetric\nfrom yasqat.metrics.hamming import HammingMetric\n\n# Statistics\nfrom yasqat.statistics import (\n    state_distribution, longitudinal_entropy, turbulence,\n    transition_rate_matrix, badness, frequent_subsequences,\n    discrepancy_analysis,\n)\n\n# Clustering\nfrom yasqat.clustering import (\n    pam_clustering, pam_range, cluster_quality, extract_representatives,\n)\n\n# Visualization\nfrom yasqat.visualization import (\n    index_plot, distribution_plot, entropy_plot,\n    timeline_plot, parallel_coordinate_plot,\n)",
+    "crumbs": [
+      "**yasqat**",
+      "API Reference"
+    ]
+  },
+  {
+    "objectID": "changelog.html",
+    "href": "changelog.html",
+    "title": "Changelog",
+    "section": "",
+    "text": "frequent_subsequences() now returns a pl.DataFrame with columns [subsequence, support, proportion] instead of a list of dataclass objects. The subsequence column is a list[str], enabling polars filtering like results.filter(pl.col(\"subsequence\").list.len() == 2).\nOptimalMatchingMetric is now exported from yasqat.metrics (previously only the function optimal_matching_distance was re-exported).\n\n\n\n\n\nlongitudinal_entropy() rewritten with polars group_by pipeline — replaces per-sequence Python loop and collections.Counter with a single-pass vectorized computation.\nturbulence() rewritten with polars group_by over spell data — eliminates per-sequence DataFrame filtering.\nnormalized_turbulence() uses polars join + expressions instead of row-by-row iteration.\n\n\n\n\n\nsunburst_plot() — concentric-ring visualisation showing hierarchical state transitions over time. Each ring represents a time position; arc widths are proportional to the number of sequences following each path.\ntree_plot() — prefix-tree visualisation showing how sequences branch over time. Supports min_support pruning to focus on the most common paths."
+  },
+  {
+    "objectID": "changelog.html#unreleased",
+    "href": "changelog.html#unreleased",
+    "title": "Changelog",
+    "section": "",
+    "text": "frequent_subsequences() now returns a pl.DataFrame with columns [subsequence, support, proportion] instead of a list of dataclass objects. The subsequence column is a list[str], enabling polars filtering like results.filter(pl.col(\"subsequence\").list.len() == 2).\nOptimalMatchingMetric is now exported from yasqat.metrics (previously only the function optimal_matching_distance was re-exported).\n\n\n\n\n\nlongitudinal_entropy() rewritten with polars group_by pipeline — replaces per-sequence Python loop and collections.Counter with a single-pass vectorized computation.\nturbulence() rewritten with polars group_by over spell data — eliminates per-sequence DataFrame filtering.\nnormalized_turbulence() uses polars join + expressions instead of row-by-row iteration.\n\n\n\n\n\nsunburst_plot() — concentric-ring visualisation showing hierarchical state transitions over time. Each ring represents a time position; arc widths are proportional to the number of sequences following each path.\ntree_plot() — prefix-tree visualisation showing how sequences branch over time. Supports min_support pruning to focus on the most common paths."
+  },
+  {
+    "objectID": "changelog.html#section",
+    "href": "changelog.html#section",
+    "title": "Changelog",
+    "section": "0.3.1 (2026-03-09)",
+    "text": "0.3.1 (2026-03-09)\n\nPerformance\n\nSequencePool._extract_sequences() replaced with O(N) group_by().agg() approach (was O(N×U) — one full table scan per unique ID). Significant speedup for large datasets (50k+ sequences).\nSequencePool.describe() uses null-safe accessors for length statistics.\n\n\n\nNew features\n\nload_dataframe() in yasqat.io — build a SequencePool directly from a polars DataFrame. Recommended entry point for Hive/Spark/Arrow workflows. Supports drop_nulls parameter for cleaning null states on ingestion.\ntransition_rates() and transition_rate_matrix() accept exclude_self parameter to filter out trivial self-transitions (A→A). Defaults to False.\nAll visualization functions (index_plot, distribution_plot, timeline_plot, spell_duration_plot) auto-suppress legends when the alphabet has &gt;15 states. Pass show_legend=True to override.\n\n\n\nRemovals\n\nTanaT source code removed (was already unused in v0.3.0)."
+  },
+  {
+    "objectID": "changelog.html#first-public-release",
+    "href": "changelog.html#first-public-release",
+    "title": "Changelog",
+    "section": "0.3.0 (2026-02-23) — first public release",
+    "text": "0.3.0 (2026-02-23) — first public release\n\nBreaking changes\n\nSequencePool.compute_distances() now returns DistanceMatrix (with .values and .labels) instead of a raw np.ndarray.\nsequence_ids is now a @property on all BaseSequence subclasses (StateSequence, EventSequence, IntervalSequence). Call it without parentheses: seq.sequence_ids not seq.sequence_ids().\nIntervalSequence.to_state_sequence() now returns StateSequence instead of pl.DataFrame.\n\n\n\nBug fixes\n\nClustering functions (pam_clustering, clara_clustering, hierarchical_clustering) now correctly unwrap DistanceMatrix input via .values (previously checked for a non-existent .matrix attribute, silently passing the wrapper object through instead of the underlying array).\nyasqat.__version__ now reads the installed version from importlib.metadata instead of a hardcoded string (\"0.1.0\") that disagreed with pyproject.toml (\"0.2.1\").\n\n\n\nAdditions\n\nSequenceConfig is now exported from yasqat and yasqat.core.\nIntegration test suite added (tests/test_integration.py), covering the full pool → distances → clustering → quality workflow."
+  },
+  {
+    "objectID": "tutorials/statistics.html",
+    "href": "tutorials/statistics.html",
+    "title": "Descriptive Statistics",
+    "section": "",
+    "text": "yasqat provides three families of statistics: descriptive measures of individual sequences, normative indicators that evaluate trajectories against a reference, and transition rates that characterise state-to-state dynamics.",
+    "crumbs": [
+      "**yasqat**",
+      "Descriptive Statistics"
+    ]
+  },
+  {
+    "objectID": "tutorials/statistics.html#setup",
+    "href": "tutorials/statistics.html#setup",
+    "title": "Descriptive Statistics",
+    "section": "Setup",
+    "text": "Setup\nfrom yasqat.synthetic.financial import generate_customer_sequences\nfrom yasqat.statistics import (\n    state_distribution, longitudinal_entropy, turbulence,\n    complexity_index, spell_count, visited_states,\n)\n\ndf, alpha = generate_customer_sequences(n_customers=1_000, n_days=365, seed=42)\npool = SequencePool.from_dataframe(df, alphabet=alpha, id_col=\"customer_id\")",
+    "crumbs": [
+      "**yasqat**",
+      "Descriptive Statistics"
+    ]
+  },
+  {
+    "objectID": "tutorials/statistics.html#descriptive-statistics",
+    "href": "tutorials/statistics.html#descriptive-statistics",
+    "title": "Descriptive Statistics",
+    "section": "Descriptive statistics",
+    "text": "Descriptive statistics\n\nState distribution\nProportion of sequences in each state at each time point. The workhorse for tracking cohort-level dynamics over time.\ndist = state_distribution(pool)\n# polars DataFrame: columns = states, rows = time points\n# values = proportion [0, 1]\nprint(dist.head())\n\n\nLongitudinal entropy\nShannon entropy computed across states at each time point. High entropy means the cohort is spread across many states; low entropy means most are in one state.\nentropy = longitudinal_entropy(pool)\n# polars DataFrame: time_point, entropy (float)\n\n\nTurbulence\nPer-sequence turbulence (Brzinsky-Fay 2007) — combines the number of distinct states visited with the variance in spell durations. Higher turbulence indicates more chaotic, unstable trajectories.\nturb = turbulence(pool)\n# polars DataFrame: sequence_id, turbulence (float)\n\n# Find the most turbulent sequences\nturb.sort(\"turbulence\", descending=True).head(10)\n\n\n\n\n\n\nTip\n\n\n\nEntropy vs. turbulence: entropy measures state diversity (how many different states), while turbulence measures spell dynamics (how often and how irregularly states change). A customer with high entropy but low turbulence visited many states but stayed in each for a long time. A customer with low entropy but high turbulence oscillated rapidly between a few states.\n\n\n\n\nComplexity index\nNormalised count of state transitions relative to sequence length.\ncomplexity = complexity_index(pool)\n# polars DataFrame: sequence_id, complexity (float in [0, 1])\n\n\nSpell count and visited states\nspells = spell_count(pool)\n# polars DataFrame: sequence_id, n_spells (int)\n\nvisited = visited_states(pool)\n# polars DataFrame: sequence_id, n_visited (int)\n\n\nState duration statistics\nMean time and variance of time spent in each state per sequence:\nfrom yasqat.statistics import mean_time_in_state, state_distribution\n\nmean_time = mean_time_in_state(pool)\n# polars DataFrame: sequence_id × state — mean spell duration",
+    "crumbs": [
+      "**yasqat**",
+      "Descriptive Statistics"
+    ]
+  },
+  {
+    "objectID": "tutorials/statistics.html#transition-analysis",
+    "href": "tutorials/statistics.html#transition-analysis",
+    "title": "Descriptive Statistics",
+    "section": "Transition analysis",
+    "text": "Transition analysis\n\nTransition rate matrix\nThe proportion of transitions from state i to state j across all sequences. Self-transitions (staying in the same state) are included by default.\nfrom yasqat.statistics import transition_rate_matrix, transition_rates\n\n# Full n_states × n_states matrix\nrate_matrix = transition_rate_matrix(pool)\n\n# Tidy long-format transition rates\nrates = transition_rates(pool)\n# polars DataFrame: from_state, to_state, rate, count\nrates.filter(pl.col(\"from_state\") != pl.col(\"to_state\")).sort(\"rate\", descending=True)\nUse exclude_self=True to filter out trivial self-transitions (A→A) directly:\n# Exclude self-transitions — cleaner than manual filtering\nrates_no_self = transition_rates(pool, exclude_self=True)\nrates_no_self.sort(\"count\", descending=True).head(10)\n\n# Also works on the matrix form\ncounts_no_self = transition_rate_matrix(pool, as_counts=True, exclude_self=True)\n\n\nFirst occurrence time\nAt what time point does each sequence first enter each state?\nfrom yasqat.statistics import first_occurrence_time\n\nfot = first_occurrence_time(pool)\n# polars DataFrame: sequence_id, state, first_t (int or null if never visited)\n\n\nState duration statistics\nfrom yasqat.statistics import state_duration_stats\n\ndur = state_duration_stats(pool)\n# polars DataFrame: state, mean_duration, std_duration, min_duration, max_duration",
+    "crumbs": [
+      "**yasqat**",
+      "Descriptive Statistics"
+    ]
+  },
+  {
+    "objectID": "tutorials/statistics.html#normative-indicators",
+    "href": "tutorials/statistics.html#normative-indicators",
+    "title": "Descriptive Statistics",
+    "section": "Normative indicators",
+    "text": "Normative indicators\nNormative indicators evaluate each sequence against a positive reference state (or set of states). These originated in labour-market research but apply to any domain where some states are “better” than others.\n\n\n\n\n\n\nNote\n\n\n\nThese indicators follow TraMineR’s naming conventions exactly. If you know seqindic() in R, these are the Python equivalents.\n\n\nfrom yasqat.statistics import (\n    badness, insecurity, degradation,\n    precarity, volatility, integration,\n    proportion_positive,\n)\n\n# Define which states are \"positive\" (domain-specific)\npositive_states = {\"Employed\", \"Education\"}\n\n\n\n\n\n\n\nIndicator\nWhat it measures\n\n\n\n\nproportion_positive\nTime spent in positive states / total time\n\n\nbadness\nWeighted time in negative states (penalises duration)\n\n\ninsecurity\nTime at risk of entering a negative state\n\n\ndegradation\nMagnitude of downward moves away from positive states\n\n\nprecarity\nCombined insecurity + instability\n\n\nvolatility\nFrequency of up/down transitions across a threshold\n\n\nintegration\nSustained time in positive states (rewards continuity)\n\n\n\nresults = pl.concat([\n    proportion_positive(pool, positive_states=positive_states),\n    badness(pool, negative_states={\"Unemployed\", \"Inactive\"}),\n    insecurity(pool, positive_states=positive_states),\n], how=\"horizontal\")\n\nprint(results.describe())",
+    "crumbs": [
+      "**yasqat**",
+      "Descriptive Statistics"
+    ]
+  },
+  {
+    "objectID": "tutorials/statistics.html#subsequence-mining",
+    "href": "tutorials/statistics.html#subsequence-mining",
+    "title": "Descriptive Statistics",
+    "section": "Subsequence mining",
+    "text": "Subsequence mining\nFind patterns that appear frequently across sequences — useful for identifying dominant lifecycle arcs.\nfrom yasqat.statistics import frequent_subsequences\n\npatterns = frequent_subsequences(\n    pool,\n    min_support=0.1,   # must appear in at least 10 % of sequences\n    max_length=3,      # up to 3-state patterns\n)\n# polars DataFrame: subsequence (list), support (float), count (int)\n\n# Top 10 most common 2-step patterns\npatterns.filter(pl.col(\"subsequence\").list.len() == 2)\\\n        .sort(\"support\", descending=True)\\\n        .head(10)",
+    "crumbs": [
+      "**yasqat**",
+      "Descriptive Statistics"
+    ]
+  },
+  {
+    "objectID": "tutorials/visualization.html",
+    "href": "tutorials/visualization.html",
+    "title": "Visualization",
+    "section": "",
+    "text": "All nine visualization functions return a plotnine.ggplot object — composable with + exactly like ggplot2 in R. No side effects: nothing is displayed until you call .draw() or save with .save().",
+    "crumbs": [
+      "**yasqat**",
+      "Visualization"
+    ]
+  },
+  {
+    "objectID": "tutorials/visualization.html#index-plot",
+    "href": "tutorials/visualization.html#index-plot",
+    "title": "Visualization",
+    "section": "Index plot",
+    "text": "Index plot\nOne row per sequence, one column per time step — coloured by state. The canonical sequence visualization. Best for small to medium pools (&lt; 500 sequences).\np = index_plot(pool)\np.draw()\n\n# Sorted by cluster assignment\np = index_plot(pool, group=cluster_labels, sort_by_group=True)\np + theme_bw() + labs(title=\"Trajectories by cluster\")\n\n\n\n\n\n\nTip\n\n\n\nsort_by_group=True stacks sequences by cluster, making within-cluster homogeneity immediately visible. Combine with group= to add a cluster boundary line between groups.",
+    "crumbs": [
+      "**yasqat**",
+      "Visualization"
+    ]
+  },
+  {
+    "objectID": "tutorials/visualization.html#distribution-plot",
+    "href": "tutorials/visualization.html#distribution-plot",
+    "title": "Visualization",
+    "section": "Distribution plot",
+    "text": "Distribution plot\nState proportions at each time step — the cohort-level view. Stable bands mean long spells; thin bands mean transient states.\np = distribution_plot(pool)\np.draw()\n\n# Proportion of sequences in each state over time\n# Colour follows Alphabet.colors automatically",
+    "crumbs": [
+      "**yasqat**",
+      "Visualization"
+    ]
+  },
+  {
+    "objectID": "tutorials/visualization.html#entropy-plot",
+    "href": "tutorials/visualization.html#entropy-plot",
+    "title": "Visualization",
+    "section": "Entropy plot",
+    "text": "Entropy plot\nCross-sectional Shannon entropy at each time point. Peaks signal moments of maximum uncertainty in the cohort (e.g., at a policy change or economic shock).\np = entropy_plot(pool)\np + labs(y=\"Shannon entropy\", x=\"Time point\")",
+    "crumbs": [
+      "**yasqat**",
+      "Visualization"
+    ]
+  },
+  {
+    "objectID": "tutorials/visualization.html#frequency-plot",
+    "href": "tutorials/visualization.html#frequency-plot",
+    "title": "Visualization",
+    "section": "Frequency plot",
+    "text": "Frequency plot\nThe most common distinct sequences as horizontal bars. Useful for identifying whether a few dominant patterns account for most of the cohort.\np = frequency_plot(pool, n=20)   # top-20 most frequent sequences\np.draw()",
+    "crumbs": [
+      "**yasqat**",
+      "Visualization"
+    ]
+  },
+  {
+    "objectID": "tutorials/visualization.html#modal-state-plot",
+    "href": "tutorials/visualization.html#modal-state-plot",
+    "title": "Visualization",
+    "section": "Modal state plot",
+    "text": "Modal state plot\nAt each time point, the most common (modal) state. A smooth signal of the cohort’s “central tendency” trajectory.\np = modal_state_plot(pool)\np.draw()",
+    "crumbs": [
+      "**yasqat**",
+      "Visualization"
+    ]
+  },
+  {
+    "objectID": "tutorials/visualization.html#mean-time-plot",
+    "href": "tutorials/visualization.html#mean-time-plot",
+    "title": "Visualization",
+    "section": "Mean time plot",
+    "text": "Mean time plot\nMean time spent in each state, as a bar chart — one bar per state.\np = mean_time_plot(pool)\np + labs(title=\"Average time in state (all sequences)\")",
+    "crumbs": [
+      "**yasqat**",
+      "Visualization"
+    ]
+  },
+  {
+    "objectID": "tutorials/visualization.html#timeline-plot",
+    "href": "tutorials/visualization.html#timeline-plot",
+    "title": "Visualization",
+    "section": "Timeline plot",
+    "text": "Timeline plot\nHorizontal Gantt-style bars — one row per sequence, coloured bars per spell. Shows spell structure and duration directly.\n# Subset to first 50 sequences for readability\nsubset = pool[:50]\np = timeline_plot(subset)\np.draw()",
+    "crumbs": [
+      "**yasqat**",
+      "Visualization"
+    ]
+  },
+  {
+    "objectID": "tutorials/visualization.html#spell-duration-plot",
+    "href": "tutorials/visualization.html#spell-duration-plot",
+    "title": "Visualization",
+    "section": "Spell duration plot",
+    "text": "Spell duration plot\nDistribution of spell lengths per state — how long do sequences stay in each state before transitioning? Useful for identifying “sticky” vs transient states.\np = spell_duration_plot(pool)\np + labs(x=\"Spell length (time steps)\", y=\"State\")",
+    "crumbs": [
+      "**yasqat**",
+      "Visualization"
+    ]
+  },
+  {
+    "objectID": "tutorials/visualization.html#parallel-coordinate-plot",
+    "href": "tutorials/visualization.html#parallel-coordinate-plot",
+    "title": "Visualization",
+    "section": "Parallel coordinate plot",
+    "text": "Parallel coordinate plot\nOne line per sequence — each axis is a time step, the line traces the state transitions. Works best with a coarse alphabet (≤ 6 states) and small pools.\np = parallel_coordinate_plot(pool, alpha=0.1)   # alpha for line transparency\np.draw()",
+    "crumbs": [
+      "**yasqat**",
+      "Visualization"
+    ]
+  },
+  {
+    "objectID": "tutorials/visualization.html#composing-with-plotnine",
+    "href": "tutorials/visualization.html#composing-with-plotnine",
+    "title": "Visualization",
+    "section": "Composing with plotnine",
+    "text": "Composing with plotnine\nEvery function returns a bare ggplot object. Apply any plotnine layer:\nfrom plotnine import theme_bw, theme, element_text, labs, scale_fill_manual\n\np = index_plot(pool, group=cluster_labels)\n\np + theme_bw() \\\n  + theme(axis_text_y=element_text(size=7)) \\\n  + labs(title=\"Customer lifecycle trajectories\", x=\"Day\", y=\"Customer\") \\\n  + scale_fill_manual(values=pool.alphabet.colors)",
+    "crumbs": [
+      "**yasqat**",
+      "Visualization"
+    ]
+  },
+  {
+    "objectID": "tutorials/visualization.html#legend-auto-suppression",
+    "href": "tutorials/visualization.html#legend-auto-suppression",
+    "title": "Visualization",
+    "section": "Legend auto-suppression",
+    "text": "Legend auto-suppression\nWhen the alphabet has more than 15 states, legends are automatically hidden to keep plots readable. All plot functions accept show_legend:\n# Auto (default) — hidden when &gt;15 states, shown otherwise\np = index_plot(pool)\n\n# Force legend on, even with many states\np = index_plot(pool, show_legend=True)\n\n# Force legend off, even with few states\np = index_plot(pool, show_legend=False)\nThis applies to index_plot, distribution_plot, timeline_plot, and spell_duration_plot.",
+    "crumbs": [
+      "**yasqat**",
+      "Visualization"
+    ]
+  },
+  {
+    "objectID": "tutorials/visualization.html#saving-plots",
+    "href": "tutorials/visualization.html#saving-plots",
+    "title": "Visualization",
+    "section": "Saving plots",
+    "text": "Saving plots\np = index_plot(pool)\np.save(\"trajectories.png\", dpi=150, width=12, height=8)\np.save(\"trajectories.pdf\", width=12, height=8)\n\n\n\n\n\n\nNote\n\n\n\nplotnine uses matplotlib as its rendering backend. For interactive display in Jupyter, call p.draw(). In scripts, call p.save() or assign the output of p.draw() to a variable to suppress auto-display.",
+    "crumbs": [
+      "**yasqat**",
+      "Visualization"
+    ]
+  },
+  {
+    "objectID": "tutorials/distance.html",
+    "href": "tutorials/distance.html",
+    "title": "Distance Computation",
+    "section": "",
+    "text": "Computing pairwise distances between sequences is the foundation for clustering, discrepancy analysis, and dissimilarity trees. Every metric in yasqat produces a DistanceMatrix — a typed numpy wrapper — that feeds directly into all downstream functions.",
+    "crumbs": [
+      "**yasqat**",
+      "Distance Computation"
+    ]
+  },
+  {
+    "objectID": "tutorials/distance.html#the-distancematrix",
+    "href": "tutorials/distance.html#the-distancematrix",
+    "title": "Distance Computation",
+    "section": "The DistanceMatrix",
+    "text": "The DistanceMatrix\nfrom yasqat.metrics.optimal_matching import OptimalMatchingMetric\n\ndm = OptimalMatchingMetric().pairwise(pool)\n\nprint(dm)            # DistanceMatrix: 1000 × 1000\nprint(dm.values)     # numpy.ndarray, shape (1000, 1000), dtype float64\nprint(dm.labels)     # list of sequence IDs matching row/col order\nprint(dm.shape)      # (1000, 1000)\n\n# Access a single pairwise distance\ni, j = 0, 5\nprint(dm.values[i, j])\n\n\n\n\n\n\nNote\n\n\n\nDistanceMatrix wraps a symmetric numpy array where dm.values[i, i] == 0. Pass dm directly to clustering functions — they call .values internally.",
+    "crumbs": [
+      "**yasqat**",
+      "Distance Computation"
+    ]
+  },
+  {
+    "objectID": "tutorials/distance.html#choosing-a-metric",
+    "href": "tutorials/distance.html#choosing-a-metric",
+    "title": "Distance Computation",
+    "section": "Choosing a metric",
+    "text": "Choosing a metric\n\n\n\n\n\n\n\n\nMetric\nClass\nWhen to use\n\n\n\n\nOptimal Matching\nOptimalMatchingMetric\nGold standard for categorical sequences; handles insertions, deletions, substitutions with configurable costs. Social-science default.\n\n\nHamming\nHammingMetric\nEqual-length sequences, purely positional comparison. Fastest of all metrics.\n\n\nLCS\nLCSMetric\nYou care about shared subsequences, not timing. Good for variable-length sequences.\n\n\nLCP\nLCPMetric\nShared prefix matters most — early states are more informative than later ones.\n\n\nRLCP\nRLCPMetric\nShared suffix matters most — final states are most important.\n\n\nDTW\nDTWMetric\nElastic alignment needed; sequences may be “stretched” in time.\n\n\nChi-squared\nChi2Metric\nCompare state-frequency histograms, ignoring order.",
+    "crumbs": [
+      "**yasqat**",
+      "Distance Computation"
+    ]
+  },
+  {
+    "objectID": "tutorials/distance.html#optimal-matching",
+    "href": "tutorials/distance.html#optimal-matching",
+    "title": "Distance Computation",
+    "section": "Optimal Matching",
+    "text": "Optimal Matching\nOM computes the minimum edit cost to transform one sequence into another through substitutions, insertions, and deletions.\nfrom yasqat.metrics.optimal_matching import OptimalMatchingMetric\nfrom yasqat.statistics import substitution_cost_matrix\n\n# Default: constant substitution cost of 2, indel cost of 1\ndm = OptimalMatchingMetric(indel_cost=1.0).pairwise(pool)\n\n# Data-driven substitution costs from transition rates\nsub_costs = substitution_cost_matrix(pool)\ndm_custom = OptimalMatchingMetric(\n    substitution_costs=sub_costs,\n    indel_cost=1.0,\n).pairwise(pool)\n\n\n\n\n\n\nTip\n\n\n\nData-driven substitution costs (computed from observed transition rates) are theoretically preferable to constant costs — states that commonly co-occur get lower substitution penalties. Use substitution_cost_matrix(pool) to compute them automatically.",
+    "crumbs": [
+      "**yasqat**",
+      "Distance Computation"
+    ]
+  },
+  {
+    "objectID": "tutorials/distance.html#hamming",
+    "href": "tutorials/distance.html#hamming",
+    "title": "Distance Computation",
+    "section": "Hamming",
+    "text": "Hamming\nPosition-wise mismatch count. Sequences must be the same length.\nfrom yasqat.metrics.hamming import HammingMetric\n\ndm = HammingMetric().pairwise(pool)\nHamming is the fastest metric in yasqat (numba-JIT inner loop). Use it when you have equal-length sequences and want a quick exploratory clustering.",
+    "crumbs": [
+      "**yasqat**",
+      "Distance Computation"
+    ]
+  },
+  {
+    "objectID": "tutorials/distance.html#lcs-longest-common-subsequence",
+    "href": "tutorials/distance.html#lcs-longest-common-subsequence",
+    "title": "Distance Computation",
+    "section": "LCS (Longest Common Subsequence)",
+    "text": "LCS (Longest Common Subsequence)\nDistance based on the length of the longest common subsequence: LCS_distance = 1 - (2 × LCS_length) / (len_a + len_b).\nfrom yasqat.metrics.lcs import LCSMetric\n\ndm = LCSMetric().pairwise(pool)",
+    "crumbs": [
+      "**yasqat**",
+      "Distance Computation"
+    ]
+  },
+  {
+    "objectID": "tutorials/distance.html#dtw-dynamic-time-warping",
+    "href": "tutorials/distance.html#dtw-dynamic-time-warping",
+    "title": "Distance Computation",
+    "section": "DTW (Dynamic Time Warping)",
+    "text": "DTW (Dynamic Time Warping)\nElastic alignment that allows one sequence to be “stretched” to match another. Useful when temporal misalignment is expected (e.g., life events that occur at different ages across individuals).\nfrom yasqat.metrics.dtw import DTWMetric\n\ndm = DTWMetric().pairwise(pool)",
+    "crumbs": [
+      "**yasqat**",
+      "Distance Computation"
+    ]
+  },
+  {
+    "objectID": "tutorials/distance.html#using-a-custom-metric",
+    "href": "tutorials/distance.html#using-a-custom-metric",
+    "title": "Distance Computation",
+    "section": "Using a custom metric",
+    "text": "Using a custom metric\nAll metrics subclass SequenceMetric from yasqat.metrics.base. To implement a custom metric:\nfrom yasqat.metrics.base import SequenceMetric\nfrom yasqat.core.metrics import DistanceMatrix\n\nclass MyMetric(SequenceMetric):\n    def compute(self, seq_a, seq_b) -&gt; float:\n        # your pairwise distance logic\n        ...\n\n    def pairwise(self, pool) -&gt; DistanceMatrix:\n        # vectorised computation over the full pool\n        ...",
+    "crumbs": [
+      "**yasqat**",
+      "Distance Computation"
+    ]
+  },
+  {
+    "objectID": "getting-started/quickstart.html",
+    "href": "getting-started/quickstart.html",
+    "title": "Quickstart",
+    "section": "",
+    "text": "This guide walks from raw data to your first sequence plot in under 5 minutes. All code blocks show the API — no execution is required to follow along.",
+    "crumbs": [
+      "**yasqat**",
+      "Quickstart"
+    ]
+  },
+  {
+    "objectID": "getting-started/quickstart.html#define-an-alphabet",
+    "href": "getting-started/quickstart.html#define-an-alphabet",
+    "title": "Quickstart",
+    "section": "1. Define an Alphabet",
+    "text": "1. Define an Alphabet\nAn Alphabet defines the valid states in your sequences plus colours and labels. Think of it as the legend for your entire analysis.\nfrom yasqat import Alphabet\n\nalpha = Alphabet(\n    states=[\"Employed\", \"Unemployed\", \"Education\", \"Inactive\"],\n    colors=[\"#0f766e\", \"#dc2626\", \"#d97706\", \"#71717a\"],\n)\nThe alphabet is immutable (frozen=True dataclass) — it validates all sequences built from it. Invalid states raise a ValueError at construction time, not later.",
+    "crumbs": [
+      "**yasqat**",
+      "Quickstart"
+    ]
+  },
+  {
+    "objectID": "getting-started/quickstart.html#load-your-sequences",
+    "href": "getting-started/quickstart.html#load-your-sequences",
+    "title": "Quickstart",
+    "section": "2. Load your sequences",
+    "text": "2. Load your sequences\nSequencePool is the primary analysis unit. Pass a polars DataFrame in wide format — one column per time point, one row per individual.\nimport polars as pl\nfrom yasqat import SequencePool\n\n# Wide format: each column is one time step\ndf = pl.read_csv(\"sequences.csv\")\n\npool = SequencePool.from_dataframe(\n    df,\n    alphabet=alpha,\n    id_col=\"person_id\",\n    state_cols=[\"t1\", \"t2\", \"t3\", \"t4\", \"t5\"],\n)\n\nprint(len(pool))          # number of sequences\nprint(pool.length)        # sequence length (time points)\nprint(pool.sequence_ids)  # list of IDs",
+    "crumbs": [
+      "**yasqat**",
+      "Quickstart"
+    ]
+  },
+  {
+    "objectID": "getting-started/quickstart.html#descriptive-statistics",
+    "href": "getting-started/quickstart.html#descriptive-statistics",
+    "title": "Quickstart",
+    "section": "3. Descriptive statistics",
+    "text": "3. Descriptive statistics\nfrom yasqat.statistics import (\n    state_distribution,\n    turbulence,\n    longitudinal_entropy,\n)\n\n# State proportions at each time point — returns polars DataFrame\ndist = state_distribution(pool)\n\n# Sequence turbulence (Brzinsky-Fay 2007)\nturb = turbulence(pool)\n\n# Shannon entropy per time point\nentropy = longitudinal_entropy(pool)\n\n\n\n\n\n\nTip\n\n\n\nAll statistics functions return polars DataFrames — you can chain .filter(), .group_by(), .join() and the full polars API directly on the results.",
+    "crumbs": [
+      "**yasqat**",
+      "Quickstart"
+    ]
+  },
+  {
+    "objectID": "getting-started/quickstart.html#compute-pairwise-distances",
+    "href": "getting-started/quickstart.html#compute-pairwise-distances",
+    "title": "Quickstart",
+    "section": "4. Compute pairwise distances",
+    "text": "4. Compute pairwise distances\nfrom yasqat.metrics.optimal_matching import OptimalMatchingMetric\n\nmetric = OptimalMatchingMetric(indel_cost=1.0)\ndm = metric.pairwise(pool)\n\nprint(dm)           # DistanceMatrix: n × n\nprint(dm.values)    # underlying numpy array\nSee Distance Computation for a comparison of all seven metrics and guidance on which to use.",
+    "crumbs": [
+      "**yasqat**",
+      "Quickstart"
+    ]
+  },
+  {
+    "objectID": "getting-started/quickstart.html#cluster-sequences",
+    "href": "getting-started/quickstart.html#cluster-sequences",
+    "title": "Quickstart",
+    "section": "5. Cluster sequences",
+    "text": "5. Cluster sequences\nfrom yasqat.clustering import pam_clustering, pam_range\nfrom yasqat.clustering.quality import cluster_quality\n\n# Find the right number of clusters\nquality_df = pam_range(dm, k_min=2, k_max=8)\n\n# Cluster with k=4\nresult = pam_clustering(dm, k=4)\nprint(result.labels)    # array of cluster assignments\nprint(result.medoids)   # indices of medoid sequences",
+    "crumbs": [
+      "**yasqat**",
+      "Quickstart"
+    ]
+  },
+  {
+    "objectID": "getting-started/quickstart.html#visualise",
+    "href": "getting-started/quickstart.html#visualise",
+    "title": "Quickstart",
+    "section": "6. Visualise",
+    "text": "6. Visualise\nfrom yasqat.visualization import index_plot, distribution_plot\n\n# Sequence index plot coloured by cluster\np1 = index_plot(pool, group=result.labels)\np1.draw()\n\n# State distribution over time\np2 = distribution_plot(pool)\np2.draw()\nAll plot functions return a plotnine.ggplot object — compose with + like ggplot2:\nfrom plotnine import theme_bw, labs\n\np1 + theme_bw() + labs(title=\"Labour-market trajectories by cluster\")\n\n\n\n\n\n\nTip\n\n\n\nFor a complete end-to-end walkthrough with a synthetic financial dataset, see the Full Demo.",
+    "crumbs": [
+      "**yasqat**",
+      "Quickstart"
+    ]
+  },
+  {
+    "objectID": "getting-started/installation.html",
+    "href": "getting-started/installation.html",
+    "title": "Installation",
+    "section": "",
+    "text": "Python ≥ 3.11\nNo pandas dependency — yasqat uses polars throughout",
+    "crumbs": [
+      "**yasqat**",
+      "Installation"
+    ]
+  },
+  {
+    "objectID": "getting-started/installation.html#requirements",
+    "href": "getting-started/installation.html#requirements",
+    "title": "Installation",
+    "section": "",
+    "text": "Python ≥ 3.11\nNo pandas dependency — yasqat uses polars throughout",
+    "crumbs": [
+      "**yasqat**",
+      "Installation"
+    ]
+  },
+  {
+    "objectID": "getting-started/installation.html#install-from-pypi",
+    "href": "getting-started/installation.html#install-from-pypi",
+    "title": "Installation",
+    "section": "Install from PyPI",
+    "text": "Install from PyPI\npip install yasqat\nWith uv (recommended):\nuv add yasqat",
+    "crumbs": [
+      "**yasqat**",
+      "Installation"
+    ]
+  },
+  {
+    "objectID": "getting-started/installation.html#verify-the-installation",
+    "href": "getting-started/installation.html#verify-the-installation",
+    "title": "Installation",
+    "section": "Verify the installation",
+    "text": "Verify the installation\nimport yasqat\nprint(yasqat.__version__)   # 0.3.1",
+    "crumbs": [
+      "**yasqat**",
+      "Installation"
+    ]
+  },
+  {
+    "objectID": "getting-started/installation.html#optional-databricks-cloud-notebooks",
+    "href": "getting-started/installation.html#optional-databricks-cloud-notebooks",
+    "title": "Installation",
+    "section": "Optional: Databricks / cloud notebooks",
+    "text": "Optional: Databricks / cloud notebooks\nyasqat works in Databricks, Google Colab, and any cloud notebook that supports Python 3.11+. Install at cell level:\n%pip install yasqat",
+    "crumbs": [
+      "**yasqat**",
+      "Installation"
+    ]
+  },
+  {
+    "objectID": "getting-started/installation.html#development-install",
+    "href": "getting-started/installation.html#development-install",
+    "title": "Installation",
+    "section": "Development install",
+    "text": "Development install\ngit clone https://github.com/rexarski/yasqat.git\ncd yasqat\n\n# Create virtual environment and install with dev dependencies\nuv venv && source .venv/bin/activate\nuv pip install -e \".[dev]\"\n\n# Run tests\nuv run pytest\n\n# Lint and type-check\nuv run ruff check src/ tests/\nuv run mypy src/yasqat/",
+    "crumbs": [
+      "**yasqat**",
+      "Installation"
+    ]
+  },
+  {
+    "objectID": "getting-started/installation.html#dependencies",
+    "href": "getting-started/installation.html#dependencies",
+    "title": "Installation",
+    "section": "Dependencies",
+    "text": "Dependencies\nyasqat pulls in the following packages automatically:\n\n\n\nPackage\nRole\n\n\n\n\npolars\nDataFrames — never pandas\n\n\nnumpy\nNumeric arrays and distance matrices\n\n\nplotnine\nggplot2-grammar visualization\n\n\nnumba\nJIT-compiled distance inner loops\n\n\nscipy\nHierarchical clustering linkage\n\n\npyarrow\npolars interop bridge\n\n\n\n\n\n\n\n\n\nNote\n\n\n\nyasqat targets Python 3.11, 3.12, and 3.13. It is tested on all three in CI.",
+    "crumbs": [
+      "**yasqat**",
+      "Installation"
+    ]
+  },
+  {
+    "objectID": "tutorials/data-structures.html",
+    "href": "tutorials/data-structures.html",
+    "title": "Data Structures",
+    "section": "",
+    "text": "yasqat is built around three composable primitives: an Alphabet that defines the state space, sequences that encode individual trajectories, and a SequencePool that holds a collection of sequences for analysis.",
+    "crumbs": [
+      "**yasqat**",
+      "Data Structures"
+    ]
+  },
+  {
+    "objectID": "tutorials/data-structures.html#alphabet",
+    "href": "tutorials/data-structures.html#alphabet",
+    "title": "Data Structures",
+    "section": "Alphabet",
+    "text": "Alphabet\nAlphabet is a frozen dataclass that defines the valid states for your analysis plus optional colours and labels. It is the shared vocabulary for every object you create downstream.\nfrom yasqat import Alphabet\n\n# Labour-market alphabet — ordered from most to least \"positive\"\nalpha = Alphabet(\n    states=[\n        \"Employed\", \"Education\", \"Inactive\",\n        \"Unemployed\", \"Sick\", \"Unknown\",\n    ],\n    colors=[\n        \"#0f766e\", \"#d97706\", \"#71717a\",\n        \"#dc2626\", \"#7c3aed\", \"#a1a1aa\",\n    ],\n)\n\nprint(alpha.states)   # ('Employed', 'Education', ...)\nprint(alpha.n_states) # 6\n\n\n\n\n\n\nTip\n\n\n\nColours are used automatically by every visualization function — define them once on the Alphabet and all plots are consistent.\n\n\nAlphabets validate membership: passing an unknown state to any constructor raises ValueError immediately, not silently at render time.\n# Raises ValueError: 'Retired' is not in the alphabet\nfrom yasqat.core.sequence import StateSequence\nStateSequence(states=[\"Employed\", \"Retired\"], alphabet=alpha)",
+    "crumbs": [
+      "**yasqat**",
+      "Data Structures"
+    ]
+  },
+  {
+    "objectID": "tutorials/data-structures.html#sequence-types",
+    "href": "tutorials/data-structures.html#sequence-types",
+    "title": "Data Structures",
+    "section": "Sequence types",
+    "text": "Sequence types\nyasqat supports three sequence representations, each suited to different data shapes.\n\nStateSequence\nFixed-length categorical sequences — the most common type. One state per time step.\nfrom yasqat.core.sequence import StateSequence, SequenceConfig\n\nconfig = SequenceConfig(missing=\"Unknown\", gap=\"Unknown\")\n\nseq = StateSequence(\n    states=[\"Employed\", \"Employed\", \"Unemployed\", \"Education\", \"Employed\"],\n    alphabet=alpha,\n    sequence_id=\"person_001\",\n    config=config,\n)\n\nprint(seq.length)         # 5\nprint(seq.states)         # ('Employed', 'Employed', ...)\nprint(seq.spell_count())  # number of spells (runs of the same state)\n\n\nEventSequence\nRecords events (state entries) at specific time points. Useful when only transitions are recorded, not the full state at every step.\nfrom yasqat.core.sequence import EventSequence\n\nevents = EventSequence(\n    events=[(0, \"Employed\"), (3, \"Unemployed\"), (5, \"Education\")],\n    alphabet=alpha,\n    sequence_id=\"person_002\",\n    total_length=12,\n)\n\n\nIntervalSequence\nSpells with explicit start and end times. Natural fit for administrative records (job spells, benefit episodes) where duration is the primary unit.\nfrom yasqat.core.sequence import IntervalSequence\n\nspells = IntervalSequence(\n    intervals=[(0, 6, \"Employed\"), (6, 9, \"Unemployed\"), (9, 12, \"Education\")],\n    alphabet=alpha,\n    sequence_id=\"person_003\",\n)",
+    "crumbs": [
+      "**yasqat**",
+      "Data Structures"
+    ]
+  },
+  {
+    "objectID": "tutorials/data-structures.html#sequencepool",
+    "href": "tutorials/data-structures.html#sequencepool",
+    "title": "Data Structures",
+    "section": "SequencePool",
+    "text": "SequencePool\nSequencePool is the primary analysis unit — a collection of sequences with a shared alphabet. Most statistics and metric functions operate on a pool directly.\n\nFrom a polars DataFrame (wide format)\nimport polars as pl\nfrom yasqat import SequencePool\n\n# Wide format: one column per time step\ndf = pl.DataFrame({\n    \"id\": [\"p001\", \"p002\", \"p003\"],\n    \"t1\": [\"Employed\", \"Unemployed\", \"Education\"],\n    \"t2\": [\"Employed\", \"Education\",  \"Employed\"],\n    \"t3\": [\"Inactive\", \"Employed\",   \"Employed\"],\n})\n\npool = SequencePool.from_dataframe(\n    df,\n    alphabet=alpha,\n    id_col=\"id\",\n    state_cols=[\"t1\", \"t2\", \"t3\"],\n)\n\nprint(len(pool))           # 3\nprint(pool.length)         # 3\nprint(pool.sequence_ids)   # ['p001', 'p002', 'p003']\n\n\nFrom a long-format DataFrame\n# Long format: one row per person-period\ndf_long = pl.read_csv(\"trajectories_long.csv\")\n# columns: person_id, year, state\n\npool = SequencePool.from_long_dataframe(\n    df_long,\n    alphabet=alpha,\n    id_col=\"person_id\",\n    time_col=\"year\",\n    state_col=\"state\",\n)\n\n\nRecoding states\nWhen your raw data has more states than you want to analyse, use recode_states to map them onto a coarser alphabet before building the pool:\nrecode_map = {\n    \"full_time\": \"Employed\",\n    \"part_time\": \"Employed\",\n    \"job_seeker\": \"Unemployed\",\n    \"benefit_only\": \"Unemployed\",\n    \"in_school\": \"Education\",\n}\n\npool = SequencePool.from_dataframe(df, id_col=\"id\", state_cols=state_cols)\npool = pool.recode_states(recode_map, new_alphabet=alpha)\n\n\nKey properties\npool.n_sequences    # int — number of sequences\npool.length         # int — sequence length (all sequences share the same length)\npool.alphabet       # Alphabet — shared state space\npool.sequence_ids   # list[str] — IDs in insertion order\n\n# Iterate over individual sequences\nfor seq in pool:\n    print(seq.sequence_id, seq.states[:3])",
+    "crumbs": [
+      "**yasqat**",
+      "Data Structures"
+    ]
+  },
+  {
+    "objectID": "tutorials/data-structures.html#trajectory-and-trajectorypool",
+    "href": "tutorials/data-structures.html#trajectory-and-trajectorypool",
+    "title": "Data Structures",
+    "section": "Trajectory and TrajectoryPool",
+    "text": "Trajectory and TrajectoryPool\nTrajectory is a time-stamped variant of StateSequence for data where observations are irregularly spaced or carry calendar dates.\nfrom yasqat import Trajectory, TrajectoryPool\nimport datetime as dt\n\ntraj = Trajectory(\n    states=[\"Employed\", \"Unemployed\", \"Employed\"],\n    timestamps=[\n        dt.date(2020, 1, 1),\n        dt.date(2020, 6, 1),\n        dt.date(2021, 1, 1),\n    ],\n    alphabet=alpha,\n    trajectory_id=\"person_004\",\n)\nTrajectoryPool collects trajectories exactly as SequencePool collects sequences. Most statistics functions accept either pool type interchangeably.\n\n\n\n\n\n\nNote\n\n\n\nUse SequencePool when all sequences have the same length and equal time spacing. Use TrajectoryPool when observations are dated or irregularly spaced.",
+    "crumbs": [
+      "**yasqat**",
+      "Data Structures"
+    ]
+  },
+  {
+    "objectID": "tutorials/index.html",
+    "href": "tutorials/index.html",
+    "title": "Tutorials",
+    "section": "",
+    "text": "These tutorials follow a single synthetic dataset — 1,000 financial customers tracked daily across 15 lifecycle states — from raw data through clustering and visualization. Each tutorial is self-contained; jump to any section.",
+    "crumbs": [
+      "**yasqat**",
+      "Tutorials"
+    ]
+  },
+  {
+    "objectID": "tutorials/index.html#dataset",
+    "href": "tutorials/index.html#dataset",
+    "title": "Tutorials",
+    "section": "Dataset",
+    "text": "Dataset\nAll tutorials use a synthetic dataset generated by yasqat.synthetic:\nfrom yasqat.synthetic.financial import generate_customer_sequences\n\ndf, alpha = generate_customer_sequences(\n    n_customers=1000,\n    n_days=365,\n    seed=42,\n)\nThis produces 1,000 customer trajectories across 15 lifecycle states (Active, Dormant, Churned, etc.) sampled from a Markov chain calibrated to approximate real financial customer behaviour.",
+    "crumbs": [
+      "**yasqat**",
+      "Tutorials"
+    ]
+  },
+  {
+    "objectID": "tutorials/clustering.html",
+    "href": "tutorials/clustering.html",
+    "title": "Clustering",
+    "section": "",
+    "text": "yasqat provides three clustering algorithms — PAM, CLARA, and hierarchical — all operating on a DistanceMatrix. Quality metrics (silhouette, pseudo-R²) and discrepancy analysis let you evaluate solutions and compare them across grouping variables.",
+    "crumbs": [
+      "**yasqat**",
+      "Clustering"
+    ]
+  },
+  {
+    "objectID": "tutorials/clustering.html#setup",
+    "href": "tutorials/clustering.html#setup",
+    "title": "Clustering",
+    "section": "Setup",
+    "text": "Setup\nfrom yasqat.metrics.optimal_matching import OptimalMatchingMetric\nfrom yasqat.clustering import pam_clustering, pam_range, cluster_quality\n\ndm = OptimalMatchingMetric(indel_cost=1.0).pairwise(pool)",
+    "crumbs": [
+      "**yasqat**",
+      "Clustering"
+    ]
+  },
+  {
+    "objectID": "tutorials/clustering.html#choosing-the-number-of-clusters",
+    "href": "tutorials/clustering.html#choosing-the-number-of-clusters",
+    "title": "Clustering",
+    "section": "Choosing the number of clusters",
+    "text": "Choosing the number of clusters\nRun pam_range to compute Average Silhouette Width (ASW) across a range of k:\nfrom yasqat.clustering import pam_range\n\nquality_df = pam_range(dm, k_min=2, k_max=8)\n# polars DataFrame: k, asw, n_clusters\n\nprint(quality_df)\nbest_k = quality_df.filter(\n    pl.col(\"asw\") == pl.col(\"asw\").max()\n)[\"k\"][0]\nprint(f\"Best k by ASW: {best_k}\")\n\n\n\n\n\n\nTip\n\n\n\nASW values above 0.5 indicate a reasonable structure; above 0.7 is strong. For sequence data in social science, values of 0.2–0.4 are common and still interpretable — the goal is meaningful typologies, not tight clusters.",
+    "crumbs": [
+      "**yasqat**",
+      "Clustering"
+    ]
+  },
+  {
+    "objectID": "tutorials/clustering.html#pam-partitioning-around-medoids",
+    "href": "tutorials/clustering.html#pam-partitioning-around-medoids",
+    "title": "Clustering",
+    "section": "PAM (Partitioning Around Medoids)",
+    "text": "PAM (Partitioning Around Medoids)\nPAM finds k representative sequences (medoids) that minimise total distance to all sequences in their cluster.\nfrom yasqat.clustering import pam_clustering\n\nresult = pam_clustering(dm, k=best_k)\n\nprint(result.labels)    # array of int cluster assignments, shape (n,)\nprint(result.medoids)   # list of medoid sequence indices\nprint(result.cost)      # total within-cluster distance (PAM objective)\n\n# Add cluster labels back to your DataFrame\ndf_labelled = df.with_columns(\n    pl.Series(\"cluster\", result.labels)\n)\n\nExtract representative sequences\nfrom yasqat.clustering import extract_representatives\n\nreps = extract_representatives(pool, dm, labels=result.labels)\n# dict: cluster_id → StateSequence (the medoid sequence)\n\nfor cluster_id, medoid_seq in reps.items():\n    print(f\"Cluster {cluster_id}: {medoid_seq.states[:5]}...\")",
+    "crumbs": [
+      "**yasqat**",
+      "Clustering"
+    ]
+  },
+  {
+    "objectID": "tutorials/clustering.html#clara-clustering-large-applications",
+    "href": "tutorials/clustering.html#clara-clustering-large-applications",
+    "title": "Clustering",
+    "section": "CLARA (Clustering Large Applications)",
+    "text": "CLARA (Clustering Large Applications)\nCLARA is a sampling-based extension of PAM — suitable when N &gt; 500. It repeatedly draws random subsamples, runs PAM on each, and keeps the solution with the lowest total cost.\nfrom yasqat.clustering import clara_clustering\n\nresult = clara_clustering(\n    dm,\n    k=best_k,\n    n_samples=5,        # number of subsamples\n    sample_size=200,    # size of each subsample\n    seed=42,\n)\n\nprint(result.labels)\nprint(result.cost)\n\n\n\n\n\n\nNote\n\n\n\nCLARA trades exactness for speed. For datasets under ~500 sequences, use PAM directly. For thousands of sequences, CLARA is the practical choice.",
+    "crumbs": [
+      "**yasqat**",
+      "Clustering"
+    ]
+  },
+  {
+    "objectID": "tutorials/clustering.html#hierarchical-clustering",
+    "href": "tutorials/clustering.html#hierarchical-clustering",
+    "title": "Clustering",
+    "section": "Hierarchical clustering",
+    "text": "Hierarchical clustering\nWard-linkage hierarchical clustering via scipy. Returns a HierarchicalClustering object with a linkage matrix for dendrogram inspection.\nfrom yasqat.clustering import hierarchical_clustering\n\nhc = hierarchical_clustering(dm, method=\"ward\")\n\n# Cut the dendrogram at k clusters\nlabels = hc.cut(k=best_k)\nprint(labels)\n\n# Access the raw scipy linkage matrix\nprint(hc.linkage.shape)   # (n-1, 4)",
+    "crumbs": [
+      "**yasqat**",
+      "Clustering"
+    ]
+  },
+  {
+    "objectID": "tutorials/clustering.html#quality-metrics",
+    "href": "tutorials/clustering.html#quality-metrics",
+    "title": "Clustering",
+    "section": "Quality metrics",
+    "text": "Quality metrics\n\nSilhouette score\nAverage Silhouette Width — the primary quality index. Values range from −1 (wrong cluster) to +1 (perfect separation).\nfrom yasqat.clustering.quality import silhouette_score, silhouette_scores\n\n# Scalar ASW for the whole solution\nasw = silhouette_score(dm, labels=result.labels)\nprint(f\"ASW = {asw:.3f}\")\n\n# Per-sequence silhouette values\nper_seq = silhouette_scores(dm, labels=result.labels)\n# polars DataFrame: sequence_id, cluster, silhouette\n\n\nCluster quality summary\nfrom yasqat.clustering.quality import cluster_quality\n\ncq = cluster_quality(dm, labels=result.labels)\n# polars DataFrame: cluster, n, asw, mean_distance, max_distance\nprint(cq)",
+    "crumbs": [
+      "**yasqat**",
+      "Clustering"
+    ]
+  },
+  {
+    "objectID": "tutorials/clustering.html#discrepancy-analysis",
+    "href": "tutorials/clustering.html#discrepancy-analysis",
+    "title": "Clustering",
+    "section": "Discrepancy analysis",
+    "text": "Discrepancy analysis\nDiscrepancy analysis (pseudo-R²) measures how much of the total sequence variation is explained by group membership — analogous to ANOVA for sequences.\nfrom yasqat.statistics import discrepancy_analysis, multi_factor_discrepancy\n\n# How well do clusters explain sequence variation?\ndisc = discrepancy_analysis(dm, groups=result.labels)\nprint(f\"Pseudo-R² = {disc.pseudo_r2:.3f}\")\n# Values above 0.1 indicate meaningful group differences\n\n# Test multiple grouping variables\nmulti_disc = multi_factor_discrepancy(\n    dm,\n    factors={\n        \"cluster\": result.labels,\n        \"gender\": df[\"gender\"].to_list(),\n        \"age_group\": df[\"age_group\"].to_list(),\n    },\n)\nprint(multi_disc)\n# polars DataFrame: factor, pseudo_r2, p_value (permutation test)\n\n\n\n\n\n\nTip\n\n\n\nUse discrepancy analysis to validate that your clusters are not just artifacts of a demographic covariate. If gender alone explains as much variance as cluster, your clustering may be capturing gender differences rather than trajectory types.",
+    "crumbs": [
+      "**yasqat**",
+      "Clustering"
+    ]
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Sequence analysisfor social science.",
+    "section": "",
+    "text": "A modern Python library for categorical sequence analysis. Built on polars and plotnine — no pandas, no matplotlib API. Designed for life-course and social-science researchers.\n\n\nGet Started → API Reference\n\n\n\nfrom yasqat import Alphabet, SequencePool\nfrom yasqat.metrics.optimal_matching import OptimalMatchingMetric\nfrom yasqat.clustering import pam_clustering\nfrom yasqat.visualization import index_plot\n\n# Define labour-market states\nalpha = Alphabet(\n    states=[\"Employed\", \"Unemployed\", \"Education\", \"Inactive\"],\n    colors=[\"#0f766e\", \"#dc2626\", \"#d97706\", \"#71717a\"],\n)\n\n# Build a pool from your data\npool = SequencePool.from_dataframe(df, alphabet=alpha)\n\n# Compute pairwise distances\ndm = OptimalMatchingMetric().pairwise(pool)\n\n# Cluster and visualise\nlabels = pam_clustering(dm, k=4).labels\nindex_plot(pool, group=labels).draw()\n\n\n\n\n\nPolars-native\n\n\nFast by design\nNo pandas dependency. All data operations run through polars — columnar, lazy, and fast even on large panel datasets with thousands of sequences.\n# Returns a polars DataFrame\npool.state_distribution()\n\n\n\n\nDistance metrics\n\n\nSeven metrics included\nOptimal Matching, Hamming, LCS, DTW, and more. Every metric outputs a DistanceMatrix — a typed numpy wrapper compatible with all clustering functions.\ndm = HammingMetric().pairwise(pool)\ndm.values   # numpy ndarray, shape (n, n)\n\n\n\n\nTraMineR-compatible\n\n\nAlgorithms you already know\nAlgorithm correctness cross-referenced against TraMineR (R) and TanaT (Python). Naming conventions follow TraMineR so the transition from R is immediate.\nturbulence(pool)        # Brzinsky-Fay\ndiscrepancy_analysis()  # pseudo-R²\n\n\n\n\nVisualization\n\n\nNine plot types, one grammar\nIndex plots, timelines, modal states, parallel coordinates — all return composable plotnine.ggplot objects. Compose with + exactly like ggplot2 in R.\np = index_plot(pool)\np + theme_bw()   # fully composable"
+  },
+  {
+    "objectID": "demo.html",
+    "href": "demo.html",
+    "title": "Full Demo — Customer Lifecycle Analytics",
+    "section": "",
+    "text": "A complete end-to-end walkthrough of the yasqat workflow using a synthetic financial dataset. 1,000 customers are tracked daily across 15 lifecycle states for one year (365 days)."
+  },
+  {
+    "objectID": "demo.html#section-0-imports",
+    "href": "demo.html#section-0-imports",
+    "title": "Full Demo — Customer Lifecycle Analytics",
+    "section": "Section 0: Imports",
+    "text": "Section 0: Imports\nimport polars as pl\nimport numpy as np\nfrom plotnine import theme_bw, labs, theme, element_text\n\nfrom yasqat import Alphabet, SequencePool\nfrom yasqat.core.sequence import SequenceConfig\nfrom yasqat.metrics.optimal_matching import OptimalMatchingMetric\nfrom yasqat.metrics.hamming import HammingMetric\nfrom yasqat.clustering import (\n    pam_clustering, clara_clustering, hierarchical_clustering,\n    pam_range, cluster_quality, extract_representatives,\n)\nfrom yasqat.statistics import (\n    state_distribution, longitudinal_entropy, turbulence,\n    complexity_index, spell_count, visited_states,\n    transition_rate_matrix, transition_rates,\n    badness, insecurity, degradation, precarity, volatility,\n    frequent_subsequences, discrepancy_analysis,\n)\nfrom yasqat.visualization import (\n    index_plot, timeline_plot, spell_duration_plot,\n    distribution_plot, entropy_plot, frequency_plot,\n    modal_state_plot, mean_time_plot, parallel_coordinate_plot,\n)\nfrom yasqat.synthetic.financial import generate_customer_sequences"
+  },
+  {
+    "objectID": "demo.html#section-1-synthetic-data-generation",
+    "href": "demo.html#section-1-synthetic-data-generation",
+    "title": "Full Demo — Customer Lifecycle Analytics",
+    "section": "Section 1: Synthetic Data Generation",
+    "text": "Section 1: Synthetic Data Generation\nThe synthetic generator produces realistic financial customer journeys using a calibrated Markov chain. States are collapsed from 35 granular raw states into 15 lifecycle stages.\n# Generate 1,000 customers × 365 days across 15 lifecycle states\nraw_df, _ = generate_customer_sequences(\n    n_customers=1_000,\n    n_days=365,\n    seed=42,\n)\n\nprint(f\"Shape: {raw_df.shape}\")    # (365000, 3)\nprint(raw_df.head(10))\nThe 15 lifecycle states span the full customer journey:\n\n\n\nCategory\nStates\n\n\n\n\nAcquisition\nprospect, applying\n\n\nOnboarding\nproduct_applied, new_member\n\n\nActivity\ndormant, low_activity, active, power_user\n\n\nProduct depth\nproduct_expand\n\n\nDigital\ndigital\n\n\nFinancial health\nhealthy, at_risk, delinquent, default\n\n\nExit\nchurned\n\n\n\n# State recode map: 35 raw states → 15 lifecycle stages\nRECODE_MAP = {\n    \"lead\": \"prospect\",\n    \"application_started\": \"applying\",\n    # ... (see source for full mapping)\n}\n\nORDERED_STATES = [\n    \"prospect\", \"applying\", \"product_applied\", \"new_member\",\n    \"dormant\", \"low_activity\", \"active\", \"power_user\",\n    \"product_expand\", \"digital\", \"healthy\",\n    \"at_risk\", \"delinquent\", \"default\", \"churned\",\n]\n\nSTATE_COLORS = [\n    \"#c8d8e4\", \"#a8c4d4\", \"#88b0c4\", \"#5a9ab5\",\n    \"#d4c5b0\", \"#c9a882\", \"#e8b84b\", \"#f0a500\",\n    \"#8ab89a\", \"#5a9a7a\", \"#2d7a55\",\n    \"#e88a5a\", \"#d45a2a\", \"#b02020\", \"#601010\",\n]\n\n# Build pool: raw → recode → custom alphabet\npool_raw = SequencePool(raw_df.select([\"id\", \"time\", \"state\"]))\npool_recoded = pool_raw.recode_states(RECODE_MAP)\n\nalphabet = Alphabet(states=ORDERED_STATES, colors=STATE_COLORS)\npool = pool_recoded.with_alphabet(alphabet)\n\nprint(f\"{len(pool)} sequences, {pool.length} time points\")"
+  },
+  {
+    "objectID": "demo.html#section-2-core-data-structures",
+    "href": "demo.html#section-2-core-data-structures",
+    "title": "Full Demo — Customer Lifecycle Analytics",
+    "section": "Section 2: Core Data Structures",
+    "text": "Section 2: Core Data Structures\n# Access a single sequence\nseq = pool[0]\nprint(seq.sequence_id)\nprint(seq.states[:10])\nprint(seq.spell_count())\n\n# Pool metadata\nprint(pool.alphabet.states)\nprint(pool.sequence_ids[:5])"
+  },
+  {
+    "objectID": "demo.html#section-3-descriptive-statistics",
+    "href": "demo.html#section-3-descriptive-statistics",
+    "title": "Full Demo — Customer Lifecycle Analytics",
+    "section": "Section 3: Descriptive Statistics",
+    "text": "Section 3: Descriptive Statistics\n# State distribution at each time point\ndist = state_distribution(pool)\nprint(dist)\n\n# Sequence-level entropy and turbulence\nent = longitudinal_entropy(pool)\nturb = turbulence(pool)\n\n# Joined summary\nsummary = ent.join(turb, on=\"sequence_id\")\nprint(summary.describe())\n\n# Spell structure\nspells = spell_count(pool)\nvisited = visited_states(pool)"
+  },
+  {
+    "objectID": "demo.html#section-4-transition-analysis",
+    "href": "demo.html#section-4-transition-analysis",
+    "title": "Full Demo — Customer Lifecycle Analytics",
+    "section": "Section 4: Transition Analysis",
+    "text": "Section 4: Transition Analysis\n# Full transition rate matrix\nrate_matrix = transition_rate_matrix(pool)\nprint(rate_matrix)\n\n# Tidy transition rates — top 10 most common transitions\nrates = transition_rates(pool)\nrates.filter(pl.col(\"from_state\") != pl.col(\"to_state\"))\\\n     .sort(\"rate\", descending=True)\\\n     .head(10)"
+  },
+  {
+    "objectID": "demo.html#section-5-normative-indicators",
+    "href": "demo.html#section-5-normative-indicators",
+    "title": "Full Demo — Customer Lifecycle Analytics",
+    "section": "Section 5: Normative Indicators",
+    "text": "Section 5: Normative Indicators\n# Positive states in this domain = financial health\npositive = {\"healthy\", \"active\", \"power_user\", \"digital\"}\nnegative = {\"at_risk\", \"delinquent\", \"default\", \"churned\"}\n\nprop_pos  = proportion_positive(pool, positive_states=positive)\nbad       = badness(pool, negative_states=negative)\ninsec     = insecurity(pool, positive_states=positive)\nprec      = precarity(pool, positive_states=positive)\nvol       = volatility(pool, positive_states=positive)\n\nresults = pl.concat([prop_pos, bad, insec, prec, vol], how=\"horizontal\")\nprint(results.describe())"
+  },
+  {
+    "objectID": "demo.html#section-6-frequent-subsequence-mining",
+    "href": "demo.html#section-6-frequent-subsequence-mining",
+    "title": "Full Demo — Customer Lifecycle Analytics",
+    "section": "Section 6: Frequent Subsequence Mining",
+    "text": "Section 6: Frequent Subsequence Mining\npatterns = frequent_subsequences(\n    pool,\n    min_support=0.05,   # in at least 5 % of sequences\n    max_length=3,\n)\n\n# Top 10 two-step patterns\npatterns.filter(pl.col(\"subsequence\").list.len() == 2)\\\n        .sort(\"support\", descending=True)\\\n        .head(10)"
+  },
+  {
+    "objectID": "demo.html#section-7-distance-computation",
+    "href": "demo.html#section-7-distance-computation",
+    "title": "Full Demo — Customer Lifecycle Analytics",
+    "section": "Section 7: Distance Computation",
+    "text": "Section 7: Distance Computation\n# Data-driven substitution costs from transition rates\nfrom yasqat.statistics import substitution_cost_matrix\nsub_costs = substitution_cost_matrix(pool)\n\n# Optimal Matching with data-driven costs\nmetric = OptimalMatchingMetric(substitution_costs=sub_costs, indel_cost=1.0)\ndist_matrix = metric.pairwise(pool)\n\nprint(dist_matrix)\nprint(f\"Min: {dist_matrix.values.min():.2f}\")\nprint(f\"Max: {dist_matrix.values.max():.2f}\")\nprint(f\"Mean: {dist_matrix.values.mean():.2f}\")"
+  },
+  {
+    "objectID": "demo.html#section-8-clustering",
+    "href": "demo.html#section-8-clustering",
+    "title": "Full Demo — Customer Lifecycle Analytics",
+    "section": "Section 8: Clustering",
+    "text": "Section 8: Clustering\n# Select k by ASW\nquality_df = pam_range(dist_matrix, k_min=2, k_max=8)\nbest_k = quality_df.filter(\n    pl.col(\"asw\") == pl.col(\"asw\").max()\n)[\"k\"][0]\nprint(f\"Best k: {best_k}  (ASW = {quality_df['asw'].max():.3f})\")\n\n# PAM clustering\npam_result = pam_clustering(\n    distance_matrix=dist_matrix.values,\n    n_clusters=best_k,\n    sequence_ids=dist_matrix.labels,\n)\n\nprint(f\"Cluster sizes: {pl.Series(pam_result.labels).value_counts()}\")\n\n# Extract medoid sequences\nreps = extract_representatives(pool, dist_matrix, labels=pam_result.labels)"
+  },
+  {
+    "objectID": "demo.html#section-9-discrepancy-analysis",
+    "href": "demo.html#section-9-discrepancy-analysis",
+    "title": "Full Demo — Customer Lifecycle Analytics",
+    "section": "Section 9: Discrepancy Analysis",
+    "text": "Section 9: Discrepancy Analysis\ndisc = discrepancy_analysis(dist_matrix, groups=pam_result.labels)\nprint(f\"Pseudo-R² = {disc.pseudo_r2:.3f}\")\nprint(f\"F-statistic = {disc.f_stat:.3f}\")\nprint(f\"p-value = {disc.p_value:.4f}\")"
+  },
+  {
+    "objectID": "demo.html#section-10-built-in-visualizations",
+    "href": "demo.html#section-10-built-in-visualizations",
+    "title": "Full Demo — Customer Lifecycle Analytics",
+    "section": "Section 10: Built-in Visualizations",
+    "text": "Section 10: Built-in Visualizations\n# 1. Distribution plot — state proportions over time\np1 = distribution_plot(pool)\np1 + labs(title=\"State distribution over 365 days\")\n\n# 2. Index plot — sorted by cluster\np2 = index_plot(pool, group=pam_result.labels, sort_by_group=True)\np2 + theme_bw() + labs(title=f\"Trajectories ({best_k} clusters)\")\n\n# 3. Entropy plot\np3 = entropy_plot(pool)\np3 + labs(title=\"Cross-sectional entropy over time\")\n\n# 4. Frequency plot — top 20 most common sequences\np4 = frequency_plot(pool, n=20)\np4.draw()\n\n# 5. Modal state plot\np5 = modal_state_plot(pool)\np5.draw()\n\n# 6. Mean time per state\np6 = mean_time_plot(pool)\np6.draw()\n\n# 7. Timeline plot (first 50 sequences)\np7 = timeline_plot(pool[:50])\np7.draw()\n\n# 8. Spell duration distribution\np8 = spell_duration_plot(pool)\np8.draw()\n\n# 9. Parallel coordinates (first 100 sequences)\np9 = parallel_coordinate_plot(pool[:100], alpha=0.05)\np9.draw()"
+  },
+  {
+    "objectID": "demo.html#section-11-custom-visualizations",
+    "href": "demo.html#section-11-custom-visualizations",
+    "title": "Full Demo — Customer Lifecycle Analytics",
+    "section": "Section 11: Custom Visualizations",
+    "text": "Section 11: Custom Visualizations\nplotnine’s composability lets you build arbitrarily complex plots from yasqat outputs. A few examples:\nfrom plotnine import (\n    ggplot, aes, geom_tile, geom_point,\n    scale_fill_gradient2, facet_wrap,\n    element_blank,\n)\n\n# Entropy vs turbulence scatter coloured by cluster\nscatter_df = longitudinal_entropy(pool)\\\n    .join(turbulence(pool), on=\"sequence_id\")\\\n    .with_columns(pl.Series(\"cluster\", pam_result.labels))\n\np = (\n    ggplot(scatter_df, aes(\"entropy\", \"turbulence\", color=\"factor(cluster)\"))\n    + geom_point(alpha=0.4, size=1.2)\n    + theme_bw()\n    + labs(\n        title=\"Entropy vs turbulence by cluster\",\n        x=\"Longitudinal entropy\",\n        y=\"Turbulence (Brzinsky-Fay)\",\n        color=\"Cluster\",\n    )\n)\np.draw()"
+  },
+  {
+    "objectID": "demo.html#section-12-summary",
+    "href": "demo.html#section-12-summary",
+    "title": "Full Demo — Customer Lifecycle Analytics",
+    "section": "Section 12: Summary",
+    "text": "Section 12: Summary\nprint(\"=== yasqat Demo Summary ===\")\nprint(f\"  Sequences:        {len(pool):,}\")\nprint(f\"  Time points:      {pool.length}\")\nprint(f\"  States:           {pool.alphabet.n_states}\")\nprint(f\"  Best k (PAM):     {best_k}\")\nprint(f\"  Pseudo-R²:        {disc.pseudo_r2:.3f}\")"
+  },
+  {
+    "objectID": "api/visualization.html",
+    "href": "api/visualization.html",
+    "title": "Visualization",
+    "section": "",
+    "text": "Nine plotnine-based functions for sequence visualization. Every function returns a bare plotnine.ggplot object — composable with + exactly like ggplot2 in R. Nothing is rendered until you call .draw() or .save().",
+    "crumbs": [
+      "**yasqat**",
+      "Visualization",
+      "Visualization"
+    ]
+  },
+  {
+    "objectID": "api/visualization.html#index_plot",
+    "href": "api/visualization.html#index_plot",
+    "title": "Visualization",
+    "section": "index_plot",
+    "text": "index_plot\ndef index_plot(\n    pool: SequencePool,\n    group: np.ndarray | list[int] | None = None,\n    sort_by_group: bool = False,\n) -&gt; ggplot\nOne row per sequence, one column per time step — coloured by state. The canonical sequence visualization (sequence index plot, SIP).\nParameters\n\n\n\n\n\n\n\n\nName\nType\nDescription\n\n\n\n\npool\nSequencePool\nThe sequence pool to plot.\n\n\ngroup\narray-like \\| None\nCluster labels; enables colour-coded group boundaries.\n\n\nsort_by_group\nbool\nIf True, stacks sequences by cluster assignment.\n\n\n\np = index_plot(pool)\np.draw()\n\n# Sorted by cluster, with theme overrides\np = index_plot(pool, group=cluster_labels, sort_by_group=True)\np + theme_bw() + labs(title=\"Trajectories by cluster\", x=\"Day\", y=\"Customer\")\n\n\n\n\n\n\nTip\n\n\n\nBest for small to medium pools (&lt; 500 sequences). For large pools, use distribution_plot or subsample first with pool.sample(200).",
+    "crumbs": [
+      "**yasqat**",
+      "Visualization",
+      "Visualization"
+    ]
+  },
+  {
+    "objectID": "api/visualization.html#distribution_plot",
+    "href": "api/visualization.html#distribution_plot",
+    "title": "Visualization",
+    "section": "distribution_plot",
+    "text": "distribution_plot\ndef distribution_plot(pool: SequencePool) -&gt; ggplot\nStacked area chart showing the proportion of sequences in each state at each time point. Cohort-level view; uses Alphabet.colors automatically.\np = distribution_plot(pool)\np + labs(title=\"State distribution over time\", x=\"Day\", y=\"Proportion\")",
+    "crumbs": [
+      "**yasqat**",
+      "Visualization",
+      "Visualization"
+    ]
+  },
+  {
+    "objectID": "api/visualization.html#entropy_plot",
+    "href": "api/visualization.html#entropy_plot",
+    "title": "Visualization",
+    "section": "entropy_plot",
+    "text": "entropy_plot\ndef entropy_plot(pool: SequencePool) -&gt; ggplot\nCross-sectional Shannon entropy at each time point. Peaks signal moments of maximum cohort diversity (e.g. after a policy shock).\np = entropy_plot(pool)\np + labs(y=\"Shannon entropy\", x=\"Time point\")",
+    "crumbs": [
+      "**yasqat**",
+      "Visualization",
+      "Visualization"
+    ]
+  },
+  {
+    "objectID": "api/visualization.html#frequency_plot",
+    "href": "api/visualization.html#frequency_plot",
+    "title": "Visualization",
+    "section": "frequency_plot",
+    "text": "frequency_plot\ndef frequency_plot(pool: SequencePool, n: int = 10) -&gt; ggplot\nHorizontal bar chart of the n most common distinct sequences. Useful for detecting dominant patterns.\nParameters\n\n\n\nName\nDefault\nDescription\n\n\n\n\nn\n10\nNumber of top sequences to display.\n\n\n\np = frequency_plot(pool, n=20)\np.draw()",
+    "crumbs": [
+      "**yasqat**",
+      "Visualization",
+      "Visualization"
+    ]
+  },
+  {
+    "objectID": "api/visualization.html#modal_state_plot",
+    "href": "api/visualization.html#modal_state_plot",
+    "title": "Visualization",
+    "section": "modal_state_plot",
+    "text": "modal_state_plot\ndef modal_state_plot(pool: SequencePool) -&gt; ggplot\nAt each time point, shows the most common (modal) state. Provides the “central tendency” trajectory of the cohort.\np = modal_state_plot(pool)\np.draw()",
+    "crumbs": [
+      "**yasqat**",
+      "Visualization",
+      "Visualization"
+    ]
+  },
+  {
+    "objectID": "api/visualization.html#mean_time_plot",
+    "href": "api/visualization.html#mean_time_plot",
+    "title": "Visualization",
+    "section": "mean_time_plot",
+    "text": "mean_time_plot\ndef mean_time_plot(pool: SequencePool) -&gt; ggplot\nHorizontal bar chart — one bar per state, showing mean time steps spent in that state across all sequences.\np = mean_time_plot(pool)\np + labs(title=\"Average time in state\")",
+    "crumbs": [
+      "**yasqat**",
+      "Visualization",
+      "Visualization"
+    ]
+  },
+  {
+    "objectID": "api/visualization.html#timeline_plot",
+    "href": "api/visualization.html#timeline_plot",
+    "title": "Visualization",
+    "section": "timeline_plot",
+    "text": "timeline_plot\ndef timeline_plot(pool: SequencePool) -&gt; ggplot\nHorizontal Gantt-style chart — one row per sequence, coloured bars representing each spell’s state and duration.\n# Subset for readability\nsubset = pool[:50]\np = timeline_plot(subset)\np.draw()",
+    "crumbs": [
+      "**yasqat**",
+      "Visualization",
+      "Visualization"
+    ]
+  },
+  {
+    "objectID": "api/visualization.html#spell_duration_plot",
+    "href": "api/visualization.html#spell_duration_plot",
+    "title": "Visualization",
+    "section": "spell_duration_plot",
+    "text": "spell_duration_plot\ndef spell_duration_plot(pool: SequencePool) -&gt; ggplot\nDistribution of spell lengths per state (density or box plots). Reveals which states are “sticky” vs. transient.\np = spell_duration_plot(pool)\np + labs(x=\"Spell length (time steps)\", y=\"State\")",
+    "crumbs": [
+      "**yasqat**",
+      "Visualization",
+      "Visualization"
+    ]
+  },
+  {
+    "objectID": "api/visualization.html#parallel_coordinate_plot",
+    "href": "api/visualization.html#parallel_coordinate_plot",
+    "title": "Visualization",
+    "section": "parallel_coordinate_plot",
+    "text": "parallel_coordinate_plot\ndef parallel_coordinate_plot(\n    pool: SequencePool,\n    alpha: float = 0.1,\n) -&gt; ggplot\nOne line per sequence — each axis is a time step, the line traces state transitions. Best with a coarse alphabet (≤ 6 states) and small pools.\nParameters\n\n\n\n\n\n\n\n\nName\nDefault\nDescription\n\n\n\n\nalpha\n0.1\nLine transparency. Lower values reduce overplotting.\n\n\n\np = parallel_coordinate_plot(pool[:100], alpha=0.05)\np.draw()",
+    "crumbs": [
+      "**yasqat**",
+      "Visualization",
+      "Visualization"
+    ]
+  },
+  {
+    "objectID": "api/visualization.html#composing-with-plotnine",
+    "href": "api/visualization.html#composing-with-plotnine",
+    "title": "Visualization",
+    "section": "Composing with plotnine",
+    "text": "Composing with plotnine\nEvery function returns a bare ggplot. Apply any plotnine layer with +:\nfrom plotnine import theme_bw, theme, element_text, labs, scale_fill_manual\n\np = index_plot(pool, group=cluster_labels)\n\np + theme_bw() \\\n  + theme(axis_text_y=element_text(size=7)) \\\n  + labs(title=\"Customer lifecycle trajectories\", x=\"Day\", y=\"Customer\") \\\n  + scale_fill_manual(values=pool.alphabet.colors)",
+    "crumbs": [
+      "**yasqat**",
+      "Visualization",
+      "Visualization"
+    ]
+  },
+  {
+    "objectID": "api/visualization.html#saving-plots",
+    "href": "api/visualization.html#saving-plots",
+    "title": "Visualization",
+    "section": "Saving plots",
+    "text": "Saving plots\np = index_plot(pool)\np.save(\"trajectories.png\", dpi=150, width=12, height=8)\np.save(\"trajectories.pdf\", width=12, height=8)\n\n\n\n\n\n\nNote\n\n\n\nplotnine uses matplotlib as its rendering backend. In Jupyter, call p.draw(). In scripts, call p.save() or assign the result of p.draw() to a variable to suppress auto-display.",
+    "crumbs": [
+      "**yasqat**",
+      "Visualization",
+      "Visualization"
+    ]
+  },
+  {
+    "objectID": "api/io.html",
+    "href": "api/io.html",
+    "title": "IO",
+    "section": "",
+    "text": "Data loaders for reading sequence data from files and in-memory DataFrames.",
+    "crumbs": [
+      "**yasqat**",
+      "IO",
+      "IO"
+    ]
+  },
+  {
+    "objectID": "api/io.html#loading-data",
+    "href": "api/io.html#loading-data",
+    "title": "IO",
+    "section": "Loading data",
+    "text": "Loading data\n\n\n\nFunction\nSource\n\n\n\n\nload_csv()\nCSV files\n\n\nload_json()\nJSON files\n\n\nload_parquet()\nParquet files (recommended for large data)\n\n\nload_dataframe()\nPolars DataFrame (Hive/Spark/Arrow workflows)\n\n\nload_wide_format()\nWide-format files (one row per sequence)",
+    "crumbs": [
+      "**yasqat**",
+      "IO",
+      "IO"
+    ]
+  },
+  {
+    "objectID": "api/io.html#saving-data",
+    "href": "api/io.html#saving-data",
+    "title": "IO",
+    "section": "Saving data",
+    "text": "Saving data\n\n\n\nFunction\nFormat\n\n\n\n\nsave_csv()\nCSV\n\n\nsave_json()\nJSON\n\n\nsave_parquet()\nParquet (with compression)",
+    "crumbs": [
+      "**yasqat**",
+      "IO",
+      "IO"
+    ]
+  },
+  {
+    "objectID": "api/io.html#hive-spark-integration",
+    "href": "api/io.html#hive-spark-integration",
+    "title": "IO",
+    "section": "Hive / Spark integration",
+    "text": "Hive / Spark integration\nFor data originating from Hive tables or Spark jobs, the recommended workflow is:\n\nExport from Spark to Parquet (cloud storage or Unity Catalog Volume)\nRead with pl.read_parquet() or pl.scan_parquet().collect()\nPass to load_dataframe() with a SequenceConfig mapping your columns\n\nfrom yasqat.io import load_dataframe\nfrom yasqat.core.sequence import SequenceConfig\n\ndf = pl.read_parquet(\"s3://bucket/events_export/\")\npool = load_dataframe(\n    df,\n    config=SequenceConfig(\n        id_column=\"user_id\",\n        time_column=\"event_ts\",\n        state_column=\"event_type\",\n    ),\n    drop_nulls=True,\n)\n\n\n\n\n\n\nTip\n\n\n\nFor small-to-medium tables, use PySpark’s .toArrow() + pl.from_arrow() for a zero-copy bridge that avoids writing intermediate files.",
+    "crumbs": [
+      "**yasqat**",
+      "IO",
+      "IO"
+    ]
+  },
+  {
+    "objectID": "api/statistics.html",
+    "href": "api/statistics.html",
+    "title": "Statistics",
+    "section": "",
+    "text": "Descriptive statistics, normative indicators, transition analysis, and subsequence mining. All functions accept SequencePool and return pl.DataFrame.",
+    "crumbs": [
+      "**yasqat**",
+      "Statistics",
+      "Statistics"
+    ]
+  },
+  {
+    "objectID": "api/statistics.html#descriptive-statistics",
+    "href": "api/statistics.html#descriptive-statistics",
+    "title": "Statistics",
+    "section": "Descriptive statistics",
+    "text": "Descriptive statistics\nAll functions take pool: SequencePool and return a pl.DataFrame with at minimum a sequence_id column (one row per sequence) or a time column (one row per time step).\n\nstate_distribution\ndef state_distribution(pool: SequencePool) -&gt; pl.DataFrame\nProportion of sequences in each state at each time point. Returns a long-format DataFrame with columns time, state, proportion.\ndist = state_distribution(pool)\n# time | state   | proportion\n# 0    | active  | 0.312\n# 0    | dormant | 0.185\n\n\nlongitudinal_entropy\ndef longitudinal_entropy(pool: SequencePool) -&gt; pl.DataFrame\nShannon entropy of the state distribution at each time step, then averaged across time per sequence. Returns sequence_id, entropy.\n\n\nturbulence\ndef turbulence(pool: SequencePool) -&gt; pl.DataFrame\nBrzinsky-Fay (2007) turbulence — combines variance of spell durations with the number of distinct states visited. Returns sequence_id, turbulence.\n\n\nnormalized_turbulence\ndef normalized_turbulence(pool: SequencePool) -&gt; pl.DataFrame\nTurbulence normalised to [0, 1] range across the pool.\n\n\ncomplexity_index\ndef complexity_index(pool: SequencePool) -&gt; pl.DataFrame\nBillari (2001) complexity index — weighted combination of spell count and number of distinct states. Returns sequence_id, complexity.\n\n\nspell_count\ndef spell_count(pool: SequencePool) -&gt; pl.DataFrame\nNumber of distinct consecutive spells per sequence. Returns sequence_id, spell_count.\n\n\nvisited_states\ndef visited_states(pool: SequencePool) -&gt; pl.DataFrame\nNumber of distinct states visited per sequence. Returns sequence_id, visited_states.\n\n\nvisited_proportion\ndef visited_proportion(pool: SequencePool) -&gt; pl.DataFrame\nvisited_states / total_states — fraction of the alphabet visited. Returns sequence_id, visited_proportion.\n\n\nmean_time_in_state\ndef mean_time_in_state(pool: SequencePool) -&gt; pl.DataFrame\nAverage time steps spent in each state, aggregated across all sequences. Returns state, mean_time.\n\n\nmodal_states\ndef modal_states(pool: SequencePool) -&gt; pl.DataFrame\nThe most common state at each time point. Returns time, modal_state, proportion.\n\n\nsequence_length\ndef sequence_length(pool: SequencePool) -&gt; pl.DataFrame\nNumber of time steps per sequence. Returns sequence_id, length.\n\n\nsequence_frequency_table\ndef sequence_frequency_table(pool: SequencePool) -&gt; pl.DataFrame\nUnique sequences with their frequencies and relative frequencies. Useful for identifying dominant patterns. Returns sequence, count, proportion.\n\n\ntransition_count\ndef transition_count(pool: SequencePool) -&gt; pl.DataFrame\nNumber of state transitions per sequence. Returns sequence_id, transition_count.\n\n\ntransition_proportion\ndef transition_proportion(pool: SequencePool) -&gt; pl.DataFrame\nTransitions per time step — normalised transition count. Returns sequence_id, transition_proportion.\n\n\nsubsequence_count\ndef subsequence_count(\n    pool: SequencePool,\n    subsequence: list[str],\n) -&gt; pl.DataFrame\nCount occurrences of a specific subsequence in each sequence. Returns sequence_id, count.\n\n\nsequence_log_probability\ndef sequence_log_probability(\n    pool: SequencePool,\n    transition_matrix: np.ndarray | None = None,\n) -&gt; pl.DataFrame\nLog probability of each sequence under a (optionally provided) first-order Markov model. Returns sequence_id, log_probability.",
+    "crumbs": [
+      "**yasqat**",
+      "Statistics",
+      "Statistics"
+    ]
+  },
+  {
+    "objectID": "api/statistics.html#transition-analysis",
+    "href": "api/statistics.html#transition-analysis",
+    "title": "Statistics",
+    "section": "Transition analysis",
+    "text": "Transition analysis\n\ntransition_rate_matrix\ndef transition_rate_matrix(pool: SequencePool) -&gt; pl.DataFrame\nEmpirical first-order transition rates between all state pairs. Returns a wide-format DataFrame (states × states).\nrate_matrix = transition_rate_matrix(pool)\n\n\ntransition_rates\ndef transition_rates(pool: SequencePool) -&gt; pl.DataFrame\nLong-format tidy transition rates. Returns from_state, to_state, rate.\nrates = transition_rates(pool)\nrates.filter(pl.col(\"from_state\") != pl.col(\"to_state\"))\\\n     .sort(\"rate\", descending=True)\\\n     .head(10)\n\n\nsubstitution_cost_matrix\ndef substitution_cost_matrix(pool: SequencePool) -&gt; np.ndarray\nData-driven substitution costs derived from empirical transition rates (TraMineR’s seqsubm \"TRATE\" method). Returns a (n_states, n_states) numpy array ready for OptimalMatchingMetric.\n\n\nfirst_occurrence_time\ndef first_occurrence_time(\n    pool: SequencePool,\n    state: str,\n) -&gt; pl.DataFrame\nTime step at which each sequence first enters a given state. Returns sequence_id, first_occurrence (null if never entered).\n\n\nstate_duration_stats\ndef state_duration_stats(pool: SequencePool) -&gt; pl.DataFrame\nMean, median, min, max spell duration per state. Returns state, mean_duration, median_duration, min_duration, max_duration.",
+    "crumbs": [
+      "**yasqat**",
+      "Statistics",
+      "Statistics"
+    ]
+  },
+  {
+    "objectID": "api/statistics.html#normative-indicators",
+    "href": "api/statistics.html#normative-indicators",
+    "title": "Statistics",
+    "section": "Normative indicators",
+    "text": "Normative indicators\nNormative indicators require defining positive and/or negative states relevant to your domain. All functions return sequence_id + indicator column.\npositive = {\"healthy\", \"active\", \"power_user\"}\nnegative = {\"at_risk\", \"delinquent\", \"default\", \"churned\"}\n\nproportion_positive\ndef proportion_positive(\n    pool: SequencePool,\n    positive_states: set[str],\n) -&gt; pl.DataFrame\nProportion of time steps spent in positive states.\n\n\nbadness\ndef badness(\n    pool: SequencePool,\n    negative_states: set[str],\n) -&gt; pl.DataFrame\nProportion of time steps in negative states.\n\n\ninsecurity\ndef insecurity(\n    pool: SequencePool,\n    positive_states: set[str],\n) -&gt; pl.DataFrame\nProportion of time NOT in positive states.\n\n\nprecarity\ndef precarity(\n    pool: SequencePool,\n    positive_states: set[str],\n) -&gt; pl.DataFrame\nCombines low time in positive states with high variability (instability).\n\n\ndegradation\ndef degradation(\n    pool: SequencePool,\n    positive_states: set[str],\n) -&gt; pl.DataFrame\nDecline from an initially positive state — whether trajectories trend negative.\n\n\nvolatility\ndef volatility(\n    pool: SequencePool,\n    positive_states: set[str],\n) -&gt; pl.DataFrame\nFrequency of transitions between positive and non-positive states.\n\n\nintegration\ndef integration(\n    pool: SequencePool,\n    positive_states: set[str],\n) -&gt; pl.DataFrame\nOpposite of insecurity — measures embeddedness in positive states.",
+    "crumbs": [
+      "**yasqat**",
+      "Statistics",
+      "Statistics"
+    ]
+  },
+  {
+    "objectID": "api/statistics.html#discrepancy-analysis",
+    "href": "api/statistics.html#discrepancy-analysis",
+    "title": "Statistics",
+    "section": "Discrepancy analysis",
+    "text": "Discrepancy analysis\n\ndiscrepancy_analysis\ndef discrepancy_analysis(\n    distance_matrix: DistanceMatrix,\n    groups: np.ndarray | list[int],\n) -&gt; DiscrepancyResult\nANOVA-like test for whether group membership explains sequence dissimilarity (Studer et al. 2011). Returns a DiscrepancyResult with:\n\n\n\n\n\n\n\n\nAttribute\nType\nDescription\n\n\n\n\npseudo_r2\nfloat\nProportion of total dissimilarity explained by groups.\n\n\nf_stat\nfloat\nPseudo-F statistic.\n\n\np_value\nfloat\nPermutation-based p-value.\n\n\n\ndisc = discrepancy_analysis(dist_matrix, groups=pam_result.labels)\nprint(f\"Pseudo-R² = {disc.pseudo_r2:.3f}\")\nprint(f\"p-value   = {disc.p_value:.4f}\")\n\n\nmulti_factor_discrepancy\ndef multi_factor_discrepancy(\n    distance_matrix: DistanceMatrix,\n    factors: dict[str, np.ndarray],\n) -&gt; pl.DataFrame\nDiscrepancy analysis for multiple grouping factors simultaneously. Returns a DataFrame with one row per factor: factor, pseudo_r2, f_stat, p_value.",
+    "crumbs": [
+      "**yasqat**",
+      "Statistics",
+      "Statistics"
+    ]
+  },
+  {
+    "objectID": "api/statistics.html#subsequence-mining",
+    "href": "api/statistics.html#subsequence-mining",
+    "title": "Statistics",
+    "section": "Subsequence mining",
+    "text": "Subsequence mining\n\nfrequent_subsequences\ndef frequent_subsequences(\n    pool: SequencePool,\n    min_support: float = 0.1,\n    max_length: int = 5,\n) -&gt; pl.DataFrame\nMine frequent state subsequences (PrefixSpan algorithm). Returns subsequence (list), support (proportion of sequences containing it).\npatterns = frequent_subsequences(pool, min_support=0.05, max_length=3)\npatterns.filter(pl.col(\"subsequence\").list.len() == 2)\\\n        .sort(\"support\", descending=True)\\\n        .head(10)",
+    "crumbs": [
+      "**yasqat**",
+      "Statistics",
+      "Statistics"
+    ]
+  },
+  {
+    "objectID": "api/statistics.html#dissimilarity-tree",
+    "href": "api/statistics.html#dissimilarity-tree",
+    "title": "Statistics",
+    "section": "Dissimilarity tree",
+    "text": "Dissimilarity tree\n\ndissimilarity_tree\ndef dissimilarity_tree(\n    distance_matrix: DistanceMatrix,\n    groups: np.ndarray | None = None,\n    max_depth: int = 5,\n    min_group_size: int = 10,\n) -&gt; DissimilarityTree\nCART-like recursive splitting on a distance matrix. At each node, finds the binary partition that maximises between-group dissimilarity (pseudo-R²). Useful for understanding the hierarchical structure of sequence variation.",
+    "crumbs": [
+      "**yasqat**",
+      "Statistics",
+      "Statistics"
+    ]
+  }
+]
