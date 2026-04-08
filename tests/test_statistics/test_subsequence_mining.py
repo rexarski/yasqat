@@ -4,10 +4,7 @@ import polars as pl
 import pytest
 
 from yasqat.core.pool import SequencePool
-from yasqat.statistics.subsequence_mining import (
-    FrequentSubsequence,
-    frequent_subsequences,
-)
+from yasqat.statistics.subsequence_mining import frequent_subsequences
 
 
 @pytest.fixture
@@ -34,43 +31,56 @@ def mining_pool() -> SequencePool:
 
 
 class TestFrequentSubsequences:
-    def test_returns_list(self, mining_pool: SequencePool) -> None:
+    def test_returns_dataframe(self, mining_pool: SequencePool) -> None:
         results = frequent_subsequences(mining_pool, min_support=0.5)
-        assert isinstance(results, list)
-        assert all(isinstance(r, FrequentSubsequence) for r in results)
+        assert isinstance(results, pl.DataFrame)
+        assert "subsequence" in results.columns
+        assert "support" in results.columns
+        assert "proportion" in results.columns
 
     def test_all_states_frequent(self, mining_pool: SequencePool) -> None:
         results = frequent_subsequences(mining_pool, min_support=0.5)
-        patterns = {r.pattern for r in results}
-        # All single states appear in all sequences
-        assert ("A",) in patterns
-        assert ("B",) in patterns
-        assert ("C",) in patterns
+        # Extract single-state patterns
+        single_state = results.filter(
+            pl.col("subsequence").list.len() == 1
+        )
+        patterns = single_state["subsequence"].to_list()
+        assert ["A"] in patterns
+        assert ["B"] in patterns
+        assert ["C"] in patterns
 
     def test_ab_frequent(self, mining_pool: SequencePool) -> None:
         results = frequent_subsequences(mining_pool, min_support=0.5)
-        patterns = {r.pattern for r in results}
+        patterns = results["subsequence"].to_list()
         # "A", "B" subsequence appears in all 3 sequences
-        assert ("A", "B") in patterns
+        assert ["A", "B"] in patterns
 
     def test_support_values(self, mining_pool: SequencePool) -> None:
         results = frequent_subsequences(mining_pool, min_support=0.5)
-        for r in results:
-            assert r.proportion >= 0.3  # at least min_support threshold
-            assert 0.0 < r.proportion <= 1.0
+        for prop in results["proportion"].to_list():
+            assert prop >= 0.3  # at least min_support threshold
+            assert 0.0 < prop <= 1.0
 
     def test_max_length(self, mining_pool: SequencePool) -> None:
         results = frequent_subsequences(mining_pool, min_support=0.5, max_length=1)
-        for r in results:
-            assert len(r.pattern) == 1
+        for subseq in results["subsequence"].to_list():
+            assert len(subseq) == 1
 
     def test_high_support_filters(self, mining_pool: SequencePool) -> None:
         results = frequent_subsequences(mining_pool, min_support=1.0)
         # Only patterns in ALL sequences
-        for r in results:
-            assert r.support == 3
+        for support in results["support"].to_list():
+            assert support == 3
 
     def test_sorted_by_support(self, mining_pool: SequencePool) -> None:
         results = frequent_subsequences(mining_pool, min_support=0.3)
-        supports = [r.support for r in results]
+        supports = results["support"].to_list()
         assert supports == sorted(supports, reverse=True)
+
+    def test_filter_by_length(self, mining_pool: SequencePool) -> None:
+        """Test that results can be filtered using polars expressions."""
+        results = frequent_subsequences(mining_pool, min_support=0.3)
+        two_step = results.filter(pl.col("subsequence").list.len() == 2)
+        assert isinstance(two_step, pl.DataFrame)
+        for subseq in two_step["subsequence"].to_list():
+            assert len(subseq) == 2

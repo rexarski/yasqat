@@ -9,6 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+import polars as pl
+
 if TYPE_CHECKING:
     from yasqat.core.pool import SequencePool
     from yasqat.core.sequence import StateSequence
@@ -41,7 +43,7 @@ def frequent_subsequences(
     sequence: StateSequence | SequencePool,
     min_support: float = 0.1,
     max_length: int = 5,
-) -> list[FrequentSubsequence]:
+) -> pl.DataFrame:
     """
     Find frequent subsequences using a level-wise approach.
 
@@ -55,13 +57,16 @@ def frequent_subsequences(
         max_length: Maximum subsequence length to search.
 
     Returns:
-        List of FrequentSubsequence objects sorted by support (descending).
+        DataFrame with columns:
+            - subsequence: List of states forming the pattern.
+            - support: Number of sequences containing this pattern.
+            - proportion: Proportion of sequences containing this pattern.
+        Sorted by support descending.
 
     Example:
         >>> from yasqat.statistics.subsequence_mining import frequent_subsequences
         >>> results = frequent_subsequences(pool, min_support=0.5)
-        >>> results[0].pattern
-        ('A',)
+        >>> results.filter(pl.col("subsequence").list.len() == 2)
     """
     from yasqat.core.pool import SequencePool
     from yasqat.core.sequence import StateSequence
@@ -116,4 +121,12 @@ def frequent_subsequences(
 
     # Sort by support descending
     frequent.sort(key=lambda x: (-x.support, x.pattern))
-    return frequent
+
+    # Return as polars DataFrame with list column for filtering
+    return pl.DataFrame(
+        {
+            "subsequence": [list(f.pattern) for f in frequent],
+            "support": [f.support for f in frequent],
+            "proportion": [f.proportion for f in frequent],
+        }
+    )

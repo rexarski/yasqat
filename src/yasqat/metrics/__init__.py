@@ -14,13 +14,17 @@ from yasqat.metrics.om_variants import (
     omspell_distance,
     omstran_distance,
 )
-from yasqat.metrics.optimal_matching import optimal_matching_distance
+from yasqat.metrics.optimal_matching import (
+    OptimalMatchingMetric,
+    optimal_matching_distance,
+)
 from yasqat.metrics.rlcp import rlcp_distance
 from yasqat.metrics.softdtw import softdtw_distance
 from yasqat.metrics.twed import twed_distance
 
 __all__ = [
     "DistanceMatrix",
+    "OptimalMatchingMetric",
     "SequenceMetric",
     "chi2_distance",
     "dhd_distance",

@@ -13,7 +13,9 @@ from yasqat.visualization import (
     modal_state_plot,
     parallel_coordinate_plot,
     spell_duration_plot,
+    sunburst_plot,
     timeline_plot,
+    tree_plot,
 )
 
 
@@ -162,6 +164,59 @@ class TestParallelCoordinatePlot:
 
     def test_with_title(self, sequence_pool: SequencePool) -> None:
         plot = parallel_coordinate_plot(sequence_pool, title="PC Plot")
+        assert isinstance(plot, ggplot)
+
+
+class TestSunburstPlot:
+    """Tests for sunburst plot."""
+
+    def test_creates_ggplot(self, sequence_pool: SequencePool) -> None:
+        """Test that sunburst_plot returns a ggplot object."""
+        plot = sunburst_plot(sequence_pool)
+        assert isinstance(plot, ggplot)
+
+    def test_with_max_depth(self, sequence_pool: SequencePool) -> None:
+        """Test sunburst plot with max_depth."""
+        plot = sunburst_plot(sequence_pool, max_depth=2)
+        assert isinstance(plot, ggplot)
+
+    def test_with_title(self, sequence_pool: SequencePool) -> None:
+        """Test sunburst plot with title."""
+        plot = sunburst_plot(sequence_pool, title="Sunburst")
+        assert isinstance(plot, ggplot)
+
+    def test_without_legend(self, sequence_pool: SequencePool) -> None:
+        """Test sunburst plot without legend."""
+        plot = sunburst_plot(sequence_pool, show_legend=False)
+        assert isinstance(plot, ggplot)
+
+
+class TestTreePlot:
+    """Tests for tree plot."""
+
+    def test_creates_ggplot(self, sequence_pool: SequencePool) -> None:
+        """Test that tree_plot returns a ggplot object."""
+        plot = tree_plot(sequence_pool)
+        assert isinstance(plot, ggplot)
+
+    def test_with_max_depth(self, sequence_pool: SequencePool) -> None:
+        """Test tree plot with max_depth."""
+        plot = tree_plot(sequence_pool, max_depth=2)
+        assert isinstance(plot, ggplot)
+
+    def test_with_min_support(self, sequence_pool: SequencePool) -> None:
+        """Test tree plot with min_support."""
+        plot = tree_plot(sequence_pool, min_support=0.5)
+        assert isinstance(plot, ggplot)
+
+    def test_with_title(self, sequence_pool: SequencePool) -> None:
+        """Test tree plot with title."""
+        plot = tree_plot(sequence_pool, title="Tree")
+        assert isinstance(plot, ggplot)
+
+    def test_without_legend(self, sequence_pool: SequencePool) -> None:
+        """Test tree plot without legend."""
+        plot = tree_plot(sequence_pool, show_legend=False)
         assert isinstance(plot, ggplot)
 
 

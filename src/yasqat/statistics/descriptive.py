@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections import Counter
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -53,38 +52,37 @@ def longitudinal_entropy(
 
     config = pool.config
     n_states = len(pool.alphabet)
+    id_col = config.id_column
+    state_col = config.state_column
+    data = pool.data
 
-    entropies = []
-    seq_ids = []
+    # Vectorized entropy computation using polars
+    state_counts = data.group_by([id_col, state_col]).agg(
+        pl.len().alias("count")
+    )
+    seq_lengths = data.group_by(id_col).agg(pl.len().alias("_total"))
 
-    for seq_id in pool.sequence_ids:
-        states = pool.get_sequence(seq_id)
-        counts = Counter(states)
-        n = len(states)
+    entropy_df = (
+        state_counts.join(seq_lengths, on=id_col)
+        .with_columns((pl.col("count") / pl.col("_total")).alias("p"))
+        .with_columns((-pl.col("p") * pl.col("p").log()).alias("_h_term"))
+        .group_by(id_col)
+        .agg(pl.col("_h_term").sum().alias("entropy"))
+    )
 
-        entropy = 0.0
-        for count in counts.values():
-            p = count / n
-            if p > 0:
-                entropy -= p * np.log(p)
+    if normalize and n_states > 1:
+        max_entropy = float(np.log(n_states))
+        if max_entropy > 0:
+            entropy_df = entropy_df.with_columns(
+                (pl.col("entropy") / max_entropy).alias("entropy")
+            )
 
-        if normalize and n_states > 1:
-            max_entropy = np.log(n_states)
-            if max_entropy > 0:
-                entropy /= max_entropy
-
-        entropies.append(entropy)
-        seq_ids.append(seq_id)
+    entropy_df = entropy_df.sort(id_col)
 
     if per_sequence:
-        return pl.DataFrame(
-            {
-                config.id_column: seq_ids,
-                "entropy": entropies,
-            }
-        )
+        return entropy_df
 
-    return float(np.mean(entropies))
+    return float(entropy_df["entropy"].mean())
 
 
 def transition_count(
@@ -285,51 +283,46 @@ def turbulence(
     else:
         pool = sequence
 
-    # Get spells (run-length encoded)
+    config = pool.config
+    id_col = config.id_column
+
+    # Get spells (run-length encoded) using vectorized to_sps
     state_seq = pool.to_state_sequence()
     sps = state_seq.to_sps()
 
-    config = pool.config
-    turbulences = []
-    seq_ids = []
-
-    for seq_id in pool.sequence_ids:
-        seq_spells = sps.filter(pl.col(config.id_column) == seq_id)
-        durations = seq_spells["duration"].to_list()
-
-        if len(durations) <= 1:
-            turbulences.append(0.0)
-            seq_ids.append(seq_id)
-            continue
-
-        # Number of distinct spell transitions (approximation for phi)
-        n_spells = len(durations)
-
-        # Variance of spell durations
-        duration_var = float(np.var(durations))
-
-        # Mean spell duration
-        mean_duration = float(np.mean(durations))
-
-        # Turbulence calculation
-        if mean_duration > 0:
-            turb = np.log2(n_spells * (duration_var + 1) / mean_duration)
-            turb = max(0.0, turb)  # Ensure non-negative
-        else:
-            turb = 0.0
-
-        turbulences.append(turb)
-        seq_ids.append(seq_id)
+    # Vectorized turbulence computation using polars group_by
+    turb_df = (
+        sps.group_by(id_col)
+        .agg(
+            [
+                pl.len().alias("n_spells"),
+                pl.col("duration").var(ddof=0).alias("duration_var"),
+                pl.col("duration").mean().alias("mean_duration"),
+            ]
+        )
+        .with_columns(pl.col("duration_var").fill_null(0.0))
+        .with_columns(
+            pl.when(pl.col("n_spells") > 1)
+            .then(
+                (
+                    pl.col("n_spells")
+                    * (pl.col("duration_var") + 1)
+                    / pl.col("mean_duration")
+                )
+                .log(2)
+                .clip(lower_bound=0.0)
+            )
+            .otherwise(0.0)
+            .alias("turbulence")
+        )
+        .select([id_col, "turbulence"])
+        .sort(id_col)
+    )
 
     if per_sequence:
-        return pl.DataFrame(
-            {
-                config.id_column: seq_ids,
-                "turbulence": turbulences,
-            }
-        )
+        return turb_df
 
-    return float(np.mean(turbulences))
+    return float(turb_df["turbulence"].mean())
 
 
 def state_distribution(
@@ -826,40 +819,38 @@ def normalized_turbulence(
     else:
         pool = sequence
 
+    config = pool.config
+    id_col = config.id_column
+
     # Get raw turbulence per sequence
     turb_df = turbulence(pool, per_sequence=True)
     assert isinstance(turb_df, pl.DataFrame)
 
-    # Get lengths per sequence
-    config = pool.config
-    norm_turbs: list[float] = []
-    seq_ids: list[int | str] = []
+    # Get sequence lengths using polars
+    lengths = pool.data.group_by(id_col).agg(
+        pl.len().alias("_length")
+    )
 
-    for row in turb_df.iter_rows(named=True):
-        seq_id = row[config.id_column]
-        raw_turb = row["turbulence"]
-        states = pool.get_sequence(seq_id)
-        n = len(states)
-
-        if n <= 1:
-            norm_turbs.append(0.0)
-        else:
-            # Theoretical max: n distinct spells of length 1
-            # phi_max = n, var = 0, mean = 1
-            # T_max = log2(n * (0 + 1) / 1) = log2(n)
-            t_max = np.log2(n) if n > 1 else 1.0
-            norm_turbs.append(raw_turb / t_max if t_max > 0 else 0.0)
-        seq_ids.append(seq_id)
+    # Vectorized normalization: T_max = log2(n)
+    result = (
+        turb_df.join(lengths, on=id_col)
+        .with_columns(
+            pl.when(pl.col("_length") > 1)
+            .then(
+                pl.col("turbulence")
+                / pl.col("_length").cast(pl.Float64).log(2)
+            )
+            .otherwise(0.0)
+            .alias("normalized_turbulence")
+        )
+        .select([id_col, "normalized_turbulence"])
+        .sort(id_col)
+    )
 
     if per_sequence:
-        return pl.DataFrame(
-            {
-                config.id_column: seq_ids,
-                "normalized_turbulence": norm_turbs,
-            }
-        )
+        return result
 
-    return float(np.mean(norm_turbs))
+    return float(result["normalized_turbulence"].mean())
 
 
 def sequence_log_probability(
