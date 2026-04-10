@@ -139,6 +139,7 @@ class SequencePool:
     def compute_distances(
         self,
         method: str = "om",
+        n_jobs: int = 1,
         **kwargs: float,
     ) -> DistanceMatrix:
         """
@@ -148,13 +149,17 @@ class SequencePool:
             method: Distance method ("om", "hamming", "lcs", "lcp", "rlcp",
                 "euclidean", "chi2", "dtw", "twed", "omloc", "omspell",
                 "omstran", "nms", "nmsmst", "svrspell").
+            n_jobs: Number of parallel workers. 1 = sequential (default).
+                -1 = use all available CPUs. Values > 1 use that many threads.
+                Parallelism uses threads (not processes) since numba releases
+                the GIL.
             **kwargs: Method-specific parameters.
 
         Returns:
             DistanceMatrix with pairwise distances and sequence ID labels.
 
         Note:
-            This uses an O(n²) Python loop over sequence pairs. For large pools
+            This uses an O(n²) loop over sequence pairs. For large pools
             (n > ~500) consider using :meth:`sample` to draw a representative
             subset first, or use CLARA clustering which applies sampling
             internally (see :func:`yasqat.clustering.clara_clustering`).
@@ -204,13 +209,32 @@ class SequencePool:
         ids = self.sequence_ids
         distances = np.zeros((n, n), dtype=np.float64)
 
-        for i in range(n):
-            for j in range(i + 1, n):
-                seq_a = self.get_encoded_sequence(ids[i])
-                seq_b = self.get_encoded_sequence(ids[j])
-                dist = metric_fn(seq_a, seq_b, **kwargs)
-                distances[i, j] = dist
-                distances[j, i] = dist
+        # Pre-encode all sequences
+        encoded = [self.get_encoded_sequence(ids[i]) for i in range(n)]
+
+        if n_jobs == 1:
+            for i in range(n):
+                for j in range(i + 1, n):
+                    dist = metric_fn(encoded[i], encoded[j], **kwargs)
+                    distances[i, j] = dist
+                    distances[j, i] = dist
+        else:
+            import os
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+
+            workers = os.cpu_count() or 1 if n_jobs == -1 else n_jobs
+            pairs = [(i, j) for i in range(n) for j in range(i + 1, n)]
+
+            def _compute_pair(pair: tuple[int, int]) -> tuple[int, int, float]:
+                i, j = pair
+                return i, j, metric_fn(encoded[i], encoded[j], **kwargs)
+
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                futures = [executor.submit(_compute_pair, p) for p in pairs]
+                for future in as_completed(futures):
+                    i, j, dist = future.result()
+                    distances[i, j] = dist
+                    distances[j, i] = dist
 
         return DistanceMatrix(values=distances, labels=ids)
 

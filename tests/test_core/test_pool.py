@@ -106,6 +106,12 @@ class TestSequencePool:
         # Should be symmetric
         assert np.allclose(dm.values, dm.values.T)
 
+    def test_compute_distances_parallel(self, sequence_pool: SequencePool) -> None:
+        """Test parallel distance computation matches sequential."""
+        dm_seq = sequence_pool.compute_distances(method="lcs", n_jobs=1)
+        dm_par = sequence_pool.compute_distances(method="lcs", n_jobs=2)
+        assert np.allclose(dm_seq.values, dm_par.values)
+
     def test_compute_distances_hamming(self, sequence_pool: SequencePool) -> None:
         """Test computing Hamming distances."""
         dm = sequence_pool.compute_distances(method="hamming")
