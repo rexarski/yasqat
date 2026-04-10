@@ -421,3 +421,25 @@ class PAMClustering:
     def result(self) -> PAMClusteringResult | None:
         """Return the full result from the last fit."""
         return self._result
+
+    def predict(self, distance_to_train: np.ndarray) -> np.ndarray:
+        """
+        Assign new sequences to the nearest medoid.
+
+        Args:
+            distance_to_train: Distance matrix of shape (n_new, n_train)
+                where n_train matches the training set size. Each row
+                contains distances from a new point to all training points.
+
+        Returns:
+            Cluster labels for each new point.
+
+        Raises:
+            ValueError: If fit() has not been called.
+        """
+        if self._result is None:
+            raise ValueError("Must call fit() before predict()")
+
+        medoid_indices = self._result.medoid_indices
+        dist_to_medoids = distance_to_train[:, medoid_indices]
+        return np.argmin(dist_to_medoids, axis=1).astype(np.int32)
