@@ -116,6 +116,22 @@ class TestOptimalMatching:
 
         assert dist == 0.5
 
+    def test_substitution_matrix_too_small(self) -> None:
+        """Test that undersized substitution matrix raises ValueError."""
+        seq_a = np.array([0, 1, 5], dtype=np.int32)
+        seq_b = np.array([0, 2, 3], dtype=np.int32)
+
+        # 3x3 matrix can't cover state index 5
+        sm = np.zeros((3, 3), dtype=np.float64)
+        np.fill_diagonal(sm, 0.0)
+        sm[sm == 0] = 2.0
+        np.fill_diagonal(sm, 0.0)
+
+        import pytest
+
+        with pytest.raises(ValueError, match=r"Substitution matrix has shape"):
+            optimal_matching_distance(seq_a, seq_b, sm=sm)
+
     def test_metric_class(
         self, encoded_sequences: tuple[np.ndarray, np.ndarray]
     ) -> None:

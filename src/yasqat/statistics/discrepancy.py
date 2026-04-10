@@ -222,7 +222,12 @@ def _compute_pseudo_f(
     df_between = k - 1
     df_within = n - k
 
-    if df_between <= 0 or df_within <= 0 or within_ss == 0:
+    if df_between <= 0 or df_within <= 0:
         return 0.0
+
+    if within_ss == 0:
+        # Perfect group separation: all within-group distances are zero.
+        # The F-ratio is theoretically infinite.
+        return np.inf if between_ss > 0 else 0.0
 
     return (between_ss / df_between) / (within_ss / df_within)

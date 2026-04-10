@@ -68,3 +68,36 @@ class TestDissimilarityTree:
         result = dissimilarity_tree(dist, covariates, covariate_names=["age"])
         if result.root.split_variable is not None:
             assert result.root.split_variable == "age"
+
+    def test_deeper_tree_with_structure(self) -> None:
+        """Tree should grow beyond depth 1 when data has nested structure."""
+        n = 40
+        rng = np.random.default_rng(99)
+        # 4 groups of 10 with distinct distance patterns
+        group = np.array([0] * 10 + [1] * 10 + [2] * 10 + [3] * 10)
+        dist = np.zeros((n, n))
+        for i in range(n):
+            for j in range(i + 1, n):
+                if group[i] == group[j]:
+                    dist[i, j] = dist[j, i] = rng.random() * 0.3
+                else:
+                    dist[i, j] = dist[j, i] = 3.0 + rng.random()
+        # Two covariates that separate the 4 groups
+        cov = np.zeros((n, 2))
+        cov[:20, 0] = rng.random(20) * 0.5
+        cov[20:, 0] = 0.5 + rng.random(20) * 0.5
+        cov[:10, 1] = rng.random(10) * 0.5
+        cov[10:20, 1] = 0.5 + rng.random(10) * 0.5
+        cov[20:30, 1] = rng.random(10) * 0.5
+        cov[30:, 1] = 0.5 + rng.random(10) * 0.5
+
+        result = dissimilarity_tree(
+            dist,
+            cov,
+            covariate_names=["x1", "x2"],
+            max_depth=5,
+            min_node_size=5,
+            min_r2_gain=0.001,
+        )
+        # With 4 well-separated groups, we should get at least 3 leaves
+        assert result.n_leaves >= 3

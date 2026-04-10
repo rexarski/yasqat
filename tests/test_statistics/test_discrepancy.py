@@ -141,6 +141,22 @@ class TestEdgeCases:
         result = discrepancy_analysis(dist, labels)
         assert result.pseudo_f == 0.0
 
+    def test_perfect_separation_pseudo_f_inf(self) -> None:
+        """When within-group distances are zero, pseudo_F should be inf."""
+        # Two groups, zero within-group distance, nonzero between
+        dist = np.array(
+            [
+                [0.0, 0.0, 5.0, 5.0],
+                [0.0, 0.0, 5.0, 5.0],
+                [5.0, 5.0, 0.0, 0.0],
+                [5.0, 5.0, 0.0, 0.0],
+            ]
+        )
+        labels = np.array([0, 0, 1, 1])
+        result = discrepancy_analysis(dist, labels)
+        assert result.pseudo_r2 == 1.0
+        assert result.pseudo_f == np.inf
+
     def test_repr(self) -> None:
         result = DiscrepancyResult(
             pseudo_r2=0.75,

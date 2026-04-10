@@ -169,7 +169,7 @@ def dissimilarity_tree(
     def _build(indices: np.ndarray, depth: int) -> DissTreeNode:
         node = DissTreeNode(indices=indices, depth=depth, pseudo_r2=0.0)
 
-        if depth >= max_depth or len(indices) < 2 * min_node_size:
+        if depth >= max_depth or len(indices) <= min_node_size:
             node_label = leaf_counter[0]
             leaf_counter[0] += 1
             labels[indices] = node_label
@@ -185,13 +185,20 @@ def dissimilarity_tree(
             labels[indices] = node_label
             return node
 
-        node.pseudo_r2 = r2_gain
-        node.split_variable = covariate_names[var_idx]
-        node.split_value = split_val
-
+        # Check that both children would have at least 1 observation
         values = covariates[indices, var_idx]
         left_mask = values <= split_val
         right_mask = ~left_mask
+
+        if np.sum(left_mask) < 1 or np.sum(right_mask) < 1:
+            node_label = leaf_counter[0]
+            leaf_counter[0] += 1
+            labels[indices] = node_label
+            return node
+
+        node.pseudo_r2 = r2_gain
+        node.split_variable = covariate_names[var_idx]
+        node.split_value = split_val
 
         node.left = _build(indices[left_mask], depth + 1)
         node.right = _build(indices[right_mask], depth + 1)

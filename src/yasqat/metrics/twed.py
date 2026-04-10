@@ -129,6 +129,8 @@ def twed_distance(
         nu: Stiffness parameter (>= 0). Higher values penalize temporal
             distortion more. Default: 0.001.
         lmbda: Deletion/insertion penalty (>= 0). Default: 1.0.
+            Named ``lmbda`` because ``lambda`` is a Python reserved keyword;
+            corresponds to λ in Marteau (2009).
         sm: Substitution cost matrix or method ("constant").
         sub_cost: Cost for non-matching elements when sm="constant".
         timestamps_a: Timestamps for first sequence. If None, uses 0..n-1.

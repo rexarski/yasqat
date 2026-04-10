@@ -87,6 +87,11 @@ class TimeCriterion(SequenceCriterion):
     """
     Filter sequences by time range.
 
+    Time units are determined by the values in the sequence's time column.
+    Comparisons are performed directly without unit conversion, so the
+    threshold values you pass (e.g. ``start_after=10``) must be expressed
+    in the same scale as the data (integer indices, timestamps, years, etc.).
+
     Examples:
         >>> criterion = TimeCriterion(start_after=10)  # Sequences starting after t=10
         >>> criterion = TimeCriterion(end_before=100)  # Sequences ending before t=100
