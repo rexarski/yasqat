@@ -136,3 +136,14 @@ class TestIntegration:
         result = integration(normative_pool, POSITIVE, per_sequence=True)
         seq2 = result.filter(pl.col("id") == 2)["integration"][0]
         assert seq2 == pytest.approx(0.0)
+
+    def test_no_positive_states_returns_per_state(
+        self, normative_pool: SequencePool
+    ) -> None:
+        """When positive_states is None, return integration per state."""
+        result = integration(normative_pool)
+        assert isinstance(result, pl.DataFrame)
+        assert "state" in result.columns
+        assert "integration" in result.columns
+        # Should have one row per unique state in alphabet
+        assert len(result) == len(normative_pool.alphabet.states)

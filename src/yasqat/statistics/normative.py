@@ -315,7 +315,7 @@ def badness(
 
 def integration(
     sequence: StateSequence | SequencePool,
-    positive_states: set[str],
+    positive_states: set[str] | None = None,
     per_sequence: bool = False,
 ) -> float | pl.DataFrame:
     """
@@ -326,14 +326,25 @@ def integration(
 
     Args:
         sequence: StateSequence or SequencePool.
-        positive_states: Set of positive state names.
+        positive_states: Set of positive state names. If None, computes
+            integration for each state independently and returns a DataFrame
+            with columns [state, integration].
         per_sequence: If True, return for each sequence.
 
     Returns:
+        If positive_states is None: DataFrame with per-state integration values.
         If per_sequence=False: Mean integration.
         If per_sequence=True: DataFrame with sequence IDs and values.
     """
     pool = _get_pool(sequence)
+
+    if positive_states is None:
+        all_states = sorted(pool.alphabet.states)
+        rows = []
+        for state in all_states:
+            val = integration(sequence, positive_states={state}, per_sequence=False)
+            rows.append({"state": state, "integration": val})
+        return pl.DataFrame(rows)
     config = pool.config
     values = []
     seq_ids = []
