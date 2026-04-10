@@ -271,11 +271,13 @@ class TestFilterSequences:
 class TestPatternCriterionSpecialChars:
     def test_state_with_dash_in_name(self) -> None:
         """Pattern matching should work when state names contain dashes."""
-        data = pl.DataFrame({
-            "id": [1, 1, 1, 2, 2, 2],
-            "time": [0, 1, 2, 0, 1, 2],
-            "state": ["A-1", "B-2", "C-3", "A-1", "X", "C-3"],
-        })
+        data = pl.DataFrame(
+            {
+                "id": [1, 1, 1, 2, 2, 2],
+                "time": [0, 1, 2, 0, 1, 2],
+                "state": ["A-1", "B-2", "C-3", "A-1", "X", "C-3"],
+            }
+        )
         seq = StateSequence(data)
         criterion = PatternCriterion(pattern="A-1", match_anywhere=True)
         ids = criterion.get_matching_ids(seq)
@@ -298,11 +300,13 @@ class TestCriterionFilter:
 class TestStartsWithCriterionVectorized:
     def test_single_state_prefix(self) -> None:
         """StartsWithCriterion should find sequences starting with given state."""
-        data = pl.DataFrame({
-            "id": [1, 1, 1, 2, 2, 2, 3, 3, 3],
-            "time": [0, 1, 2, 0, 1, 2, 0, 1, 2],
-            "state": ["A", "B", "C", "A", "A", "B", "B", "A", "C"],
-        })
+        data = pl.DataFrame(
+            {
+                "id": [1, 1, 1, 2, 2, 2, 3, 3, 3],
+                "time": [0, 1, 2, 0, 1, 2, 0, 1, 2],
+                "state": ["A", "B", "C", "A", "A", "B", "B", "A", "C"],
+            }
+        )
         seq = StateSequence(data)
         criterion = StartsWithCriterion(states=["A"])
         ids = criterion.get_matching_ids(seq)
@@ -310,11 +314,13 @@ class TestStartsWithCriterionVectorized:
 
     def test_multi_state_prefix(self) -> None:
         """StartsWithCriterion should match multi-state prefixes."""
-        data = pl.DataFrame({
-            "id": [1, 1, 1, 2, 2, 2],
-            "time": [0, 1, 2, 0, 1, 2],
-            "state": ["A", "B", "C", "A", "B", "B"],
-        })
+        data = pl.DataFrame(
+            {
+                "id": [1, 1, 1, 2, 2, 2],
+                "time": [0, 1, 2, 0, 1, 2],
+                "state": ["A", "B", "C", "A", "B", "B"],
+            }
+        )
         seq = StateSequence(data)
         criterion = StartsWithCriterion(states=["A", "B"])
         ids = criterion.get_matching_ids(seq)
@@ -322,11 +328,13 @@ class TestStartsWithCriterionVectorized:
 
     def test_empty_states_returns_all(self) -> None:
         """Empty states list should return all sequence IDs."""
-        data = pl.DataFrame({
-            "id": [1, 1, 2, 2],
-            "time": [0, 1, 0, 1],
-            "state": ["A", "B", "C", "D"],
-        })
+        data = pl.DataFrame(
+            {
+                "id": [1, 1, 2, 2],
+                "time": [0, 1, 0, 1],
+                "state": ["A", "B", "C", "D"],
+            }
+        )
         seq = StateSequence(data)
         criterion = StartsWithCriterion(states=[])
         ids = criterion.get_matching_ids(seq)

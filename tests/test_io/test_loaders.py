@@ -197,27 +197,20 @@ class TestInferSequenceType:
         assert seq_type == "interval"
 
 
-
 class TestInferSequenceTypeSimplified:
     def test_interval_detection(self) -> None:
         """Should detect interval when start and end columns present."""
-        df = pl.DataFrame({
-            "id": [1], "start": [0], "end": [5], "state": ["A"]
-        })
+        df = pl.DataFrame({"id": [1], "start": [0], "end": [5], "state": ["A"]})
         assert infer_sequence_type(df) == "interval"
 
     def test_state_detection(self) -> None:
         """Should return 'state' when time column present (no start/end)."""
-        df = pl.DataFrame({
-            "id": [1, 1], "time": [0, 1], "state": ["A", "B"]
-        })
+        df = pl.DataFrame({"id": [1, 1], "time": [0, 1], "state": ["A", "B"]})
         assert infer_sequence_type(df) == "state"
 
     def test_default_state(self) -> None:
         """Should default to 'state' when no time columns found."""
-        df = pl.DataFrame({
-            "id": [1], "state": ["A"]
-        })
+        df = pl.DataFrame({"id": [1], "state": ["A"]})
         assert infer_sequence_type(df) == "state"
 
 
@@ -281,14 +274,16 @@ class TestLoadDataframeAlphabetValidation:
         from yasqat.core.alphabet import Alphabet
         from yasqat.io import load_dataframe
 
-        df = pl.DataFrame({
-            "id": [1, 1, 2, 2],
-            "time": [0, 1, 0, 1],
-            "state": ["A", "B", "A", "C"],
-        })
+        df = pl.DataFrame(
+            {
+                "id": [1, 1, 2, 2],
+                "time": [0, 1, 0, 1],
+                "state": ["A", "B", "A", "C"],
+            }
+        )
         # Alphabet only has A and B, but data has C
         alphabet = Alphabet(states=("A", "B"))
-        with pytest.raises(ValueError, match="not in.*alphabet"):
+        with pytest.raises(ValueError, match=r"not in.*alphabet"):
             load_dataframe(df, alphabet=alphabet)
 
     def test_matching_alphabet_works(self) -> None:
@@ -296,11 +291,13 @@ class TestLoadDataframeAlphabetValidation:
         from yasqat.core.alphabet import Alphabet
         from yasqat.io import load_dataframe
 
-        df = pl.DataFrame({
-            "id": [1, 1, 2, 2],
-            "time": [0, 1, 0, 1],
-            "state": ["A", "B", "A", "B"],
-        })
+        df = pl.DataFrame(
+            {
+                "id": [1, 1, 2, 2],
+                "time": [0, 1, 0, 1],
+                "state": ["A", "B", "A", "B"],
+            }
+        )
         alphabet = Alphabet(states=("A", "B", "C"))  # superset is fine
         pool = load_dataframe(df, alphabet=alphabet)
         assert len(pool) == 2

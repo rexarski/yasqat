@@ -265,12 +265,15 @@ class TestPamRangeDistanceMatrix:
         """pam_range should accept a DistanceMatrix, not just np.ndarray."""
         from yasqat.metrics.base import DistanceMatrix
 
-        values = np.array([
-            [0, 1, 5, 6],
-            [1, 0, 5, 6],
-            [5, 5, 0, 1],
-            [6, 6, 1, 0],
-        ], dtype=np.float64)
+        values = np.array(
+            [
+                [0, 1, 5, 6],
+                [1, 0, 5, 6],
+                [5, 5, 0, 1],
+                [6, 6, 1, 0],
+            ],
+            dtype=np.float64,
+        )
         dm = DistanceMatrix(values=values, labels=[0, 1, 2, 3])
         result = pam_range(dm, k_range=[2, 3])
         assert 2 in result

@@ -214,10 +214,7 @@ class StartsWithCriterion(SequenceCriterion):
         # Add row number within each sequence (sorted by time)
         data = sequence.data.sort([id_col, time_col])
         data = data.with_columns(
-            pl.col(state_col)
-            .cum_count()
-            .over(id_col)
-            .alias("_pos")
+            pl.col(state_col).cum_count().over(id_col).alias("_pos")
         )
 
         # Filter to only the first n_prefix positions per sequence
@@ -285,8 +282,7 @@ class PatternCriterion(SequenceCriterion):
             # and for raw regex patterns, keep '-' so that existing multi-state
             # exact matches and literal dash-in-name substring searches work.
             _simple_has_wildcards = self.pattern_type == "simple" and any(
-                f"-{w}" in self.pattern or f"{w}-" in self.pattern
-                or self.pattern == w
+                f"-{w}" in self.pattern or f"{w}-" in self.pattern or self.pattern == w
                 for w in ("*", "+", "?")
             )
             sep = "\x00" if _simple_has_wildcards else "-"
@@ -326,8 +322,7 @@ class PatternCriterion(SequenceCriterion):
         """
         wildcards = {"*", "+", "?"}
         has_wildcards = any(
-            f"-{w}" in pattern or f"{w}-" in pattern or pattern == w
-            for w in wildcards
+            f"-{w}" in pattern or f"{w}-" in pattern or pattern == w for w in wildcards
         )
 
         if not has_wildcards:

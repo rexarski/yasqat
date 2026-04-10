@@ -8,6 +8,7 @@ from yasqat.core.sequence import (
     SequenceConfig,
     StateSequence,
 )
+
 __all__ = [
     "Alphabet",
     "EventSequence",

@@ -88,7 +88,9 @@ class Alphabet:
     @classmethod
     def from_sequence(cls, states: Sequence[str]) -> Alphabet:
         """Create an alphabet from a sequence of states (sorted, deduplicated)."""
-        unique_states = tuple(dict.fromkeys(states))  # Remove dups, sort happens in __post_init__
+        unique_states = tuple(
+            dict.fromkeys(states)
+        )  # Remove dups, sort happens in __post_init__
         return cls(states=unique_states)
 
     @classmethod

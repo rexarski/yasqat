@@ -258,9 +258,7 @@ class TestAutoLegendSuppression:
         plot = index_plot(sequence_pool, show_legend=False)
         assert _has_legend_none(plot)
 
-    def test_index_plot_shown_for_few_states(
-        self, sequence_pool: SequencePool
-    ) -> None:
+    def test_index_plot_shown_for_few_states(self, sequence_pool: SequencePool) -> None:
         """Test that legend is shown for <=15 states by default."""
         plot = index_plot(sequence_pool)
         assert not _has_legend_none(plot)

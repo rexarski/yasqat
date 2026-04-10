@@ -314,6 +314,10 @@ class SequencePool:
             "total_observations": self._data.height,
             "min_length": int(min_len) if isinstance(min_len, (int, float)) else 0,
             "max_length": int(max_len) if isinstance(max_len, (int, float)) else 0,
-            "mean_length": float(mean_len) if isinstance(mean_len, (int, float)) else 0.0,
-            "median_length": float(median_len) if isinstance(median_len, (int, float)) else 0.0,
+            "mean_length": float(mean_len)
+            if isinstance(mean_len, (int, float))
+            else 0.0,
+            "median_length": float(median_len)
+            if isinstance(median_len, (int, float))
+            else 0.0,
         }

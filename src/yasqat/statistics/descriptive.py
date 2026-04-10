@@ -57,9 +57,7 @@ def longitudinal_entropy(
     data = pool.data
 
     # Vectorized entropy computation using polars
-    state_counts = data.group_by([id_col, state_col]).agg(
-        pl.len().alias("count")
-    )
+    state_counts = data.group_by([id_col, state_col]).agg(pl.len().alias("count"))
     seq_lengths = data.group_by(id_col).agg(pl.len().alias("_total"))
 
     entropy_df = (
@@ -827,19 +825,14 @@ def normalized_turbulence(
     assert isinstance(turb_df, pl.DataFrame)
 
     # Get sequence lengths using polars
-    lengths = pool.data.group_by(id_col).agg(
-        pl.len().alias("_length")
-    )
+    lengths = pool.data.group_by(id_col).agg(pl.len().alias("_length"))
 
     # Vectorized normalization: T_max = log2(n)
     result = (
         turb_df.join(lengths, on=id_col)
         .with_columns(
             pl.when(pl.col("_length") > 1)
-            .then(
-                pl.col("turbulence")
-                / pl.col("_length").cast(pl.Float64).log(2)
-            )
+            .then(pl.col("turbulence") / pl.col("_length").cast(pl.Float64).log(2))
             .otherwise(0.0)
             .alias("normalized_turbulence")
         )

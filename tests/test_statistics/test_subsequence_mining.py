@@ -41,9 +41,7 @@ class TestFrequentSubsequences:
     def test_all_states_frequent(self, mining_pool: SequencePool) -> None:
         results = frequent_subsequences(mining_pool, min_support=0.5)
         # Extract single-state patterns
-        single_state = results.filter(
-            pl.col("subsequence").list.len() == 1
-        )
+        single_state = results.filter(pl.col("subsequence").list.len() == 1)
         patterns = single_state["subsequence"].to_list()
         assert ["A"] in patterns
         assert ["B"] in patterns

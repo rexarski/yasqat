@@ -172,9 +172,7 @@ def tree_plot(
 
     if not segments:
         # Fallback: show root only
-        segments = [
-            {"x": 0, "y": 0, "xend": 1, "yend": 0, "state": "root", "count": 1}
-        ]
+        segments = [{"x": 0, "y": 0, "xend": 1, "yend": 0, "state": "root", "count": 1}]
         points = [{"x": 0, "y": 0, "state": "root", "count": 1}]
 
     seg_df = pl.DataFrame(segments).to_pandas()

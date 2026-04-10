@@ -287,5 +287,3 @@ def infer_sequence_type(
     if has_start and has_end:
         return "interval"
     return "state"
-
-

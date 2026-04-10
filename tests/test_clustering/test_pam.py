@@ -226,21 +226,27 @@ class TestPAMClusteringClass:
 class TestPAMClusteringPredict:
     def test_predict_assigns_to_nearest_medoid(self) -> None:
         """predict() should assign new points to the nearest medoid."""
-        train_dist = np.array([
-            [0, 1, 5, 6],
-            [1, 0, 5, 6],
-            [5, 5, 0, 1],
-            [6, 6, 1, 0],
-        ], dtype=np.float64)
+        train_dist = np.array(
+            [
+                [0, 1, 5, 6],
+                [1, 0, 5, 6],
+                [5, 5, 0, 1],
+                [6, 6, 1, 0],
+            ],
+            dtype=np.float64,
+        )
 
         pam = PAMClustering(n_clusters=2)
         pam.fit(train_dist, sequence_ids=[0, 1, 2, 3])
 
         # New distance matrix: rows = new points, columns = training points
-        new_dist = np.array([
-            [0.5, 0.5, 5.5, 6.5],  # close to 0,1
-            [5.5, 5.5, 0.5, 0.5],  # close to 2,3
-        ], dtype=np.float64)
+        new_dist = np.array(
+            [
+                [0.5, 0.5, 5.5, 6.5],  # close to 0,1
+                [5.5, 5.5, 0.5, 0.5],  # close to 2,3
+            ],
+            dtype=np.float64,
+        )
 
         labels = pam.predict(new_dist)
         assert len(labels) == 2
@@ -250,5 +256,5 @@ class TestPAMClusteringPredict:
         """predict() should raise if called before fit()."""
         pam = PAMClustering(n_clusters=2)
         new_dist = np.array([[1, 2], [3, 4]], dtype=np.float64)
-        with pytest.raises(ValueError, match="fit.*before"):
+        with pytest.raises(ValueError, match=r"fit.*before"):
             pam.predict(new_dist)

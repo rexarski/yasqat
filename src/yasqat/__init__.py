@@ -14,6 +14,7 @@ from yasqat.core.sequence import (
     SequenceConfig,
     StateSequence,
 )
+
 try:
     __version__ = version("yasqat")
 except PackageNotFoundError:
