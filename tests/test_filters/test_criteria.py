@@ -278,3 +278,41 @@ class TestCriterionFilter:
 
         unique_ids = filtered["id"].unique().sort().to_list()
         assert unique_ids == [1, 3]
+
+
+class TestStartsWithCriterionVectorized:
+    def test_single_state_prefix(self) -> None:
+        """StartsWithCriterion should find sequences starting with given state."""
+        data = pl.DataFrame({
+            "id": [1, 1, 1, 2, 2, 2, 3, 3, 3],
+            "time": [0, 1, 2, 0, 1, 2, 0, 1, 2],
+            "state": ["A", "B", "C", "A", "A", "B", "B", "A", "C"],
+        })
+        seq = StateSequence(data)
+        criterion = StartsWithCriterion(states=["A"])
+        ids = criterion.get_matching_ids(seq)
+        assert sorted(ids) == [1, 2]
+
+    def test_multi_state_prefix(self) -> None:
+        """StartsWithCriterion should match multi-state prefixes."""
+        data = pl.DataFrame({
+            "id": [1, 1, 1, 2, 2, 2],
+            "time": [0, 1, 2, 0, 1, 2],
+            "state": ["A", "B", "C", "A", "B", "B"],
+        })
+        seq = StateSequence(data)
+        criterion = StartsWithCriterion(states=["A", "B"])
+        ids = criterion.get_matching_ids(seq)
+        assert sorted(ids) == [1, 2]
+
+    def test_empty_states_returns_all(self) -> None:
+        """Empty states list should return all sequence IDs."""
+        data = pl.DataFrame({
+            "id": [1, 1, 2, 2],
+            "time": [0, 1, 0, 1],
+            "state": ["A", "B", "C", "D"],
+        })
+        seq = StateSequence(data)
+        criterion = StartsWithCriterion(states=[])
+        ids = criterion.get_matching_ids(seq)
+        assert sorted(ids) == [1, 2]

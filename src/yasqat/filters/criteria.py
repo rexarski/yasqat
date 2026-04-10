@@ -207,18 +207,32 @@ class StartsWithCriterion(SequenceCriterion):
         state_col = sequence.config.state_column
         time_col = sequence.config.time_column
 
-        matching_ids = []
+        n_prefix = len(self.states)
+        if n_prefix == 0:
+            return sequence.sequence_ids
 
-        for seq_id in sequence.sequence_ids:
-            seq_data = sequence.data.filter(pl.col(id_col) == seq_id).sort(time_col)
-            seq_states = seq_data[state_col].to_list()
+        # Add row number within each sequence (sorted by time)
+        data = sequence.data.sort([id_col, time_col])
+        data = data.with_columns(
+            pl.col(state_col)
+            .cum_count()
+            .over(id_col)
+            .alias("_pos")
+        )
 
-            # Check if sequence starts with the required states
-            if len(seq_states) >= len(self.states):
-                if seq_states[: len(self.states)] == self.states:
-                    matching_ids.append(seq_id)
+        # Filter to only the first n_prefix positions per sequence
+        prefix_data = data.filter(pl.col("_pos") <= n_prefix)
 
-        return matching_ids
+        # Group by id, collect the prefix states as a list
+        prefixes = prefix_data.group_by(id_col, maintain_order=True).agg(
+            pl.col(state_col).alias("_prefix")
+        )
+
+        # Filter: prefix list must equal the target states
+        target = self.states
+        matching = prefixes.filter(pl.col("_prefix") == target)
+
+        return matching[id_col].to_list()
 
 
 @dataclass
