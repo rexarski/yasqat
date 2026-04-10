@@ -493,10 +493,21 @@ class IntervalSequence(BaseSequence):
 
     def has_overlaps(self) -> bool:
         """Check if any sequence has overlapping intervals."""
-        for seq_id in self.sequence_ids:
-            if len(self.overlapping_intervals(seq_id)) > 0:
-                return True
-        return False
+        id_col = self._config.id_column
+        start_col = self._config.start_column
+        end_col = self._config.end_column
+
+        # Sort by sequence ID and start time, then check if any interval
+        # starts before the previous one (within the same sequence) ends
+        sorted_data = self._data.sort([id_col, start_col])
+        has_any = (
+            sorted_data.with_columns(
+                pl.col(end_col).shift(1).over(id_col).alias("_prev_end")
+            )
+            .filter(pl.col("_prev_end").is_not_null())
+            .filter(pl.col(start_col) < pl.col("_prev_end"))
+        )
+        return len(has_any) > 0
 
     def to_state_sequence(self, time_points: list[int] | None = None) -> StateSequence:
         """
