@@ -268,37 +268,24 @@ def infer_sequence_type(
     """
     Infer the sequence type from DataFrame columns.
 
+    Returns "interval" if both start and end columns are present,
+    otherwise returns "state". The distinction between "state" and
+    "event" cannot be reliably inferred from column structure alone.
+
     Args:
         data: Input DataFrame.
         config: Column configuration.
 
     Returns:
-        Inferred sequence type: "state", "event", or "interval".
+        Inferred sequence type: "state" or "interval".
     """
     config = config or SequenceConfig()
 
     has_start = config.start_column in data.columns
     has_end = config.end_column in data.columns
-    has_time = config.time_column in data.columns
 
     if has_start and has_end:
         return "interval"
-    elif has_time:
-        # Check if data looks like continuous states or discrete events
-        # by examining the time column density
-        n_rows = len(data)
-        n_sequences = data[config.id_column].n_unique()
-
-        if n_sequences > 0:
-            avg_length = n_rows / n_sequences
-            # If sequences are relatively long and dense, likely state sequence
-            if avg_length >= 3:
-                return "state"
-            else:
-                return "event"
-        return "state"
-    else:
-        # Default to state sequence
-        return "state"
+    return "state"
 
 

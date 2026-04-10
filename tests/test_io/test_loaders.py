@@ -198,6 +198,29 @@ class TestInferSequenceType:
 
 
 
+class TestInferSequenceTypeSimplified:
+    def test_interval_detection(self) -> None:
+        """Should detect interval when start and end columns present."""
+        df = pl.DataFrame({
+            "id": [1], "start": [0], "end": [5], "state": ["A"]
+        })
+        assert infer_sequence_type(df) == "interval"
+
+    def test_state_detection(self) -> None:
+        """Should return 'state' when time column present (no start/end)."""
+        df = pl.DataFrame({
+            "id": [1, 1], "time": [0, 1], "state": ["A", "B"]
+        })
+        assert infer_sequence_type(df) == "state"
+
+    def test_default_state(self) -> None:
+        """Should default to 'state' when no time columns found."""
+        df = pl.DataFrame({
+            "id": [1], "state": ["A"]
+        })
+        assert infer_sequence_type(df) == "state"
+
+
 class TestLoadDataFrame:
     """Tests for load_dataframe function."""
 
