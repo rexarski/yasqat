@@ -326,6 +326,7 @@ def turbulence(
 def state_distribution(
     sequence: StateSequence | SequencePool,
     time_point: int | None = None,
+    per_sequence: bool = False,
 ) -> pl.DataFrame:
     """
     Calculate state distribution (cross-sectional or overall).
@@ -334,6 +335,7 @@ def state_distribution(
         sequence: StateSequence or SequencePool.
         time_point: If provided, calculate distribution at specific time.
                    If None, calculate overall distribution.
+        per_sequence: If True, return distribution within each sequence.
 
     Returns:
         DataFrame with states and their frequencies/proportions.
@@ -350,6 +352,20 @@ def state_distribution(
     if time_point is not None:
         data = data.filter(pl.col(config.time_column) == time_point)
 
+    if per_sequence:
+        per_seq_counts = data.group_by(
+            [config.id_column, config.state_column]
+        ).agg(pl.len().alias("count"))
+        per_seq_total = data.group_by(config.id_column).agg(
+            pl.len().alias("total")
+        )
+        return (
+            per_seq_counts.join(per_seq_total, on=config.id_column)
+            .with_columns((pl.col("count") / pl.col("total")).alias("proportion"))
+            .drop("total")
+            .sort([config.id_column, config.state_column])
+        )
+
     counts = (
         data.group_by(config.state_column)
         .agg(pl.len().alias("count"))
@@ -364,15 +380,18 @@ def state_distribution(
 
 def mean_time_in_state(
     sequence: StateSequence | SequencePool,
+    per_sequence: bool = False,
 ) -> pl.DataFrame:
     """
     Calculate mean time spent in each state.
 
     Args:
         sequence: StateSequence or SequencePool.
+        per_sequence: If True, return time-in-state for each sequence.
 
     Returns:
-        DataFrame with states and mean time spent in each.
+        If per_sequence=False: DataFrame with states and mean time across sequences.
+        If per_sequence=True: DataFrame with sequence IDs, states, and counts.
     """
     from yasqat.core.sequence import StateSequence
 
@@ -382,6 +401,13 @@ def mean_time_in_state(
     else:
         data = sequence.data
         config = sequence.config
+
+    if per_sequence:
+        return (
+            data.group_by([config.id_column, config.state_column])
+            .agg(pl.len().alias("time_in_state"))
+            .sort([config.id_column, config.state_column])
+        )
 
     n_sequences = data[config.id_column].n_unique()
 

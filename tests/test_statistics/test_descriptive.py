@@ -202,6 +202,19 @@ class TestStateDistribution:
         # At time 0, we have: A, A, B (sequences 1, 2, 3)
         assert len(dist) == 2  # A and B
 
+    def test_per_sequence(self, sequence_pool: SequencePool) -> None:
+        """Test per-sequence distribution."""
+        dist = state_distribution(sequence_pool, per_sequence=True)
+        assert "id" in dist.columns
+        assert "state" in dist.columns
+        assert "proportion" in dist.columns
+        # Each sequence's proportions should sum to 1
+        per_seq_sums = dist.group_by("id").agg(
+            pl.col("proportion").sum().alias("total")
+        )
+        for total in per_seq_sums["total"].to_list():
+            assert total == pytest.approx(1.0)
+
 
 class TestMeanTimeInState:
     """Tests for mean time in state."""
@@ -213,6 +226,15 @@ class TestMeanTimeInState:
         assert "state" in result.columns
         assert "total_time" in result.columns
         assert "mean_time" in result.columns
+
+
+    def test_per_sequence(self, sequence_pool: SequencePool) -> None:
+        """Test per-sequence time in state."""
+        result = mean_time_in_state(sequence_pool, per_sequence=True)
+        assert "id" in result.columns
+        assert "state" in result.columns
+        assert "time_in_state" in result.columns
+        assert len(result) > 0
 
 
 class TestSpellCount:
