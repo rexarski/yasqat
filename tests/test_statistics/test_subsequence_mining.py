@@ -80,5 +80,12 @@ class TestFrequentSubsequences:
         results = frequent_subsequences(mining_pool, min_support=0.3)
         two_step = results.filter(pl.col("subsequence").list.len() == 2)
         assert isinstance(two_step, pl.DataFrame)
-        for subseq in two_step["subsequence"].to_list():
-            assert len(subseq) == 2
+
+    def test_min_length(self, mining_pool: SequencePool) -> None:
+        """Test min_length excludes short patterns from results."""
+        all_results = frequent_subsequences(mining_pool, min_support=0.3, min_length=1)
+        filtered = frequent_subsequences(mining_pool, min_support=0.3, min_length=2)
+        # min_length=2 should have fewer results (no single-state patterns)
+        assert len(filtered) < len(all_results)
+        for subseq in filtered["subsequence"].to_list():
+            assert len(subseq) >= 2

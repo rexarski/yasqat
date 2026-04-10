@@ -451,6 +451,22 @@ class TestModalStates:
         assert time_0["frequency"][0] == 3
 
 
+    def test_granularity(self) -> None:
+        """Test modal states with time granularity binning."""
+        data = pl.DataFrame(
+            {
+                "id": [1, 1, 1, 1, 2, 2, 2, 2],
+                "time": [0, 1, 2, 3, 0, 1, 2, 3],
+                "state": ["A", "A", "B", "B", "A", "B", "B", "B"],
+            }
+        )
+        pool = SequencePool(data)
+        # Granularity 2 bins: [0,1] -> 0, [2,3] -> 2
+        result = modal_states(pool, granularity=2)
+        times = sorted(result["time"].unique().to_list())
+        assert times == [0, 2]
+
+
 class TestSequenceFrequencyTable:
     """Tests for sequence frequency table."""
 

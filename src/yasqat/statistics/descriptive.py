@@ -636,12 +636,16 @@ def transition_proportion(
 
 def modal_states(
     sequence: StateSequence | SequencePool,
+    granularity: int | None = None,
 ) -> pl.DataFrame:
     """
     Get the modal (most frequent) state at each time position.
 
     Args:
         sequence: StateSequence or SequencePool.
+        granularity: If provided, bin time values into buckets of this size
+            before computing modes. E.g. ``granularity=7`` groups weekly
+            when the time column is in days.
 
     Returns:
         DataFrame with columns: time, modal_state, frequency, proportion.
@@ -657,6 +661,11 @@ def modal_states(
 
     time_col = config.time_column
     state_col = config.state_column
+
+    if granularity is not None and granularity > 1:
+        data = data.with_columns(
+            (pl.col(time_col) // granularity * granularity).alias(time_col)
+        )
 
     # Count state occurrences at each time point
     counts = data.group_by([time_col, state_col]).agg(pl.len().alias("frequency"))

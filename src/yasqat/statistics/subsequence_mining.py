@@ -43,6 +43,7 @@ def frequent_subsequences(
     sequence: StateSequence | SequencePool,
     min_support: float = 0.1,
     max_length: int = 5,
+    min_length: int = 1,
 ) -> pl.DataFrame:
     """
     Find frequent subsequences using a level-wise approach.
@@ -55,6 +56,7 @@ def frequent_subsequences(
         sequence: StateSequence or SequencePool.
         min_support: Minimum support proportion (0 to 1).
         max_length: Maximum subsequence length to search.
+        min_length: Minimum subsequence length to include in results.
 
     Returns:
         DataFrame with columns:
@@ -98,13 +100,14 @@ def frequent_subsequences(
         for pattern in current_level:
             support = sum(1 for seq in all_sequences if _is_subsequence(pattern, seq))
             if support >= min_count:
-                frequent.append(
-                    FrequentSubsequence(
-                        pattern=pattern,
-                        support=support,
-                        proportion=support / n_sequences,
+                if level >= min_length:
+                    frequent.append(
+                        FrequentSubsequence(
+                            pattern=pattern,
+                            support=support,
+                            proportion=support / n_sequences,
+                        )
                     )
-                )
                 level_frequent.append(pattern)
 
         if not level_frequent or level >= max_length:
