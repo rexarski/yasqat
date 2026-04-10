@@ -173,35 +173,28 @@ def entropy_plot(
     state_col = config.state_column
     n_states = len(alphabet)
 
-    # Calculate entropy at each time point
-    time_points = data[time_col].unique().sort().to_list()
-    entropies = []
+    # Calculate entropy at each time point — vectorized
+    state_counts = data.group_by([time_col, state_col]).agg(
+        pl.len().alias("count")
+    )
+    time_totals = data.group_by(time_col).agg(pl.len().alias("total"))
+    probs = (
+        state_counts.join(time_totals, on=time_col)
+        .with_columns((pl.col("count") / pl.col("total")).alias("p"))
+        .with_columns((-pl.col("p") * pl.col("p").log()).alias("h"))
+    )
+    entropy_df = probs.group_by(time_col).agg(
+        pl.col("h").sum().alias("entropy")
+    )
 
-    for t in time_points:
-        t_data = data.filter(pl.col(time_col) == t)
-        counts = t_data[state_col].value_counts()
-        total = counts["count"].sum()
+    if normalize and n_states > 1:
+        max_entropy = float(np.log(n_states))
+        if max_entropy > 0:
+            entropy_df = entropy_df.with_columns(
+                (pl.col("entropy") / max_entropy).alias("entropy")
+            )
 
-        entropy = 0.0
-        for count in counts["count"].to_list():
-            p = count / total
-            if p > 0:
-                entropy -= p * np.log(p)
-
-        if normalize and n_states > 1:
-            max_entropy = np.log(n_states)
-            if max_entropy > 0:
-                entropy /= max_entropy
-
-        entropies.append(entropy)
-
-    # Create DataFrame
-    entropy_df = pl.DataFrame(
-        {
-            time_col: time_points,
-            "entropy": entropies,
-        }
-    ).to_pandas()
+    entropy_df = entropy_df.sort(time_col).to_pandas()
 
     # Create plot
     p = (
