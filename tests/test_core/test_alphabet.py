@@ -22,20 +22,10 @@ class TestAlphabet:
         assert alpha[2] == "C"
 
     def test_alphabet_unique_states(self) -> None:
-        """Test that duplicate states raise an error."""
-        with pytest.raises(ValueError, match="unique"):
-            Alphabet(states=("A", "B", "A"))
-
-    def test_alphabet_with_labels(self) -> None:
-        """Test alphabet with custom labels."""
-        alpha = Alphabet(
-            states=("A", "B", "C"),
-            labels={"A": "First", "B": "Second", "C": "Third"},
-        )
-
-        assert alpha.get_label("A") == "First"
-        assert alpha.get_label("B") == "Second"
-        assert alpha.get_label("C") == "Third"
+        """Test that duplicate states are deduplicated (not an error)."""
+        alpha = Alphabet(states=("A", "B", "A"))
+        assert len(alpha) == 2
+        assert alpha.states == ("A", "B")
 
     def test_alphabet_with_colors(self) -> None:
         """Test alphabet with custom colors."""
@@ -62,7 +52,7 @@ class TestAlphabet:
         alpha = Alphabet.from_sequence(states)
 
         assert len(alpha) == 4
-        assert alpha.states == ("A", "B", "C", "D")  # Preserves first occurrence order
+        assert alpha.states == ("A", "B", "C", "D")  # Sorted unique states
 
     def test_from_series(self) -> None:
         """Test creating alphabet from polars Series."""
@@ -101,18 +91,57 @@ class TestAlphabet:
         assert new_alpha.get_color("A") == "#111111"
         assert alpha.states == new_alpha.states
 
-    def test_with_labels(self) -> None:
-        """Test creating new alphabet with different labels."""
-        alpha = Alphabet(states=("A", "B", "C"))
-        new_labels = {"A": "Label A", "B": "Label B", "C": "Label C"}
-        new_alpha = alpha.with_labels(new_labels)
-
-        assert new_alpha.get_label("A") == "Label A"
-        assert alpha.states == new_alpha.states
-
     def test_iteration(self) -> None:
         """Test iterating over alphabet."""
         alpha = Alphabet(states=("A", "B", "C"))
         states_list = list(alpha)
 
         assert states_list == ["A", "B", "C"]
+
+
+class TestAlphabetSimplification:
+    """Tests for simplified Alphabet without labels."""
+
+    def test_no_labels_attribute(self) -> None:
+        """Alphabet should not have a labels attribute."""
+        a = Alphabet(states=("A", "B", "C"))
+        assert not hasattr(a, "labels")
+
+    def test_no_get_label_method(self) -> None:
+        """Alphabet should not have a get_label method."""
+        a = Alphabet(states=("A", "B", "C"))
+        assert not hasattr(a, "get_label")
+
+    def test_no_with_labels_method(self) -> None:
+        """Alphabet should not have a with_labels method."""
+        a = Alphabet(states=("A", "B", "C"))
+        assert not hasattr(a, "with_labels")
+
+    def test_index_of_clear_error(self) -> None:
+        """index_of() should raise a clear ValueError for missing states."""
+        a = Alphabet(states=("A", "B", "C"))
+        with pytest.raises(ValueError, match="State 'X' not found in alphabet"):
+            a.index_of("X")
+
+    def test_get_color_unknown_state_raises(self) -> None:
+        """get_color() should raise KeyError for states not in alphabet."""
+        a = Alphabet(states=("A", "B", "C"))
+        with pytest.raises(KeyError):
+            a.get_color("Z")
+
+    def test_decode_accepts_ndarray(self) -> None:
+        """decode() should accept np.ndarray input directly."""
+        a = Alphabet(states=("A", "B", "C"))
+        indices = np.array([0, 1, 2, 1, 0], dtype=np.int32)
+        result = a.decode(indices)
+        assert result == ["A", "B", "C", "B", "A"]
+
+    def test_states_sorted_on_init(self) -> None:
+        """States should be sorted regardless of construction order."""
+        a = Alphabet(states=("C", "A", "B"))
+        assert a.states == ("A", "B", "C")
+
+    def test_from_sequence_sorts(self) -> None:
+        """from_sequence() should produce sorted states."""
+        a = Alphabet.from_sequence(["C", "A", "B", "A"])
+        assert a.states == ("A", "B", "C")
