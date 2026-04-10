@@ -3,7 +3,20 @@
 import numpy as np
 import pytest
 
-from yasqat.metrics.base import build_substitution_matrix
+from yasqat.metrics.base import DistanceMatrix, build_substitution_matrix
+
+
+class TestDistanceMatrixShape:
+    def test_shape_property(self) -> None:
+        """DistanceMatrix should expose .shape delegating to .values.shape."""
+        values = np.array([[0, 1, 2], [1, 0, 3], [2, 3, 0]], dtype=np.float64)
+        dm = DistanceMatrix(values=values, labels=[1, 2, 3])
+        assert dm.shape == (3, 3)
+
+    def test_shape_matches_values(self) -> None:
+        values = np.zeros((5, 5), dtype=np.float64)
+        dm = DistanceMatrix(values=values)
+        assert dm.shape == dm.values.shape
 
 
 class TestBuildSubstitutionMatrix:
