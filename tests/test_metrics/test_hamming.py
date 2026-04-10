@@ -50,7 +50,7 @@ class TestHammingDistance:
         seq_a = np.array([0, 1, 2], dtype=np.int32)
         seq_b = np.array([0, 1, 2, 3], dtype=np.int32)
 
-        with pytest.raises(ValueError, match="same length"):
+        with pytest.raises(ValueError, match="equal length"):
             hamming_distance(seq_a, seq_b)
 
     def test_empty_sequences(self) -> None:
@@ -84,3 +84,12 @@ class TestHammingDistance:
 
         assert isinstance(dist, float)
         assert dist >= 0
+
+
+class TestHammingUnequalLength:
+    def test_unequal_length_raises_value_error(self) -> None:
+        """Hamming distance should raise ValueError for unequal-length sequences."""
+        seq_a = np.array([0, 1, 2], dtype=np.int32)
+        seq_b = np.array([0, 1], dtype=np.int32)
+        with pytest.raises(ValueError, match="equal length"):
+            hamming_distance(seq_a, seq_b)
