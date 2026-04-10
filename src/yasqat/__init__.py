@@ -14,8 +14,6 @@ from yasqat.core.sequence import (
     SequenceConfig,
     StateSequence,
 )
-from yasqat.core.trajectory import Trajectory, TrajectoryPool
-
 try:
     __version__ = version("yasqat")
 except PackageNotFoundError:
@@ -28,7 +26,5 @@ __all__ = [
     "SequenceConfig",
     "SequencePool",
     "StateSequence",
-    "Trajectory",
-    "TrajectoryPool",
     "__version__",
 ]

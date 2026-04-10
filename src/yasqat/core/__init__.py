@@ -8,8 +8,6 @@ from yasqat.core.sequence import (
     SequenceConfig,
     StateSequence,
 )
-from yasqat.core.trajectory import Trajectory, TrajectoryPool
-
 __all__ = [
     "Alphabet",
     "EventSequence",
@@ -17,6 +15,4 @@ __all__ = [
     "SequenceConfig",
     "SequencePool",
     "StateSequence",
-    "Trajectory",
-    "TrajectoryPool",
 ]
