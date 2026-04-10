@@ -225,6 +225,17 @@ def load_dataframe(
     if drop_nulls:
         df = df.drop_nulls(subset=[config.state_column])
 
+    # Validate alphabet covers all data states
+    if alphabet is not None:
+        data_states = set(df[config.state_column].unique().to_list())
+        alphabet_states = set(alphabet.states)
+        missing = data_states - alphabet_states
+        if missing:
+            raise ValueError(
+                f"Data contains states not in the provided alphabet: {sorted(missing)}. "
+                f"Alphabet states: {sorted(alphabet_states)}"
+            )
+
     return SequencePool(data=df, config=config, alphabet=alphabet)
 
 
@@ -291,100 +302,3 @@ def infer_sequence_type(
         return "state"
 
 
-def load_wide_format(
-    path: str | Path,
-    id_column: str = "id",
-    file_format: str = "csv",
-    **kwargs: Any,
-) -> pl.DataFrame:
-    """
-    Read wide-format sequence data and convert to long format.
-
-    Wide format has one row per sequence with time points as columns:
-        id, t0, t1, t2, t3, ...
-
-    This function converts it to long format:
-        id, time, state
-
-    Args:
-        path: Path to the data file.
-        id_column: Name of the ID column.
-        file_format: File format ("csv", "parquet", "json").
-        **kwargs: Additional arguments for the reader.
-
-    Returns:
-        DataFrame in long format.
-
-    Example:
-        >>> from yasqat.io.loaders import load_wide_format
-        >>> df = load_wide_format("wide_data.csv")
-        >>> df.head()
-        shape: (5, 3)
-        ┌─────┬──────┬───────┐
-        │ id  ┆ time ┆ state │
-        └─────┴──────┴───────┘
-    """
-    # Read the file
-    if file_format == "csv":
-        data = pl.read_csv(path, **kwargs)
-    elif file_format == "parquet":
-        data = pl.read_parquet(path, **kwargs)
-    elif file_format == "json":
-        data = pl.read_json(path)
-    else:
-        raise ValueError(f"Unknown file format: {file_format}")
-
-    # Identify time columns (all columns except id)
-    time_columns = [col for col in data.columns if col != id_column]
-
-    # Convert to long format
-    long_data = data.unpivot(
-        index=id_column,
-        on=time_columns,
-        variable_name="time",
-        value_name="state",
-    )
-
-    # Try to convert time column to integer
-    try:
-        long_data = long_data.with_columns(
-            pl.col("time").str.extract(r"(\d+)").cast(pl.Int64).alias("time")
-        )
-    except Exception:
-        # If conversion fails, keep as string
-        pass
-
-    return long_data.sort([id_column, "time"])
-
-
-def to_wide_format(
-    sequence: StateSequence | EventSequence,
-) -> pl.DataFrame:
-    """
-    Convert a sequence to wide format.
-
-    Long format:
-        id, time, state
-
-    Wide format:
-        id, t0, t1, t2, ...
-
-    Args:
-        sequence: Sequence to convert.
-
-    Returns:
-        DataFrame in wide format.
-
-    Example:
-        >>> from yasqat.io.loaders import to_wide_format
-        >>> wide_df = to_wide_format(state_sequence)
-    """
-    config = sequence.config
-    data = sequence.data
-
-    # Pivot to wide format
-    return data.pivot(
-        values=config.state_column,
-        index=config.id_column,
-        on=config.time_column,
-    ).sort(config.id_column)

@@ -17,11 +17,9 @@ from yasqat.io.loaders import (
     load_dataframe,
     load_json,
     load_parquet,
-    load_wide_format,
     save_csv,
     save_json,
     save_parquet,
-    to_wide_format,
 )
 
 
@@ -199,58 +197,6 @@ class TestInferSequenceType:
         assert seq_type == "interval"
 
 
-class TestWideFormat:
-    """Tests for wide format conversion."""
-
-    def test_to_wide_format(self, state_sequence_data: pl.DataFrame) -> None:
-        """Test converting to wide format."""
-        seq = StateSequence(state_sequence_data)
-
-        wide = to_wide_format(seq)
-
-        # Should have id column plus time columns
-        assert "id" in wide.columns
-        assert len(wide) == 2  # 2 sequences
-
-    def test_load_wide_format(self) -> None:
-        """Test reading wide format data."""
-        # Create wide format data
-        wide_data = pl.DataFrame(
-            {
-                "id": [1, 2],
-                "0": ["A", "A"],
-                "1": ["B", "A"],
-                "2": ["C", "B"],
-            }
-        )
-
-        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False, mode="w") as f:
-            wide_data.write_csv(f.name)
-
-            long_data = load_wide_format(f.name)
-
-            assert "id" in long_data.columns
-            assert "time" in long_data.columns
-            assert "state" in long_data.columns
-            # 2 sequences * 3 time points = 6 rows
-            assert len(long_data) == 6
-
-    def test_round_trip_wide_long(self, state_sequence_data: pl.DataFrame) -> None:
-        """Test round-trip wide to long conversion."""
-        seq = StateSequence(state_sequence_data)
-
-        # To wide
-        wide = to_wide_format(seq)
-
-        # Save and reload as wide
-        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False, mode="w") as f:
-            wide.write_csv(f.name)
-
-            long_data = load_wide_format(f.name)
-
-            # Should have same number of records
-            assert len(long_data) == len(state_sequence_data)
-
 
 class TestLoadDataFrame:
     """Tests for load_dataframe function."""
@@ -304,3 +250,34 @@ class TestLoadDataFrame:
         df = pl.DataFrame({"id": [1], "time": [0]})
         with pytest.raises(ValueError, match="Missing required column"):
             load_dataframe(df)
+
+
+class TestLoadDataframeAlphabetValidation:
+    def test_mismatched_alphabet_raises(self) -> None:
+        """load_dataframe should raise ValueError if data has states not in alphabet."""
+        from yasqat.core.alphabet import Alphabet
+        from yasqat.io import load_dataframe
+
+        df = pl.DataFrame({
+            "id": [1, 1, 2, 2],
+            "time": [0, 1, 0, 1],
+            "state": ["A", "B", "A", "C"],
+        })
+        # Alphabet only has A and B, but data has C
+        alphabet = Alphabet(states=("A", "B"))
+        with pytest.raises(ValueError, match="not in.*alphabet"):
+            load_dataframe(df, alphabet=alphabet)
+
+    def test_matching_alphabet_works(self) -> None:
+        """load_dataframe should work when alphabet covers all data states."""
+        from yasqat.core.alphabet import Alphabet
+        from yasqat.io import load_dataframe
+
+        df = pl.DataFrame({
+            "id": [1, 1, 2, 2],
+            "time": [0, 1, 0, 1],
+            "state": ["A", "B", "A", "B"],
+        })
+        alphabet = Alphabet(states=("A", "B", "C"))  # superset is fine
+        pool = load_dataframe(df, alphabet=alphabet)
+        assert len(pool) == 2
