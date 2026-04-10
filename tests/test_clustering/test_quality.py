@@ -258,3 +258,21 @@ class TestPAMRange:
         results = pam_range(dist, k_range=[1, 2, 5])
         # k=1 is <2, k=5 is >=n, so only k=2 would be valid but k=2>=n=2 also skipped
         assert len(results) == 0
+
+
+class TestPamRangeDistanceMatrix:
+    def test_accepts_distance_matrix_object(self) -> None:
+        """pam_range should accept a DistanceMatrix, not just np.ndarray."""
+        from yasqat.metrics.base import DistanceMatrix
+
+        values = np.array([
+            [0, 1, 5, 6],
+            [1, 0, 5, 6],
+            [5, 5, 0, 1],
+            [6, 6, 1, 0],
+        ], dtype=np.float64)
+        dm = DistanceMatrix(values=values, labels=[0, 1, 2, 3])
+        result = pam_range(dm, k_range=[2, 3])
+        assert 2 in result
+        assert 3 in result
+        assert "ASW" in result[2]

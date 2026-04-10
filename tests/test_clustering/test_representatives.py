@@ -164,3 +164,19 @@ class TestEdgeCases:
         )
         assert "n=2" in repr(result)
         assert "centrality" in repr(result)
+
+
+class TestExtractRepresentativesDistanceMatrix:
+    def test_accepts_distance_matrix_object(self) -> None:
+        """extract_representatives should accept a DistanceMatrix."""
+        from yasqat.metrics.base import DistanceMatrix
+
+        values = np.array([
+            [0, 1, 4, 5],
+            [1, 0, 4, 5],
+            [4, 4, 0, 1],
+            [5, 5, 1, 0],
+        ], dtype=np.float64)
+        dm = DistanceMatrix(values=values, labels=[0, 1, 2, 3])
+        result = extract_representatives(dm, n_representatives=2)
+        assert len(result.indices) == 2

@@ -74,6 +74,10 @@ def extract_representatives(
         >>> len(result.indices)
         2
     """
+    # Unwrap DistanceMatrix to numpy array
+    if hasattr(dist_matrix, "values") and not isinstance(dist_matrix, np.ndarray):
+        dist_matrix = dist_matrix.values
+
     n = dist_matrix.shape[0]
     if n == 0:
         return RepresentativeResult(

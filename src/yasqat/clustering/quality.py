@@ -230,6 +230,10 @@ def pam_range(
     """
     from yasqat.clustering.pam import pam_clustering
 
+    # Unwrap DistanceMatrix to numpy array
+    if hasattr(dist_matrix, "values") and not isinstance(dist_matrix, np.ndarray):
+        dist_matrix = dist_matrix.values
+
     n = dist_matrix.shape[0]
 
     if k_range is None:
