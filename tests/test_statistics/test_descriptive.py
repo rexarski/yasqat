@@ -227,7 +227,6 @@ class TestMeanTimeInState:
         assert "total_time" in result.columns
         assert "mean_time" in result.columns
 
-
     def test_per_sequence(self, sequence_pool: SequencePool) -> None:
         """Test per-sequence time in state."""
         result = mean_time_in_state(sequence_pool, per_sequence=True)
@@ -449,7 +448,6 @@ class TestModalStates:
         time_0 = result.filter(pl.col("time") == 0)
         assert time_0["modal_state"][0] == "A"
         assert time_0["frequency"][0] == 3
-
 
     def test_granularity(self) -> None:
         """Test modal states with time granularity binning."""

@@ -353,12 +353,10 @@ def state_distribution(
         data = data.filter(pl.col(config.time_column) == time_point)
 
     if per_sequence:
-        per_seq_counts = data.group_by(
-            [config.id_column, config.state_column]
-        ).agg(pl.len().alias("count"))
-        per_seq_total = data.group_by(config.id_column).agg(
-            pl.len().alias("total")
+        per_seq_counts = data.group_by([config.id_column, config.state_column]).agg(
+            pl.len().alias("count")
         )
+        per_seq_total = data.group_by(config.id_column).agg(pl.len().alias("total"))
         return (
             per_seq_counts.join(per_seq_total, on=config.id_column)
             .with_columns((pl.col("count") / pl.col("total")).alias("proportion"))

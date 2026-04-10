@@ -174,18 +174,14 @@ def entropy_plot(
     n_states = len(alphabet)
 
     # Calculate entropy at each time point — vectorized
-    state_counts = data.group_by([time_col, state_col]).agg(
-        pl.len().alias("count")
-    )
+    state_counts = data.group_by([time_col, state_col]).agg(pl.len().alias("count"))
     time_totals = data.group_by(time_col).agg(pl.len().alias("total"))
     probs = (
         state_counts.join(time_totals, on=time_col)
         .with_columns((pl.col("count") / pl.col("total")).alias("p"))
         .with_columns((-pl.col("p") * pl.col("p").log()).alias("h"))
     )
-    entropy_df = probs.group_by(time_col).agg(
-        pl.col("h").sum().alias("entropy")
-    )
+    entropy_df = probs.group_by(time_col).agg(pl.col("h").sum().alias("entropy"))
 
     if normalize and n_states > 1:
         max_entropy = float(np.log(n_states))
