@@ -278,8 +278,19 @@ class PatternCriterion(SequenceCriterion):
             seq_data = sequence.data.filter(pl.col(id_col) == seq_id).sort(time_col)
             seq_states = seq_data[state_col].to_list()
 
-            # Convert to string for pattern matching
-            seq_string = "-".join(str(s) for s in seq_states)
+            # Convert to string for pattern matching.
+            # For simple patterns that contain wildcards, use the null-byte
+            # separator so that state names containing '-' don't collide with
+            # the wildcard grammar.  For literal simple patterns (no wildcards)
+            # and for raw regex patterns, keep '-' so that existing multi-state
+            # exact matches and literal dash-in-name substring searches work.
+            _simple_has_wildcards = self.pattern_type == "simple" and any(
+                f"-{w}" in self.pattern or f"{w}-" in self.pattern
+                or self.pattern == w
+                for w in ("*", "+", "?")
+            )
+            sep = "\x00" if _simple_has_wildcards else "-"
+            seq_string = sep.join(str(s) for s in seq_states)
 
             if self.match_anywhere:
                 if compiled.search(seq_string):
@@ -291,22 +302,60 @@ class PatternCriterion(SequenceCriterion):
         return matching_ids
 
     def _simple_to_regex(self, pattern: str) -> str:
-        """Convert simple pattern to regex."""
-        # Escape special regex characters except our wildcards
-        parts = pattern.split("-")
-        regex_parts = []
+        """Convert simple pattern to regex.
 
+        When the pattern contains wildcards (``*``, ``+``, ``?``), the
+        internal sequence string uses ``\\x00`` as the state separator and
+        ``-`` adjacent to a wildcard is treated as the grammar separator.
+        Non-wildcard segments between wildcards are treated as literal state
+        names (which may themselves contain ``-``).
+
+        When the pattern contains *no* wildcards, the sequence string uses
+        ``-`` as the separator (legacy behaviour) and the pattern is split
+        on ``-`` into individual state literals, exactly as before.  This
+        keeps ``"A-B-B-C"`` meaning four states while still allowing
+        ``"A-1"`` to match the literal state name ``"A-1"`` via substring
+        search (``match_anywhere=True``).
+
+        Examples::
+
+            "A-B-C"    → no wildcards → regex A-B-C  (matched against A-B-C)
+            "A-*-C"    → wildcards    → regex A\\x00[^\\x00]+\\x00C
+            "A-1-*-C"  → wildcards    → regex A-1\\x00[^\\x00]+\\x00C
+            "A-1"      → no wildcards → regex A-1    (matched against A-1-B-2)
+        """
+        wildcards = {"*", "+", "?"}
+        has_wildcards = any(
+            f"-{w}" in pattern or f"{w}-" in pattern or pattern == w
+            for w in wildcards
+        )
+
+        if not has_wildcards:
+            # Legacy path: '-'-joined seq_string, split pattern on '-'.
+            parts = pattern.split("-")
+            regex_parts = [re.escape(p) for p in parts if p]
+            return "-".join(regex_parts)
+
+        # Wildcard path: '\x00'-joined seq_string.
+        sep = "\x00"
+        escaped_sep = re.escape(sep)
+        not_sep = f"[^{re.escape(sep)}]"
+
+        # Split only on '-' immediately adjacent to a wildcard token.
+        parts = re.split(r"(?<=[*+?])-|-(?=[*+?])", pattern)
+
+        regex_parts = []
         for part in parts:
             if part == "*":
-                regex_parts.append("[^-]+")  # Match any single state
+                regex_parts.append(f"{not_sep}+")
             elif part == "+":
-                regex_parts.append("(?:[^-]+-)*[^-]+")  # Match one or more states
+                regex_parts.append(f"(?:{not_sep}+{escaped_sep})*{not_sep}+")
             elif part == "?":
-                regex_parts.append("(?:[^-]+)?")  # Match zero or one state
-            else:
+                regex_parts.append(f"(?:{not_sep}+)?")
+            elif part:
                 regex_parts.append(re.escape(part))
 
-        return "-".join(regex_parts) if regex_parts else ""
+        return escaped_sep.join(regex_parts) if regex_parts else ""
 
 
 @dataclass

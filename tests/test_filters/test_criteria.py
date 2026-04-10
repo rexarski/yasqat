@@ -268,6 +268,21 @@ class TestFilterSequences:
             filter_sequences(test_sequence, criterion, combine="invalid")
 
 
+class TestPatternCriterionSpecialChars:
+    def test_state_with_dash_in_name(self) -> None:
+        """Pattern matching should work when state names contain dashes."""
+        data = pl.DataFrame({
+            "id": [1, 1, 1, 2, 2, 2],
+            "time": [0, 1, 2, 0, 1, 2],
+            "state": ["A-1", "B-2", "C-3", "A-1", "X", "C-3"],
+        })
+        seq = StateSequence(data)
+        criterion = PatternCriterion(pattern="A-1", match_anywhere=True)
+        ids = criterion.get_matching_ids(seq)
+        assert 1 in ids
+        assert 2 in ids
+
+
 class TestCriterionFilter:
     """Tests for criterion.filter() method."""
 
