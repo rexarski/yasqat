@@ -301,3 +301,22 @@ class TestLoadDataframeAlphabetValidation:
         alphabet = Alphabet(states=("A", "B", "C"))  # superset is fine
         pool = load_dataframe(df, alphabet=alphabet)
         assert len(pool) == 2
+
+
+class TestIOAutoImport:
+    def test_import_yasqat_io(self) -> None:
+        """Importing yasqat should make yasqat.io available."""
+        import yasqat
+
+        assert hasattr(yasqat, "io")
+        assert hasattr(yasqat.io, "load_csv")
+        assert hasattr(yasqat.io, "load_dataframe")
+
+    def test_yasqat_io_does_not_shadow_stdlib(self) -> None:
+        """yasqat.io should not shadow the stdlib io module."""
+        import io as stdlib_io
+
+        import yasqat
+
+        assert stdlib_io is not yasqat.io
+        assert hasattr(stdlib_io, "StringIO")
