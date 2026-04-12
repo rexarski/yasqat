@@ -214,3 +214,33 @@ class TestMultiFactorDiscrepancy:
             dist, factors, n_permutations=50, random_state=42
         )
         assert results["group"].p_value is not None
+
+
+class TestDiscrepancyEdgeCases:
+    def test_perfect_separation_warns(self) -> None:
+        """Perfect group separation should warn about edge case."""
+        import warnings
+
+        dist = np.array(
+            [
+                [0, 0, 10, 10],
+                [0, 0, 10, 10],
+                [10, 10, 0, 0],
+                [10, 10, 0, 0],
+            ],
+            dtype=float,
+        )
+        labels = np.array([0, 0, 1, 1])
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            result = discrepancy_analysis(dist, labels)
+            assert any("perfect" in str(warning.message).lower() for warning in w)
+        assert result.pseudo_r2 == 1.0
+
+    def test_single_group_returns_zero(self) -> None:
+        """A single group should return R²=0, F=0."""
+        dist = np.array([[0, 1, 2], [1, 0, 3], [2, 3, 0]], dtype=float)
+        labels = np.array([0, 0, 0])
+        result = discrepancy_analysis(dist, labels)
+        assert result.pseudo_r2 == 0.0
+        assert result.pseudo_f == 0.0

@@ -73,6 +73,11 @@ def discrepancy_analysis(
     Returns:
         DiscrepancyResult with pseudo-R2, pseudo-F, and optional p-value.
 
+    Note:
+        If groups are perfectly separated (within-group distances all zero),
+        pseudo_R2 will be 1.0 and pseudo_F will be inf. A UserWarning is
+        emitted in this case.
+
     Example:
         >>> import numpy as np
         >>> from yasqat.statistics.discrepancy import discrepancy_analysis
@@ -218,6 +223,8 @@ def _compute_pseudo_f(
 
     F = (SS_between / (k - 1)) / (SS_within / (n - k))
     """
+    import warnings
+
     k = len(np.unique(labels))
     df_between = k - 1
     df_within = n - k
@@ -226,8 +233,16 @@ def _compute_pseudo_f(
         return 0.0
 
     if within_ss == 0:
-        # Perfect group separation: all within-group distances are zero.
-        # The F-ratio is theoretically infinite.
-        return np.inf if between_ss > 0 else 0.0
+        if between_ss > 0:
+            warnings.warn(
+                "Perfect group separation detected: within-group SS is zero. "
+                "pseudo_R2=1.0 and pseudo_F=inf. This typically means groups "
+                "have zero within-group dissimilarity, which may indicate "
+                "the grouping variable perfectly partitions the distance matrix.",
+                UserWarning,
+                stacklevel=3,
+            )
+            return np.inf
+        return 0.0
 
     return (between_ss / df_between) / (within_ss / df_within)
