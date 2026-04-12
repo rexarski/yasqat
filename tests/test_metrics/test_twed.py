@@ -91,3 +91,25 @@ class TestTWEDParameters:
         b = np.array([0, 1, 2])
         d = twed_distance(a, b, nu=0.0)
         assert d == pytest.approx(0.0)
+
+
+class TestTWEDSubstitutionMatrix:
+    def test_prebuilt_matrix(self) -> None:
+        """TWED should accept a pre-built substitution cost matrix."""
+        seq_a = np.array([0, 1, 2], dtype=np.int32)
+        seq_b = np.array([0, 2, 1], dtype=np.int32)
+        sm = np.array([
+            [0.0, 1.0, 2.0],
+            [1.0, 0.0, 1.5],
+            [2.0, 1.5, 0.0],
+        ])
+        dist = twed_distance(seq_a, seq_b, sm=sm)
+        assert isinstance(dist, float)
+        assert dist >= 0.0
+
+    def test_unknown_method_error(self) -> None:
+        """Unknown string method should give helpful error message."""
+        seq_a = np.array([0, 1], dtype=np.int32)
+        seq_b = np.array([0, 2], dtype=np.int32)
+        with pytest.raises(ValueError, match="substitution_cost_matrix"):
+            twed_distance(seq_a, seq_b, sm="trate")

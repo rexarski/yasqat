@@ -158,7 +158,12 @@ def twed_distance(
             sm_matrix = np.full((n_states, n_states), sub_cost, dtype=np.float64)
             np.fill_diagonal(sm_matrix, 0.0)
         else:
-            raise ValueError(f"Unknown substitution method: {sm}")
+            raise ValueError(
+                f"Unknown substitution method: '{sm}'. "
+                f"TWED only supports sm='constant' for auto-generated matrices. "
+                f"For data-driven costs (e.g. transition-rate based), pass a "
+                f"pre-built matrix from substitution_cost_matrix()."
+            )
     else:
         sm_matrix = sm.astype(np.float64)
 
