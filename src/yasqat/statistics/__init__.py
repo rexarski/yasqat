@@ -33,6 +33,7 @@ from yasqat.statistics.subsequence_mining import frequent_subsequences
 from yasqat.statistics.transition import (
     first_occurrence_time,
     state_duration_stats,
+    state_spell_stats,
     substitution_cost_matrix,
     transition_rate_matrix,
     transition_rates,
@@ -61,6 +62,7 @@ __all__ = [
     "spell_count",
     "state_distribution",
     "state_duration_stats",
+    "state_spell_stats",
     "subsequence_count",
     "substitution_cost_matrix",
     "transition_count",
