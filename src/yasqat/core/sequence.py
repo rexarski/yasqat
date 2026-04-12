@@ -23,6 +23,10 @@ class SequenceConfig:
     state_column: str = "state"
     start_column: str = "start"
     end_column: str = "end"
+    granularity: int | float | None = None
+    """Time granularity for duration calculations. When set, to_sps()
+    computes duration as (end_time - start_time) / granularity + 1
+    instead of counting observations."""
 
 
 class BaseSequence(ABC):
@@ -162,6 +166,22 @@ class StateSequence(BaseSequence):
         time_col = self._config.time_column
         state_col = self._config.state_column
 
+        agg_exprs = [
+            pl.col(state_col).first().alias(state_col),
+            pl.col(time_col).min().alias("start"),
+            pl.col(time_col).max().alias("end"),
+        ]
+
+        if self._config.granularity is not None:
+            g = self._config.granularity
+            agg_exprs.append(
+                ((pl.col(time_col).max() - pl.col(time_col).min()) / g + 1)
+                .cast(pl.Int64)
+                .alias("duration")
+            )
+        else:
+            agg_exprs.append(pl.len().alias("duration"))
+
         return (
             self._data.with_columns(
                 [
@@ -176,14 +196,7 @@ class StateSequence(BaseSequence):
                 ]
             )
             .group_by([id_col, "spell_id"])
-            .agg(
-                [
-                    pl.col(state_col).first().alias(state_col),
-                    pl.col(time_col).min().alias("start"),
-                    pl.col(time_col).max().alias("end"),
-                    pl.len().alias("duration"),
-                ]
-            )
+            .agg(agg_exprs)
             .sort([id_col, "spell_id"])
         )
 

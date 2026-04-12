@@ -3,6 +3,7 @@
 import polars as pl
 import pytest
 
+from yasqat.core.alphabet import Alphabet
 from yasqat.core.sequence import (
     EventSequence,
     IntervalSequence,
@@ -384,6 +385,65 @@ class TestIntervalSequence:
 
         assert seq.n_sequences() == 1
         assert len(seq.alphabet) == 2
+
+
+class TestGranularity:
+    def test_default_granularity_is_none(self) -> None:
+        """Default granularity should be None."""
+        config = SequenceConfig()
+        assert config.granularity is None
+
+    def test_granularity_in_config(self) -> None:
+        """Setting granularity should be stored."""
+        config = SequenceConfig(granularity=60)
+        assert config.granularity == 60
+
+    def test_sps_without_granularity(self) -> None:
+        """to_sps() without granularity counts observations."""
+        data = pl.DataFrame({
+            "id": [1, 1, 1, 1, 1],
+            "time": [0, 60, 120, 180, 240],
+            "state": ["A", "A", "A", "B", "B"],
+        })
+        config = SequenceConfig()  # no granularity
+        alphabet = Alphabet(states=("A", "B"))
+        seq = StateSequence(data=data, config=config, alphabet=alphabet)
+        sps = seq.to_sps()
+        durations = sps["duration"].to_list()
+        assert durations[0] == 3  # A: 3 observations
+        assert durations[1] == 2  # B: 2 observations
+
+    def test_sps_with_granularity(self) -> None:
+        """to_sps() with granularity computes time-based durations."""
+        data = pl.DataFrame({
+            "id": [1, 1, 1, 1],
+            "time": [0, 10, 100, 110],
+            "state": ["A", "A", "B", "B"],
+        })
+        config = SequenceConfig(granularity=10)
+        alphabet = Alphabet(states=("A", "B"))
+        seq = StateSequence(data=data, config=config, alphabet=alphabet)
+        sps = seq.to_sps()
+        durations = sps["duration"].to_list()
+        # A: (10-0)/10 + 1 = 2
+        # B: (110-100)/10 + 1 = 2
+        assert durations[0] == 2
+        assert durations[1] == 2
+
+    def test_sps_single_observation_spell(self) -> None:
+        """A single-observation spell has duration 1 regardless of granularity."""
+        data = pl.DataFrame({
+            "id": [1, 1, 1],
+            "time": [0, 100, 200],
+            "state": ["A", "B", "C"],
+        })
+        config = SequenceConfig(granularity=50)
+        alphabet = Alphabet(states=("A", "B", "C"))
+        seq = StateSequence(data=data, config=config, alphabet=alphabet)
+        sps = seq.to_sps()
+        durations = sps["duration"].to_list()
+        # Each spell: (t-t)/50 + 1 = 1
+        assert all(d == 1 for d in durations)
 
 
 class TestTypeConversions:

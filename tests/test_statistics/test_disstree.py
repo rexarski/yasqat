@@ -101,3 +101,53 @@ class TestDissimilarityTree:
         )
         # With 4 well-separated groups, we should get at least 3 leaves
         assert result.n_leaves >= 3
+
+
+class TestDissTreeDepth:
+    def test_deeper_tree_with_structure(self) -> None:
+        """With structured data, tree should find multiple splits."""
+        rng = np.random.default_rng(42)
+        n = 100
+        labels_true = np.array([0] * 25 + [1] * 25 + [2] * 25 + [3] * 25)
+        dist = np.zeros((n, n), dtype=float)
+        for i in range(n):
+            for j in range(i + 1, n):
+                if labels_true[i] == labels_true[j]:
+                    dist[i, j] = rng.uniform(0, 1)
+                else:
+                    dist[i, j] = rng.uniform(3, 6)
+                dist[j, i] = dist[i, j]
+
+        cov = np.column_stack([
+            labels_true * 10 + rng.normal(0, 1, n),
+            labels_true.astype(float),
+        ])
+        result = dissimilarity_tree(
+            dist, cov, covariate_names=["age", "group"],
+        )
+        assert result.n_leaves >= 3
+
+    def test_min_node_size_respected(self) -> None:
+        """Leaves should have at least min_node_size observations."""
+        rng = np.random.default_rng(42)
+        n = 50
+        dist = rng.random((n, n))
+        dist = (dist + dist.T) / 2
+        np.fill_diagonal(dist, 0)
+        cov = rng.random((n, 2))
+        result = dissimilarity_tree(
+            dist, cov, min_node_size=10,
+        )
+
+        def check_leaves(node):
+            if node.is_leaf:
+                assert node.n_observations >= 10, (
+                    f"Leaf has {node.n_observations} obs, expected >= 10"
+                )
+            else:
+                if node.left:
+                    check_leaves(node.left)
+                if node.right:
+                    check_leaves(node.right)
+
+        check_leaves(result.root)

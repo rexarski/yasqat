@@ -75,6 +75,7 @@ def _find_best_split(
     covariates: np.ndarray,
     indices: np.ndarray,
     covariate_names: list[str],
+    min_node_size: int = 5,
 ) -> tuple[int, float, float]:
     """Find the best binary split on covariates.
 
@@ -104,7 +105,7 @@ def _find_best_split(
             left_idx = indices[left_mask]
             right_idx = indices[right_mask]
 
-            if len(left_idx) < 1 or len(right_idx) < 1:
+            if len(left_idx) < min_node_size or len(right_idx) < min_node_size:
                 continue
 
             within_ss = _compute_discrepancy(
@@ -127,7 +128,7 @@ def dissimilarity_tree(
     covariate_names: list[str] | None = None,
     max_depth: int = 5,
     min_node_size: int = 5,
-    min_r2_gain: float = 0.01,
+    min_r2_gain: float = 0.001,
 ) -> DissTreeResult:
     """
     Build a dissimilarity tree by recursive partitioning.
@@ -169,14 +170,14 @@ def dissimilarity_tree(
     def _build(indices: np.ndarray, depth: int) -> DissTreeNode:
         node = DissTreeNode(indices=indices, depth=depth, pseudo_r2=0.0)
 
-        if depth >= max_depth or len(indices) <= min_node_size:
+        if depth >= max_depth or len(indices) < 2 * min_node_size:
             node_label = leaf_counter[0]
             leaf_counter[0] += 1
             labels[indices] = node_label
             return node
 
         var_idx, split_val, r2_gain = _find_best_split(
-            dist_matrix, covariates, indices, covariate_names
+            dist_matrix, covariates, indices, covariate_names, min_node_size
         )
 
         if var_idx < 0 or r2_gain < min_r2_gain:
