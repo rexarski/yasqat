@@ -1,6 +1,7 @@
 """Tests for optimal matching distance."""
 
 import numpy as np
+import pytest
 
 from yasqat.metrics.optimal_matching import (
     OptimalMatchingMetric,
@@ -127,11 +128,29 @@ class TestOptimalMatching:
         sm[sm == 0] = 2.0
         np.fill_diagonal(sm, 0.0)
 
-        import pytest
-
         with pytest.raises(ValueError, match=r"Substitution matrix has shape"):
             optimal_matching_distance(seq_a, seq_b, sm=sm)
 
+class TestOMAlphabetMismatch:
+    def test_matrix_too_small_gives_helpful_error(self) -> None:
+        """When sub matrix is smaller than max state index, error should guide user."""
+        seq_a = np.array([0, 1, 5], dtype=np.int32)  # max state = 5
+        seq_b = np.array([0, 2, 3], dtype=np.int32)
+        sm_small = np.zeros((4, 4), dtype=np.float64)  # only covers states 0-3
+        with pytest.raises(ValueError, match="substitution_cost_matrix"):
+            optimal_matching_distance(seq_a, seq_b, sm=sm_small)
+
+    def test_matrix_larger_than_needed_works(self) -> None:
+        """A matrix larger than the max state index should work fine."""
+        seq_a = np.array([0, 1, 2], dtype=np.int32)
+        seq_b = np.array([0, 1, 3], dtype=np.int32)
+        sm_big = np.full((10, 10), 2.0, dtype=np.float64)
+        np.fill_diagonal(sm_big, 0.0)
+        dist = optimal_matching_distance(seq_a, seq_b, sm=sm_big)
+        assert dist >= 0.0
+
+
+class TestOptimalMatchingMetric:
     def test_metric_class(
         self, encoded_sequences: tuple[np.ndarray, np.ndarray]
     ) -> None:

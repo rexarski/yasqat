@@ -115,7 +115,9 @@ def optimal_matching_distance(
         raise ValueError(
             f"Substitution matrix has shape {sm_matrix.shape} but sequences "
             f"contain state index {max_state}. The matrix must have dimensions "
-            f"at least ({max_state + 1}, {max_state + 1}) to cover all states."
+            f"at least ({max_state + 1}, {max_state + 1}) to cover all states. "
+            f"If you built the matrix with substitution_cost_matrix(), make sure "
+            f"it was built from the same alphabet/pool that encoded the sequences."
         )
 
     distance = _optimal_matching_kernel(seq_a, seq_b, indel, sm_matrix)
