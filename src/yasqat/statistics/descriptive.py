@@ -752,6 +752,8 @@ def sequence_frequency_table(
 def subsequence_count(
     sequence: StateSequence | SequencePool,
     per_sequence: bool = False,
+    states_filter: list[str] | None = None,
+    use_log: bool = False,
 ) -> int | float | pl.DataFrame:
     """
     Count the number of distinct subsequences from the DSS representation.
@@ -759,14 +761,23 @@ def subsequence_count(
     Uses the DP formula: dp[i] = 2 * dp[i-1] - dp[last[c]] where last[c]
     is the dp value before the previous occurrence of character c.
 
+    For long sequences (>100 states), counts can grow astronomically large
+    (exponential in sequence length). Use ``use_log=True`` to return
+    log2 of the count instead.
+
     Args:
         sequence: StateSequence or SequencePool.
         per_sequence: If True, return counts for each sequence.
+        states_filter: If provided, only count subsequences whose states
+            are all in this list.
+        use_log: If True, return log2 of the count to avoid huge integers.
 
     Returns:
-        If per_sequence=False: Mean distinct subsequence count.
+        If per_sequence=False: Mean distinct subsequence count (or log2 mean).
         If per_sequence=True: DataFrame with sequence IDs and counts.
     """
+    import math
+
     from yasqat.core.pool import SequencePool
     from yasqat.core.sequence import StateSequence
 
@@ -780,39 +791,61 @@ def subsequence_count(
         pool = sequence
 
     config = pool.config
-    counts: list[int] = []
+    counts: list[int | float] = []
     seq_ids: list[int | str] = []
 
     for seq_id in pool.sequence_ids:
         states = pool.get_sequence(seq_id)
-        # DP for counting distinct subsequences
-        # dp[i] = number of distinct subsequences of states[:i]
+
+        # Filter to only the requested states if given
+        if states_filter is not None:
+            allowed = set(states_filter)
+            states = [s for s in states if s in allowed]
+
         n = len(states)
         if n == 0:
             counts.append(0)
             seq_ids.append(seq_id)
             continue
 
-        dp = [0] * (n + 1)
-        dp[0] = 1  # empty subsequence
-        last: dict[str, int] = {}
+        if use_log:
+            # Use log2 arithmetic to avoid overflow
+            log_dp = [0.0] * (n + 1)  # log_dp[0] = log2(1) = 0
+            last: dict[str, int] = {}
+            for i in range(1, n + 1):
+                log_dp[i] = log_dp[i - 1] + 1.0  # log2(2 * dp[i-1])
+                c = states[i - 1]
+                if c in last:
+                    # log2(2*dp[i-1] - dp[last[c]-1])
+                    diff = log_dp[last[c] - 1] - log_dp[i - 1]
+                    if diff > -50:
+                        log_dp[i] = log_dp[i - 1] + math.log2(
+                            2.0 - 2.0**diff
+                        )
+                last[c] = i
+            counts.append(log_dp[n])
+        else:
+            # Standard DP — Python big ints handle overflow
+            dp = [0] * (n + 1)
+            dp[0] = 1
+            last_seen: dict[str, int] = {}
+            for i in range(1, n + 1):
+                dp[i] = 2 * dp[i - 1]
+                c = states[i - 1]
+                if c in last_seen:
+                    dp[i] -= dp[last_seen[c] - 1]
+                last_seen[c] = i
+            counts.append(dp[n] - 1)
 
-        for i in range(1, n + 1):
-            dp[i] = 2 * dp[i - 1]
-            c = states[i - 1]
-            if c in last:
-                dp[i] -= dp[last[c] - 1]
-            last[c] = i
-
-        # dp[n] includes the empty subsequence; subtract 1 for non-empty count
-        counts.append(dp[n] - 1)
         seq_ids.append(seq_id)
+
+    col_name = "log2_n_subsequences" if use_log else "n_subsequences"
 
     if per_sequence:
         return pl.DataFrame(
             {
                 config.id_column: seq_ids,
-                "n_subsequences": counts,
+                col_name: counts,
             }
         )
 

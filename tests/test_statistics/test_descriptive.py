@@ -4,7 +4,9 @@ import numpy as np
 import polars as pl
 import pytest
 
+from yasqat.core.alphabet import Alphabet
 from yasqat.core.pool import SequencePool
+from yasqat.core.sequence import SequenceConfig, StateSequence
 from yasqat.statistics.descriptive import (
     complexity_index,
     longitudinal_entropy,
@@ -640,4 +642,78 @@ class TestNormalizedTurbulence:
     def test_aggregate(self, sequence_pool: SequencePool) -> None:
         result = normalized_turbulence(sequence_pool)
         assert isinstance(result, float)
+
+
+def _make_long_sequence(length: int = 200) -> StateSequence:
+    """Create a single long sequence for overflow testing."""
+    states = ["A", "B", "C"]
+    data = pl.DataFrame({
+        "id": [1] * length,
+        "time": list(range(length)),
+        "state": [states[i % 3] for i in range(length)],
+    })
+    return StateSequence(
+        data=data,
+        config=SequenceConfig(),
+        alphabet=Alphabet(states=("A", "B", "C")),
+    )
+
+
+class TestSubsequenceCountOverflow:
+    def test_long_sequence_no_crash(self) -> None:
+        """subsequence_count should not crash on long sequences."""
+        seq = _make_long_sequence(200)
+        result = subsequence_count(seq)
+        assert isinstance(result, (int, float))
+        assert result > 0
+
+    def test_use_log_returns_finite(self) -> None:
+        """use_log=True should return finite log2 values for long sequences."""
+        seq = _make_long_sequence(500)
+        result = subsequence_count(seq, use_log=True)
+        assert isinstance(result, float)
+        assert np.isfinite(result)
+        assert result > 0
+
+    def test_use_log_per_sequence(self) -> None:
+        """use_log with per_sequence should use log2_n_subsequences column."""
+        seq = _make_long_sequence(100)
+        result = subsequence_count(seq, per_sequence=True, use_log=True)
+        assert isinstance(result, pl.DataFrame)
+        assert "log2_n_subsequences" in result.columns
+
+
+class TestSubsequenceCountPattern:
+    def test_states_filter(self) -> None:
+        """states_filter should restrict to subsequences of given states."""
+        data = pl.DataFrame({
+            "id": [1] * 6,
+            "time": list(range(6)),
+            "state": ["A", "B", "A", "C", "B", "A"],
+        })
+        seq = StateSequence(
+            data=data,
+            config=SequenceConfig(),
+            alphabet=Alphabet(states=("A", "B", "C")),
+        )
+        total = subsequence_count(seq)
+        filtered = subsequence_count(seq, states_filter=["A"])
+        assert isinstance(filtered, (int, float))
+        assert filtered <= total
+        assert filtered > 0
+
+    def test_states_filter_empty_result(self) -> None:
+        """Filtering to a state not in sequence should return 0."""
+        data = pl.DataFrame({
+            "id": [1] * 3,
+            "time": [0, 1, 2],
+            "state": ["A", "B", "A"],
+        })
+        seq = StateSequence(
+            data=data,
+            config=SequenceConfig(),
+            alphabet=Alphabet(states=("A", "B", "C")),
+        )
+        result = subsequence_count(seq, states_filter=["C"])
+        assert result == 0
         assert result >= 0.0
