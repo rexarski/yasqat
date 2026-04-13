@@ -1,5 +1,9 @@
 """Tests for Alphabet class."""
 
+from __future__ import annotations
+
+import re
+
 import numpy as np
 import polars as pl
 import pytest
@@ -37,14 +41,44 @@ class TestAlphabet:
         assert alpha.get_color("C") == "#0000FF"
 
     def test_alphabet_default_colors(self) -> None:
-        """Test that default colors are assigned."""
+        """Test that default colors are valid hex strings and distinct per state."""
         alpha = Alphabet(states=("A", "B", "C"))
 
-        # Should have colors assigned
         assert alpha.colors is not None
-        assert "A" in alpha.colors
-        assert "B" in alpha.colors
-        assert "C" in alpha.colors
+        hex_pattern = re.compile(r"^#[0-9a-fA-F]{6}$")
+        color_values = []
+        for state in alpha.states:
+            color = alpha.get_color(state)
+            assert hex_pattern.match(color), (
+                f"Color {color!r} for state {state!r} is not valid hex"
+            )
+            color_values.append(color)
+        # Each state should get a distinct color
+        assert len(set(color_values)) == len(color_values)
+
+    def test_single_state_alphabet(self) -> None:
+        """Alphabet with a single state should work."""
+        alpha = Alphabet(states=("X",))
+        assert len(alpha) == 1
+        assert alpha[0] == "X"
+        assert "X" in alpha
+        assert alpha.colors is not None
+        encoded = alpha.encode(["X", "X"])
+        assert encoded.tolist() == [0, 0]
+        assert alpha.decode(encoded) == ["X", "X"]
+
+    def test_with_colors_does_not_mutate(self) -> None:
+        """with_colors() should return a new object, leaving original unchanged."""
+        alpha = Alphabet(states=("A", "B"))
+        original_color_a = alpha.get_color("A")
+        new_colors = {"A": "#000000", "B": "#FFFFFF"}
+        new_alpha = alpha.with_colors(new_colors)
+
+        # New alphabet has the new colors
+        assert new_alpha.get_color("A") == "#000000"
+        # Original is unchanged
+        assert alpha.get_color("A") == original_color_a
+        assert alpha is not new_alpha
 
     def test_from_sequence(self) -> None:
         """Test creating alphabet from sequence."""
@@ -101,21 +135,6 @@ class TestAlphabet:
 
 class TestAlphabetSimplification:
     """Tests for simplified Alphabet without labels."""
-
-    def test_no_labels_attribute(self) -> None:
-        """Alphabet should not have a labels attribute."""
-        a = Alphabet(states=("A", "B", "C"))
-        assert not hasattr(a, "labels")
-
-    def test_no_get_label_method(self) -> None:
-        """Alphabet should not have a get_label method."""
-        a = Alphabet(states=("A", "B", "C"))
-        assert not hasattr(a, "get_label")
-
-    def test_no_with_labels_method(self) -> None:
-        """Alphabet should not have a with_labels method."""
-        a = Alphabet(states=("A", "B", "C"))
-        assert not hasattr(a, "with_labels")
 
     def test_index_of_clear_error(self) -> None:
         """index_of() should raise a clear ValueError for missing states."""

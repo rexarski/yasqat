@@ -130,15 +130,17 @@ class TestDTWDistance:
         assert dist == 1.0
 
     def test_metric_class(self) -> None:
-        """Test DTWMetric class."""
+        """Test DTWMetric class computes correct distance."""
         seq_a = np.array([0, 1, 2, 3], dtype=np.int32)
         seq_b = np.array([0, 2, 3], dtype=np.int32)
 
         metric = DTWMetric(window=0, normalize=False)
         dist = metric.compute(seq_a, seq_b)
 
-        assert isinstance(dist, float)
-        assert dist >= 0
+        # DTW aligns seq_a=[0,1,2,3] with seq_b=[0,2,3] using constant sm
+        # (sub_cost=1.0). Optimal warping path accumulates cost 1.0:
+        # (0,0)=0, (1,0)=1 or via (2,2)=0 path, final dp[4,3]=1.0
+        assert dist == 1.0
 
     def test_metric_class_with_config(self) -> None:
         """Test DTWMetric with configuration."""
@@ -152,8 +154,7 @@ class TestDTWDistance:
         assert 0 <= dist <= 1  # Normalized
 
     def test_triangle_inequality_may_not_hold(self) -> None:
-        """DTW does not always satisfy triangle inequality."""
-        # This is a property test, not a failure test
+        """DTW does not always satisfy triangle inequality; verify actual values."""
         seq_a = np.array([0, 1], dtype=np.int32)
         seq_b = np.array([1, 0], dtype=np.int32)
         seq_c = np.array([0, 0], dtype=np.int32)
@@ -162,5 +163,10 @@ class TestDTWDistance:
         dist_bc = dtw_distance(seq_b, seq_c)
         dist_ac = dtw_distance(seq_a, seq_c)
 
-        # Just verify these are valid distances
-        assert all(d >= 0 for d in [dist_ab, dist_bc, dist_ac])
+        # With constant sm (sub_cost=1.0):
+        # d(a,b): [0,1] vs [1,0] = cost 1+1=2, but DTW dp gives 2.0
+        # d(b,c): [1,0] vs [0,0] = cost 1+0=1.0
+        # d(a,c): [0,1] vs [0,0] = cost 0+1=1.0
+        assert dist_ab == 2.0
+        assert dist_bc == 1.0
+        assert dist_ac == 1.0

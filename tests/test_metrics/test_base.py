@@ -13,10 +13,11 @@ class TestDistanceMatrixShape:
         dm = DistanceMatrix(values=values, labels=[1, 2, 3])
         assert dm.shape == (3, 3)
 
-    def test_shape_matches_values(self) -> None:
+    def test_shape_without_labels(self) -> None:
+        """DistanceMatrix.shape works when no labels are provided."""
         values = np.zeros((5, 5), dtype=np.float64)
         dm = DistanceMatrix(values=values)
-        assert dm.shape == dm.values.shape
+        assert dm.shape == (5, 5)
 
 
 class TestBuildSubstitutionMatrix:

@@ -110,30 +110,32 @@ class TestDHDDistance:
 
         assert dist_norm == pytest.approx(dist_raw / 4.0)
 
-    def test_greater_than_or_equal_zero(self, sequence_pool: SequencePool) -> None:
-        """Test that distance is always non-negative."""
+    def test_single_mismatch_uses_position_cost(
+        self, sequence_pool: SequencePool
+    ) -> None:
+        """Test that distance for single mismatch equals the position cost."""
         costs = build_position_costs(sequence_pool)
         seq_a = np.array([0, 0, 1, 2], dtype=np.int32)
         seq_b = np.array([0, 1, 1, 2], dtype=np.int32)
 
-        assert dhd_distance(seq_a, seq_b, costs) >= 0.0
+        dist = dhd_distance(seq_a, seq_b, costs)
+
+        # Only position 1 differs (state 0 vs state 1), so distance equals
+        # the position-dependent cost at position 1 for states (0, 1)
+        assert dist == costs[1, 0, 1]
 
 
 class TestDHDMetric:
     """Tests for DHDMetric class."""
 
     def test_basic_distance(self, sequence_pool: SequencePool) -> None:
-        """Test metric compute method."""
+        """Test metric compute gives same result as bare function."""
         costs = build_position_costs(sequence_pool)
         metric = DHDMetric(position_costs=costs)
         seq_a = np.array([0, 0, 1, 2], dtype=np.int32)
         seq_b = np.array([0, 1, 1, 2], dtype=np.int32)
 
         dist = metric.compute(seq_a, seq_b)
-        assert dist >= 0.0
 
-    def test_name(self, sequence_pool: SequencePool) -> None:
-        """Test metric name."""
-        costs = build_position_costs(sequence_pool)
-        metric = DHDMetric(position_costs=costs)
-        assert metric.name == "dhd"
+        # Only position 1 differs, so distance = cost at position 1 for (0,1)
+        assert dist == costs[1, 0, 1]

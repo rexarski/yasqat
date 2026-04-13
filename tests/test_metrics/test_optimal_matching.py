@@ -131,6 +131,7 @@ class TestOptimalMatching:
         with pytest.raises(ValueError, match=r"Substitution matrix has shape"):
             optimal_matching_distance(seq_a, seq_b, sm=sm)
 
+
 class TestOMAlphabetMismatch:
     def test_matrix_too_small_gives_helpful_error(self) -> None:
         """When sub matrix is smaller than max state index, error should guide user."""
@@ -147,18 +148,20 @@ class TestOMAlphabetMismatch:
         sm_big = np.full((10, 10), 2.0, dtype=np.float64)
         np.fill_diagonal(sm_big, 0.0)
         dist = optimal_matching_distance(seq_a, seq_b, sm=sm_big)
-        assert dist >= 0.0
+        # Same length, 1 substitution at position 2 (state 2->3), cost = 2.0
+        assert dist == 2.0
 
 
 class TestOptimalMatchingMetric:
     def test_metric_class(
         self, encoded_sequences: tuple[np.ndarray, np.ndarray]
     ) -> None:
-        """Test OptimalMatchingMetric class."""
+        """Test OptimalMatchingMetric class computes correct distance."""
         seq_a, seq_b = encoded_sequences
 
         metric = OptimalMatchingMetric(indel=1.0, sub_cost=2.0)
         dist = metric.compute(seq_a, seq_b)
 
-        assert isinstance(dist, float)
-        assert dist >= 0
+        # seq_a=[0,0,1,2], seq_b=[0,1,1,2]: same length, 1 substitution
+        # at position 1 (state 0 -> state 1), cost = 2.0
+        assert dist == 2.0

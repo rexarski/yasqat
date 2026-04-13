@@ -15,10 +15,17 @@ class TestSoftDTWDistance:
 
         dist = softdtw_distance(seq, seq, gamma=1.0)
 
-        # Note: Raw SoftDTW can be negative due to soft-min smoothing
-        # Use divergence for a proper metric that's >= 0
-        # For identical sequences, the value should be relatively small in magnitude
-        assert isinstance(dist, float)
+        # Raw SoftDTW can be negative due to soft-min smoothing (log-sum-exp
+        # correction makes it less than 0 for identical sequences).
+        # For identical sequences, the optimal path cost is 0 along the
+        # diagonal, but soft-min adds a negative correction at each step.
+        assert dist < 0.0
+
+        # The distance for identical sequences should be less than for
+        # different sequences
+        seq_diff = np.array([3, 2, 1, 0], dtype=np.int32)
+        dist_diff = softdtw_distance(seq, seq_diff, gamma=1.0)
+        assert dist < dist_diff
 
     def test_different_sequences(self) -> None:
         """Test SoftDTW of different sequences."""
@@ -39,12 +46,14 @@ class TestSoftDTWDistance:
         # Small gamma - closer to hard DTW
         dist_small = softdtw_distance(seq_a, seq_b, gamma=0.01)
 
-        # Large gamma - softer
+        # Large gamma - softer, considers more alignment paths which
+        # adds more negative correction from the log-sum-exp soft-min,
+        # resulting in a smaller (more negative) value
         dist_large = softdtw_distance(seq_a, seq_b, gamma=10.0)
 
-        # Both should return valid floats
-        assert isinstance(dist_small, float)
-        assert isinstance(dist_large, float)
+        # Larger gamma produces a smaller value because the soft-min
+        # correction term (-gamma * log(sum(exp(...)))) grows larger
+        assert dist_large < dist_small
 
     def test_small_gamma_approaches_dtw(self) -> None:
         """Test that small gamma approximates hard DTW."""

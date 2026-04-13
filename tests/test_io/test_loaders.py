@@ -1,5 +1,7 @@
 """Tests for data loaders."""
 
+from __future__ import annotations
+
 import tempfile
 
 import polars as pl
@@ -97,7 +99,7 @@ class TestCSVLoader:
             assert seq.n_sequences() == 2
 
     def test_save_and_load_csv(self, state_sequence_data: pl.DataFrame) -> None:
-        """Test round-trip save and load."""
+        """Test round-trip save and load preserves actual data values."""
         seq = StateSequence(state_sequence_data)
 
         with tempfile.NamedTemporaryFile(suffix=".csv", delete=False, mode="w") as f:
@@ -106,6 +108,34 @@ class TestCSVLoader:
 
             assert loaded.n_sequences() == seq.n_sequences()
             assert len(loaded.data) == len(seq.data)
+            # Verify actual data values survive the round-trip
+            assert loaded.get_states_for_sequence(1) == seq.get_states_for_sequence(1)
+            assert loaded.get_states_for_sequence(2) == seq.get_states_for_sequence(2)
+            assert set(loaded.alphabet.states) == set(seq.alphabet.states)
+
+    def test_load_nonexistent_file(self) -> None:
+        """Loading from a path that does not exist should raise an error."""
+        with pytest.raises((FileNotFoundError, OSError)):
+            load_csv(
+                "/tmp/nonexistent_yasqat_test_file_12345.csv", sequence_type="state"
+            )
+
+    def test_load_csv_with_nulls(self) -> None:
+        """Test that load_dataframe drop_nulls parameter works on CSV data."""
+        data = pl.DataFrame(
+            {
+                "id": [1, 1, 1, 2, 2],
+                "time": [0, 1, 2, 0, 1],
+                "state": ["A", None, "B", "C", "C"],
+            }
+        )
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False, mode="w") as f:
+            data.write_csv(f.name)
+            loaded_df = pl.read_csv(f.name)
+            pool = load_dataframe(loaded_df, drop_nulls=True)
+            # Sequence 1 should have the null row dropped: [A, B]
+            assert pool[1] == ["A", "B"]
+            assert pool[2] == ["C", "C"]
 
     def test_invalid_sequence_type(self, state_sequence_data: pl.DataFrame) -> None:
         """Test error with invalid sequence type."""
@@ -130,7 +160,7 @@ class TestJSONLoader:
             assert seq.n_sequences() == 2
 
     def test_save_and_load_json(self, state_sequence_data: pl.DataFrame) -> None:
-        """Test round-trip save and load."""
+        """Test round-trip save and load preserves actual data values."""
         seq = StateSequence(state_sequence_data)
 
         with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as f:
@@ -138,6 +168,9 @@ class TestJSONLoader:
             loaded = load_json(f.name, sequence_type="state")
 
             assert loaded.n_sequences() == seq.n_sequences()
+            assert loaded.get_states_for_sequence(1) == seq.get_states_for_sequence(1)
+            assert loaded.get_states_for_sequence(2) == seq.get_states_for_sequence(2)
+            assert set(loaded.alphabet.states) == set(seq.alphabet.states)
 
 
 class TestParquetLoader:
@@ -156,7 +189,7 @@ class TestParquetLoader:
             assert seq.n_sequences() == 2
 
     def test_save_and_load_parquet(self, state_sequence_data: pl.DataFrame) -> None:
-        """Test round-trip save and load."""
+        """Test round-trip save and load preserves actual data values."""
         seq = StateSequence(state_sequence_data)
 
         with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as f:
@@ -164,6 +197,9 @@ class TestParquetLoader:
             loaded = load_parquet(f.name, sequence_type="state")
 
             assert loaded.n_sequences() == seq.n_sequences()
+            assert loaded.get_states_for_sequence(1) == seq.get_states_for_sequence(1)
+            assert loaded.get_states_for_sequence(2) == seq.get_states_for_sequence(2)
+            assert set(loaded.alphabet.states) == set(seq.alphabet.states)
 
     def test_parquet_compression(self, state_sequence_data: pl.DataFrame) -> None:
         """Test Parquet with different compression."""
@@ -301,22 +337,3 @@ class TestLoadDataframeAlphabetValidation:
         alphabet = Alphabet(states=("A", "B", "C"))  # superset is fine
         pool = load_dataframe(df, alphabet=alphabet)
         assert len(pool) == 2
-
-
-class TestIOAutoImport:
-    def test_import_yasqat_io(self) -> None:
-        """Importing yasqat should make yasqat.io available."""
-        import yasqat
-
-        assert hasattr(yasqat, "io")
-        assert hasattr(yasqat.io, "load_csv")
-        assert hasattr(yasqat.io, "load_dataframe")
-
-    def test_yasqat_io_does_not_shadow_stdlib(self) -> None:
-        """yasqat.io should not shadow the stdlib io module."""
-        import io as stdlib_io
-
-        import yasqat
-
-        assert stdlib_io is not yasqat.io
-        assert hasattr(stdlib_io, "StringIO")

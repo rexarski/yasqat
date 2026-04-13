@@ -1,5 +1,7 @@
 """Tests for SequencePool class."""
 
+from __future__ import annotations
+
 import numpy as np
 import polars as pl
 import pytest
@@ -31,11 +33,18 @@ class TestSequencePool:
         assert seq == ["A", "B", "B", "C"]
 
     def test_get_encoded_sequence(self, sequence_pool: SequencePool) -> None:
-        """Test getting encoded sequence."""
+        """Test getting encoded sequence and roundtrip decode."""
         encoded = sequence_pool.get_encoded_sequence(1)
 
         assert isinstance(encoded, np.ndarray)
         assert len(encoded) == 4
+        # Verify actual encoded values match alphabet ordering
+        # Alphabet is sorted: A=0, B=1, C=2, D=3
+        # Sequence 1 is [A, A, B, C] -> [0, 0, 1, 2]
+        assert encoded.tolist() == [0, 0, 1, 2]
+        # Roundtrip: decode should recover the original states
+        decoded = sequence_pool.alphabet.decode(encoded)
+        assert decoded == sequence_pool.get_sequence(1)
 
     def test_sequence_lengths(self, sequence_pool: SequencePool) -> None:
         """Test getting sequence lengths."""
@@ -146,11 +155,6 @@ class TestExtractSequencesPerformance:
         assert pool[2] == ["A", "B", "B", "C"]
         assert pool[3] == ["B", "B", "C", "D"]
 
-    def test_sequence_ids_are_sorted(self, simple_sequence_data: pl.DataFrame) -> None:
-        """Test that sequence_ids returns sorted IDs."""
-        pool = SequencePool(simple_sequence_data)
-        assert pool.sequence_ids == [1, 2, 3]
-
     def test_describe_handles_nulls_gracefully(
         self, simple_sequence_data: pl.DataFrame
     ) -> None:
@@ -161,6 +165,38 @@ class TestExtractSequencesPerformance:
         assert desc["max_length"] is not None
         assert desc["mean_length"] is not None
         assert desc["median_length"] is not None
+
+
+class TestPoolEdgeCases:
+    """Tests for edge cases in SequencePool."""
+
+    def test_empty_pool_error(self) -> None:
+        """Creating a pool from an empty DataFrame should raise an error."""
+        empty_df = pl.DataFrame(
+            {
+                "id": pl.Series([], dtype=pl.Int64),
+                "time": pl.Series([], dtype=pl.Int64),
+                "state": pl.Series([], dtype=pl.Utf8),
+            }
+        )
+        # SequencePool should either raise or produce a pool with 0 sequences
+        pool = SequencePool(empty_df)
+        assert len(pool) == 0
+        assert pool.sequence_ids == []
+
+    def test_single_sequence_pool(self) -> None:
+        """A pool with just one sequence should work correctly."""
+        df = pl.DataFrame(
+            {"id": [1, 1, 1], "time": [0, 1, 2], "state": ["A", "B", "A"]}
+        )
+        pool = SequencePool(df)
+        assert len(pool) == 1
+        assert pool.sequence_ids == [1]
+        assert pool[1] == ["A", "B", "A"]
+        desc = pool.describe()
+        assert desc["n_sequences"] == 1
+        assert desc["min_length"] == 3
+        assert desc["max_length"] == 3
 
 
 class TestRecodeStates:

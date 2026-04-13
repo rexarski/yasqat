@@ -98,11 +98,13 @@ class TestTWEDSubstitutionMatrix:
         """TWED should accept a pre-built substitution cost matrix."""
         seq_a = np.array([0, 1, 2], dtype=np.int32)
         seq_b = np.array([0, 2, 1], dtype=np.int32)
-        sm = np.array([
-            [0.0, 1.0, 2.0],
-            [1.0, 0.0, 1.5],
-            [2.0, 1.5, 0.0],
-        ])
+        sm = np.array(
+            [
+                [0.0, 1.0, 2.0],
+                [1.0, 0.0, 1.5],
+                [2.0, 1.5, 0.0],
+            ]
+        )
         dist = twed_distance(seq_a, seq_b, sm=sm)
         assert isinstance(dist, float)
         assert dist >= 0.0

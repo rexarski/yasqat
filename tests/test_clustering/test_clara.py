@@ -40,18 +40,13 @@ class TestCLARAClustering:
         assert result.labels[3] == result.labels[4] == result.labels[5]
         assert result.labels[0] != result.labels[3]
 
-    def test_medoid_count(self, two_cluster_dist: np.ndarray) -> None:
-        result = clara_clustering(two_cluster_dist, n_clusters=2, random_state=42)
-        assert len(result.medoid_indices) == 2
-
-    def test_medoids_in_range(self, two_cluster_dist: np.ndarray) -> None:
-        result = clara_clustering(two_cluster_dist, n_clusters=2, random_state=42)
-        assert all(0 <= m < 6 for m in result.medoid_indices)
-
     def test_cluster_sizes(self, two_cluster_dist: np.ndarray) -> None:
+        """Test cluster sizes are correct for well-separated data."""
         result = clara_clustering(two_cluster_dist, n_clusters=2, random_state=42)
         sizes = result.cluster_sizes()
-        assert sum(sizes.values()) == 6
+        assert len(sizes) == 2
+        # Each cluster should have exactly 3 points
+        assert sorted(sizes.values()) == [3, 3]
 
     def test_custom_sample_size(self, two_cluster_dist: np.ndarray) -> None:
         result = clara_clustering(
@@ -63,10 +58,6 @@ class TestCLARAClustering:
         )
         assert result.sample_size == 4
         assert result.n_samples == 3
-
-    def test_total_cost_positive(self, two_cluster_dist: np.ndarray) -> None:
-        result = clara_clustering(two_cluster_dist, n_clusters=2, random_state=42)
-        assert result.total_cost >= 0.0
 
     def test_reproducible(self, two_cluster_dist: np.ndarray) -> None:
         r1 = clara_clustering(two_cluster_dist, n_clusters=2, random_state=42)

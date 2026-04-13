@@ -122,20 +122,30 @@ class TestHierarchicalClustering:
         assert len(df) == 4
 
     def test_linkage_matrix_available(self, simple_distance_matrix: np.ndarray) -> None:
-        """Test that linkage matrix is available for dendrogram."""
+        """Test that linkage matrix is available with meaningful merge distances."""
         result = hierarchical_clustering(simple_distance_matrix, n_clusters=2)
 
         # Linkage matrix should have shape (n-1, 4)
         assert result.linkage_matrix.shape == (3, 4)
+        # Column 2 contains merge distances; they should be positive and increasing
+        merge_distances = result.linkage_matrix[:, 2]
+        assert all(d > 0 for d in merge_distances)
+        # Merge distances should be non-decreasing
+        for i in range(len(merge_distances) - 1):
+            assert merge_distances[i] <= merge_distances[i + 1]
 
     def test_n_clusters_equals_samples(
         self, simple_distance_matrix: np.ndarray
     ) -> None:
-        """Test with n_clusters equal to n_samples."""
-        # This should work - each point in its own cluster
+        """Each point in its own cluster when n_clusters == n_samples."""
         result = hierarchical_clustering(simple_distance_matrix, n_clusters=4)
         assert result.n_clusters == 4
         assert len(np.unique(result.labels)) == 4
+        # Every label should be unique (each point is its own cluster)
+        assert len(set(result.labels)) == 4
+        # Each cluster should have exactly one member
+        sizes = result.cluster_sizes()
+        assert all(s == 1 for s in sizes.values())
 
     def test_mismatched_sequence_ids(self, simple_distance_matrix: np.ndarray) -> None:
         """Test error when sequence_ids length doesn't match."""

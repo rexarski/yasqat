@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numba
 import numpy as np
@@ -442,4 +442,7 @@ class PAMClustering:
 
         medoid_indices = self._result.medoid_indices
         dist_to_medoids = distance_to_train[:, medoid_indices]
-        return np.argmin(dist_to_medoids, axis=1).astype(np.int32)
+        result: np.ndarray[tuple[Any, ...], np.dtype[Any]] = np.argmin(
+            dist_to_medoids, axis=1
+        ).astype(np.int32)
+        return result

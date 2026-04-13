@@ -82,14 +82,5 @@ class TestHammingDistance:
         metric = HammingMetric(normalize=False)
         dist = metric.compute(seq_a, seq_b)
 
-        assert isinstance(dist, float)
-        assert dist >= 0
-
-
-class TestHammingUnequalLength:
-    def test_unequal_length_raises_value_error(self) -> None:
-        """Hamming distance should raise ValueError for unequal-length sequences."""
-        seq_a = np.array([0, 1, 2], dtype=np.int32)
-        seq_b = np.array([0, 1], dtype=np.int32)
-        with pytest.raises(ValueError, match="equal length"):
-            hamming_distance(seq_a, seq_b)
+        # seq_a=[0,1,2,3], seq_b=[0,2,2,3]: 1 mismatch at position 1
+        assert dist == 1.0

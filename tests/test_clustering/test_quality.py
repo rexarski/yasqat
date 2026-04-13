@@ -64,12 +64,14 @@ class TestSilhouetteScores:
     def test_range(
         self, well_separated_clusters: tuple[np.ndarray, np.ndarray]
     ) -> None:
-        """Test that scores are in [-1, 1]."""
+        """Test that scores are in [-1, 1] and positive for well-separated clusters."""
         dist_matrix, labels = well_separated_clusters
         scores = silhouette_scores(dist_matrix, labels)
 
         for s in scores:
             assert -1.0 <= s <= 1.0
+        # Well-separated clusters should all have positive silhouette scores
+        assert all(s > 0.0 for s in scores)
 
     def test_single_cluster(self) -> None:
         """Test with single cluster (all same label)."""
@@ -126,7 +128,7 @@ class TestClusterQuality:
     def test_returns_all_metrics(
         self, well_separated_clusters: tuple[np.ndarray, np.ndarray]
     ) -> None:
-        """Test that all metrics are returned."""
+        """Test that all metrics are returned with values in expected ranges."""
         dist_matrix, labels = well_separated_clusters
         metrics = cluster_quality(dist_matrix, labels)
 
@@ -134,6 +136,9 @@ class TestClusterQuality:
         assert "PBC" in metrics
         assert "HG" in metrics
         assert "R2" in metrics
+        # ASW in [-1, 1], R2 in [0, 1]
+        assert -1.0 <= metrics["ASW"] <= 1.0
+        assert 0.0 <= metrics["R2"] <= 1.0
 
     def test_well_separated_metrics(
         self, well_separated_clusters: tuple[np.ndarray, np.ndarray]
@@ -161,15 +166,17 @@ class TestClusterQuality:
 
         assert metrics["ASW"] == pytest.approx(asw)
 
-    def test_all_values_finite(
+    def test_all_values_finite_and_consistent(
         self, well_separated_clusters: tuple[np.ndarray, np.ndarray]
     ) -> None:
-        """Test that all metric values are finite."""
+        """Test that all metric values are finite and internally consistent."""
         dist_matrix, labels = well_separated_clusters
         metrics = cluster_quality(dist_matrix, labels)
 
         for key, value in metrics.items():
             assert np.isfinite(value), f"{key} is not finite: {value}"
+        # ASW from cluster_quality should match standalone silhouette_score
+        assert metrics["ASW"] == pytest.approx(silhouette_score(dist_matrix, labels))
 
 
 class TestDistanceToCenter:

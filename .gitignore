@@ -121,6 +121,3 @@ data/
 # Exclude from repo (local / planning only)
 CLAUDE.md
 plans/
-
-# tanat source code
-tanat*

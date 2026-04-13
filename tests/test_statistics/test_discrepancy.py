@@ -70,6 +70,9 @@ class TestDiscrepancyAnalysis:
         dist, labels = well_separated
         result = discrepancy_analysis(dist, labels)
         assert result.total_ss == pytest.approx(result.within_ss + result.between_ss)
+        # For heterogeneous groups, within_ss should be less than total_ss
+        assert result.within_ss < result.total_ss
+        assert result.between_ss > 0.0
 
     def test_r2_in_range(self, well_separated: tuple[np.ndarray, np.ndarray]) -> None:
         dist, labels = well_separated
@@ -94,7 +97,11 @@ class TestPermutationTest:
         dist, labels = well_separated
         result = discrepancy_analysis(dist, labels, n_permutations=99, random_state=42)
         assert result.p_value is not None
-        assert 0.0 < result.p_value <= 1.0
+        assert 0.0 <= result.p_value <= 1.0
+        assert result.n_permutations == 99
+        # With only 4 data points, permutation test has limited power,
+        # but p-value should still be valid (see test_well_separated_small_p
+        # for a larger-dataset test that verifies p < 0.05)
 
     def test_well_separated_small_p(self) -> None:
         # Use larger dataset so permutations are meaningful

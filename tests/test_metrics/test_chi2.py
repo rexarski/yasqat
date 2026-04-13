@@ -203,25 +203,27 @@ class TestChi2Metric:
     """Tests for Chi2Metric class."""
 
     def test_metric_class(self) -> None:
-        """Test Chi2Metric class."""
+        """Test Chi2Metric class computes correct distance."""
         seq_a = np.array([0, 0, 1, 2], dtype=np.int32)
         seq_b = np.array([0, 1, 1, 2], dtype=np.int32)
 
         metric = Chi2Metric()
         dist = metric.compute(seq_a, seq_b)
 
-        assert isinstance(dist, float)
-        assert dist >= 0
+        # counts_a=[2,1,1], counts_b=[1,2,1]
+        # chi2 = 0.5 * ((2-1)^2/3 + (1-2)^2/3 + (1-1)^2/2) = 0.5 * 2/3 = 1/3
+        np.testing.assert_allclose(dist, 1.0 / 3.0)
 
     def test_metric_normalized(self) -> None:
-        """Test Chi2Metric with normalization."""
+        """Test Chi2Metric with normalization computes correct value."""
         seq_a = np.array([0, 0, 1, 2], dtype=np.int32)
         seq_b = np.array([0, 1, 1, 2], dtype=np.int32)
 
         metric = Chi2Metric(normalize=True)
         dist = metric.compute(seq_a, seq_b)
 
-        assert isinstance(dist, float)
+        # Unnormalized = 1/3; all 3 states are active, so normalized = (1/3)/3 = 1/9
+        np.testing.assert_allclose(dist, 1.0 / 9.0)
 
     def test_metric_with_weights(self) -> None:
         """Test Chi2Metric with weights."""

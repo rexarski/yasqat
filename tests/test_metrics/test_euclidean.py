@@ -71,21 +71,27 @@ class TestEuclideanMetric:
     """Tests for EuclideanMetric class."""
 
     def test_basic_distance(self) -> None:
-        """Test metric compute method."""
+        """Test metric compute method with different sequences."""
         metric = EuclideanMetric()
         seq_a = np.array([0, 0, 1, 1], dtype=np.int32)
-        seq_b = np.array([0, 0, 1, 1], dtype=np.int32)
+        seq_b = np.array([0, 1, 1, 1], dtype=np.int32)
 
-        assert metric.compute(seq_a, seq_b) == 0.0
+        dist = metric.compute(seq_a, seq_b)
+
+        # props_a = [0.5, 0.5], props_b = [0.25, 0.75]
+        # d = sqrt((0.5-0.25)^2 + (0.5-0.75)^2) = sqrt(0.0625+0.0625) = sqrt(0.125)
+        assert dist == pytest.approx(0.125**0.5)
 
     def test_with_normalize(self) -> None:
-        """Test metric with normalization."""
+        """Test metric with normalization returns correct value."""
         metric = EuclideanMetric(normalize=True)
         seq_a = np.array([0, 0, 0], dtype=np.int32)
         seq_b = np.array([1, 1, 1], dtype=np.int32)
 
         dist = metric.compute(seq_a, seq_b)
-        assert 0.0 <= dist <= 1.0
+
+        # props_a=[1,0], props_b=[0,1], d=sqrt(2), normalized by sqrt(2) = 1.0
+        assert dist == pytest.approx(1.0)
 
     def test_name(self) -> None:
         """Test metric name."""

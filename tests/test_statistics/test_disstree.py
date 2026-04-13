@@ -36,6 +36,9 @@ class TestDissimilarityTree:
         result = dissimilarity_tree(dist, covariates)
         assert isinstance(result, DissTreeResult)
         assert result.n_leaves >= 2
+        # The root should have found a meaningful split with R² > 0
+        assert result.root.pseudo_r2 > 0.0
+        assert result.root.split_variable is not None
 
     def test_labels_cover_all(self, tree_data: tuple[np.ndarray, np.ndarray]) -> None:
         dist, covariates = tree_data
@@ -58,8 +61,9 @@ class TestDissimilarityTree:
         dist = np.ones((n, n)) - np.eye(n)
         covariates = np.random.default_rng(42).random((n, 2))
         result = dissimilarity_tree(dist, covariates, min_r2_gain=0.5)
-        # Uniform distances should not split well
-        assert result.n_leaves >= 1
+        # Uniform distances cannot produce a meaningful split, so exactly 1 leaf
+        assert result.n_leaves == 1
+        assert result.root.is_leaf
 
     def test_custom_covariate_names(
         self, tree_data: tuple[np.ndarray, np.ndarray]
@@ -118,12 +122,16 @@ class TestDissTreeDepth:
                     dist[i, j] = rng.uniform(3, 6)
                 dist[j, i] = dist[i, j]
 
-        cov = np.column_stack([
-            labels_true * 10 + rng.normal(0, 1, n),
-            labels_true.astype(float),
-        ])
+        cov = np.column_stack(
+            [
+                labels_true * 10 + rng.normal(0, 1, n),
+                labels_true.astype(float),
+            ]
+        )
         result = dissimilarity_tree(
-            dist, cov, covariate_names=["age", "group"],
+            dist,
+            cov,
+            covariate_names=["age", "group"],
         )
         assert result.n_leaves >= 3
 
@@ -136,7 +144,9 @@ class TestDissTreeDepth:
         np.fill_diagonal(dist, 0)
         cov = rng.random((n, 2))
         result = dissimilarity_tree(
-            dist, cov, min_node_size=10,
+            dist,
+            cov,
+            min_node_size=10,
         )
 
         def check_leaves(node):

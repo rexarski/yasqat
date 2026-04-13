@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import polars as pl
@@ -80,7 +80,7 @@ def longitudinal_entropy(
     if per_sequence:
         return entropy_df
 
-    return float(entropy_df["entropy"].mean())
+    return cast(float, entropy_df["entropy"].mean())
 
 
 def transition_count(
@@ -320,7 +320,7 @@ def turbulence(
     if per_sequence:
         return turb_df
 
-    return float(turb_df["turbulence"].mean())
+    return cast(float, turb_df["turbulence"].mean())
 
 
 def state_distribution(
@@ -819,9 +819,7 @@ def subsequence_count(
                     # log2(2*dp[i-1] - dp[last[c]-1])
                     diff = log_dp[last[c] - 1] - log_dp[i - 1]
                     if diff > -50:
-                        log_dp[i] = log_dp[i - 1] + math.log2(
-                            2.0 - 2.0**diff
-                        )
+                        log_dp[i] = log_dp[i - 1] + math.log2(2.0 - 2.0**diff)
                 last[c] = i
             counts.append(log_dp[n])
         else:
@@ -909,7 +907,7 @@ def normalized_turbulence(
     if per_sequence:
         return result
 
-    return float(result["normalized_turbulence"].mean())
+    return cast(float, result["normalized_turbulence"].mean())
 
 
 def sequence_log_probability(

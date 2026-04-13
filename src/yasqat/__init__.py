@@ -6,7 +6,7 @@ A modern Python library for sequence analysis with polars and plotnine.
 
 from importlib.metadata import PackageNotFoundError, version
 
-from yasqat import io as io  # noqa: PLC0414 — re-export so `yasqat.io` works
+from yasqat import io as io  # re-export so `yasqat.io` works
 from yasqat.core.alphabet import Alphabet
 from yasqat.core.pool import SequencePool
 from yasqat.core.sequence import (

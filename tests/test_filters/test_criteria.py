@@ -1,5 +1,7 @@
 """Tests for filtering criteria."""
 
+from __future__ import annotations
+
 import polars as pl
 import pytest
 
@@ -80,6 +82,21 @@ class TestLengthCriterion:
         assert 2 in matching  # length 3
         assert 3 not in matching  # length 5
 
+    def test_length_criterion_min_equals_max(
+        self, test_sequence: StateSequence
+    ) -> None:
+        """min_length == max_length should work like exact_length."""
+        criterion_range = LengthCriterion(min_length=4, max_length=4)
+        criterion_exact = LengthCriterion(exact_length=4)
+
+        matching_range = sorted(criterion_range.get_matching_ids(test_sequence))
+        matching_exact = sorted(criterion_exact.get_matching_ids(test_sequence))
+
+        assert matching_range == matching_exact
+        assert 1 in matching_range  # length 4
+        assert 2 not in matching_range  # length 3
+        assert 3 not in matching_range  # length 5
+
 
 class TestTimeCriterion:
     """Tests for TimeCriterion."""
@@ -108,13 +125,26 @@ class TestContainsStateCriterion:
     """Tests for ContainsStateCriterion."""
 
     def test_contains_any_state(self, test_sequence: StateSequence) -> None:
-        """Test filtering by containing any of the states."""
-        criterion = ContainsStateCriterion(states=["D"])
-        matching = criterion.get_matching_ids(test_sequence)
+        """Test filtering by containing any of multiple query states."""
+        # Single state
+        criterion_single = ContainsStateCriterion(states=["D"])
+        matching_single = criterion_single.get_matching_ids(test_sequence)
+        assert 1 not in matching_single
+        assert 2 not in matching_single
+        assert 3 in matching_single
 
-        assert 1 not in matching  # no D
-        assert 2 not in matching  # no D
-        assert 3 in matching  # has D
+        # Multiple query states: should match sequences containing A OR D
+        criterion_multi = ContainsStateCriterion(states=["A", "D"])
+        matching_multi = criterion_multi.get_matching_ids(test_sequence)
+        assert 1 in matching_multi  # has A
+        assert 2 in matching_multi  # has A
+        assert 3 in matching_multi  # has D
+
+    def test_contains_state_not_in_alphabet(self, test_sequence: StateSequence) -> None:
+        """Filtering by a state not in the data should return empty."""
+        criterion = ContainsStateCriterion(states=["Z"])
+        matching = criterion.get_matching_ids(test_sequence)
+        assert matching == []
 
     def test_contains_all_states(self, test_sequence: StateSequence) -> None:
         """Test filtering by containing all states."""

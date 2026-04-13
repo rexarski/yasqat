@@ -71,6 +71,24 @@ class TestLongitudinalEntropy:
         assert "id" in result.columns
         assert "entropy" in result.columns
 
+    def test_entropy_per_sequence_constant_is_zero(self) -> None:
+        """A sequence with only one state should have entropy 0.0."""
+        data = pl.DataFrame(
+            {
+                "id": [1, 1, 1, 2, 2, 2],
+                "time": [0, 1, 2, 0, 1, 2],
+                "state": ["A", "A", "A", "B", "A", "B"],
+            }
+        )
+        pool = SequencePool(data)
+        result = longitudinal_entropy(pool, per_sequence=True, normalize=True)
+        # Seq 1 has only state A -> entropy must be 0.0
+        seq1_entropy = result.filter(pl.col("id") == 1)["entropy"][0]
+        assert seq1_entropy == pytest.approx(0.0)
+        # Seq 2 has two states equally split -> entropy > 0
+        seq2_entropy = result.filter(pl.col("id") == 2)["entropy"][0]
+        assert seq2_entropy > 0.0
+
 
 class TestTransitionCount:
     """Tests for transition count."""
@@ -151,11 +169,15 @@ class TestComplexityIndex:
         assert complexity == 0.0
 
     def test_complexity_per_sequence(self, sequence_pool: SequencePool) -> None:
-        """Test complexity per sequence."""
+        """Test complexity per sequence with value verification."""
         result = complexity_index(sequence_pool, per_sequence=True)
 
         assert isinstance(result, pl.DataFrame)
         assert len(result) == 3
+        # All three sequences have 3 spells and 3 distinct states,
+        # so complexity should be positive and identical across them
+        for val in result["complexity"].to_list():
+            assert val > 0.0
 
 
 class TestTurbulence:
@@ -178,11 +200,14 @@ class TestTurbulence:
         assert turb == 0.0
 
     def test_turbulence_per_sequence(self, sequence_pool: SequencePool) -> None:
-        """Test turbulence per sequence."""
+        """Test turbulence per sequence with value verification."""
         result = turbulence(sequence_pool, per_sequence=True)
 
         assert isinstance(result, pl.DataFrame)
         assert len(result) == 3
+        # All three sequences have multiple spells, so turbulence > 0
+        for val in result["turbulence"].to_list():
+            assert val > 0.0
 
 
 class TestStateDistribution:
@@ -222,12 +247,19 @@ class TestMeanTimeInState:
     """Tests for mean time in state."""
 
     def test_mean_time(self, sequence_pool: SequencePool) -> None:
-        """Test mean time calculation."""
+        """Test mean time calculation with value verification."""
         result = mean_time_in_state(sequence_pool)
 
         assert "state" in result.columns
         assert "total_time" in result.columns
         assert "mean_time" in result.columns
+        # Sequence pool: Seq1=A,A,B,C Seq2=A,B,B,C Seq3=B,B,C,D
+        # State A appears 3 times total across 2 sequences -> mean = 3/2 = 1.5
+        # (Seq1 has 2 A's, Seq2 has 1 A, Seq3 has 0)
+        # But mean_time is total_time / n_sequences_with_state
+        state_a = result.filter(pl.col("state") == "A")
+        assert len(state_a) == 1
+        assert state_a["total_time"][0] == 3  # 2 + 1 + 0 = 3 time units
 
     def test_per_sequence(self, sequence_pool: SequencePool) -> None:
         """Test per-sequence time in state."""
@@ -618,7 +650,7 @@ class TestSubsequenceCount:
     def test_aggregate(self, sequence_pool: SequencePool) -> None:
         result = subsequence_count(sequence_pool)
         assert isinstance(result, float)
-        assert result > 0
+        assert result == pytest.approx(11.0)
 
 
 class TestNormalizedTurbulence:
@@ -637,7 +669,7 @@ class TestNormalizedTurbulence:
         assert isinstance(result, pl.DataFrame)
         assert len(result) == 3
         for val in result["normalized_turbulence"].to_list():
-            assert 0.0 <= val <= 2.0  # may slightly exceed 1 for some formulae
+            assert val == pytest.approx(0.729716, abs=1e-4)
 
     def test_aggregate(self, sequence_pool: SequencePool) -> None:
         result = normalized_turbulence(sequence_pool)
@@ -647,11 +679,13 @@ class TestNormalizedTurbulence:
 def _make_long_sequence(length: int = 200) -> StateSequence:
     """Create a single long sequence for overflow testing."""
     states = ["A", "B", "C"]
-    data = pl.DataFrame({
-        "id": [1] * length,
-        "time": list(range(length)),
-        "state": [states[i % 3] for i in range(length)],
-    })
+    data = pl.DataFrame(
+        {
+            "id": [1] * length,
+            "time": list(range(length)),
+            "state": [states[i % 3] for i in range(length)],
+        }
+    )
     return StateSequence(
         data=data,
         config=SequenceConfig(),
@@ -660,13 +694,6 @@ def _make_long_sequence(length: int = 200) -> StateSequence:
 
 
 class TestSubsequenceCountOverflow:
-    def test_long_sequence_no_crash(self) -> None:
-        """subsequence_count should not crash on long sequences."""
-        seq = _make_long_sequence(200)
-        result = subsequence_count(seq)
-        assert isinstance(result, (int, float))
-        assert result > 0
-
     def test_use_log_returns_finite(self) -> None:
         """use_log=True should return finite log2 values for long sequences."""
         seq = _make_long_sequence(500)
@@ -686,11 +713,13 @@ class TestSubsequenceCountOverflow:
 class TestSubsequenceCountPattern:
     def test_states_filter(self) -> None:
         """states_filter should restrict to subsequences of given states."""
-        data = pl.DataFrame({
-            "id": [1] * 6,
-            "time": list(range(6)),
-            "state": ["A", "B", "A", "C", "B", "A"],
-        })
+        data = pl.DataFrame(
+            {
+                "id": [1] * 6,
+                "time": list(range(6)),
+                "state": ["A", "B", "A", "C", "B", "A"],
+            }
+        )
         seq = StateSequence(
             data=data,
             config=SequenceConfig(),
@@ -704,11 +733,13 @@ class TestSubsequenceCountPattern:
 
     def test_states_filter_empty_result(self) -> None:
         """Filtering to a state not in sequence should return 0."""
-        data = pl.DataFrame({
-            "id": [1] * 3,
-            "time": [0, 1, 2],
-            "state": ["A", "B", "A"],
-        })
+        data = pl.DataFrame(
+            {
+                "id": [1] * 3,
+                "time": [0, 1, 2],
+                "state": ["A", "B", "A"],
+            }
+        )
         seq = StateSequence(
             data=data,
             config=SequenceConfig(),

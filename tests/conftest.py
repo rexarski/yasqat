@@ -12,10 +12,7 @@ from yasqat.core.sequence import StateSequence
 @pytest.fixture
 def simple_alphabet() -> Alphabet:
     """Create a simple 4-state alphabet."""
-    return Alphabet(
-        states=("A", "B", "C", "D"),
-        labels={"A": "State A", "B": "State B", "C": "State C", "D": "State D"},
-    )
+    return Alphabet(states=("A", "B", "C", "D"))
 
 
 @pytest.fixture

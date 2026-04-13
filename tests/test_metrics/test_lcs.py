@@ -77,8 +77,9 @@ class TestLCSDistance:
 
         sim = lcs_similarity(seq_a, seq_b)
 
-        # LCS is [0, 2], length 2
-        # Similarity = 2 / 4 = 0.5
+        # LCS is [0, 2], length 2: elements 0 and 2 appear in order in both
+        # sequences (seq_a has 0 at pos 0, 2 at pos 2; seq_b has 0 at pos 0,
+        # 2 at pos 1). Similarity = LCS_len / max(len_a, len_b) = 2 / 4 = 0.5
         assert sim == 0.5
 
     def test_empty_sequences(self) -> None:
@@ -114,5 +115,6 @@ class TestLCSDistance:
         metric = LCSMetric(normalize=False)
         dist = metric.compute(seq_a, seq_b)
 
-        assert isinstance(dist, float)
-        assert dist >= 0
+        # seq_a=[0,1,2,3,4], seq_b=[0,2,4]: LCS is [0,2,4] length 3
+        # distance = 5 + 3 - 2*3 = 2.0
+        assert dist == 2.0

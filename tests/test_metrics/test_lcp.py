@@ -124,25 +124,26 @@ class TestLCPDistance:
         assert dist_ab == dist_ba
 
     def test_metric_class(self) -> None:
-        """Test LCPMetric class."""
+        """Test LCPMetric class computes correct distance."""
         seq_a = np.array([0, 1, 2, 3], dtype=np.int32)
         seq_b = np.array([0, 1, 4, 5], dtype=np.int32)
 
         metric = LCPMetric(normalize=False)
         dist = metric.compute(seq_a, seq_b)
 
-        assert isinstance(dist, float)
-        assert dist >= 0
+        # LCP length is 2 (elements 0,1 match), distance = 4+4-2*2 = 4.0
+        assert dist == 4.0
 
     def test_metric_class_normalized(self) -> None:
-        """Test LCPMetric with normalization."""
+        """Test LCPMetric with normalization computes correct value."""
         seq_a = np.array([0, 1, 2, 3], dtype=np.int32)
         seq_b = np.array([0, 1, 4, 5], dtype=np.int32)
 
         metric = LCPMetric(normalize=True)
         dist = metric.compute(seq_a, seq_b)
 
-        assert 0 <= dist <= 1
+        # Unnormalized = 4.0, total_len = 8, normalized = 4/8 = 0.5
+        assert dist == 0.5
 
     def test_different_from_lcs(self) -> None:
         """Test that LCP differs from LCS."""
