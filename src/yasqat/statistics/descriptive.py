@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import polars as pl
@@ -57,9 +57,7 @@ def longitudinal_entropy(
     data = pool.data
 
     # Vectorized entropy computation using polars
-    state_counts = data.group_by([id_col, state_col]).agg(
-        pl.len().alias("count")
-    )
+    state_counts = data.group_by([id_col, state_col]).agg(pl.len().alias("count"))
     seq_lengths = data.group_by(id_col).agg(pl.len().alias("_total"))
 
     entropy_df = (
@@ -82,7 +80,7 @@ def longitudinal_entropy(
     if per_sequence:
         return entropy_df
 
-    return float(entropy_df["entropy"].mean())
+    return cast(float, entropy_df["entropy"].mean())
 
 
 def transition_count(
@@ -322,12 +320,13 @@ def turbulence(
     if per_sequence:
         return turb_df
 
-    return float(turb_df["turbulence"].mean())
+    return cast(float, turb_df["turbulence"].mean())
 
 
 def state_distribution(
     sequence: StateSequence | SequencePool,
     time_point: int | None = None,
+    per_sequence: bool = False,
 ) -> pl.DataFrame:
     """
     Calculate state distribution (cross-sectional or overall).
@@ -336,6 +335,7 @@ def state_distribution(
         sequence: StateSequence or SequencePool.
         time_point: If provided, calculate distribution at specific time.
                    If None, calculate overall distribution.
+        per_sequence: If True, return distribution within each sequence.
 
     Returns:
         DataFrame with states and their frequencies/proportions.
@@ -352,6 +352,18 @@ def state_distribution(
     if time_point is not None:
         data = data.filter(pl.col(config.time_column) == time_point)
 
+    if per_sequence:
+        per_seq_counts = data.group_by([config.id_column, config.state_column]).agg(
+            pl.len().alias("count")
+        )
+        per_seq_total = data.group_by(config.id_column).agg(pl.len().alias("total"))
+        return (
+            per_seq_counts.join(per_seq_total, on=config.id_column)
+            .with_columns((pl.col("count") / pl.col("total")).alias("proportion"))
+            .drop("total")
+            .sort([config.id_column, config.state_column])
+        )
+
     counts = (
         data.group_by(config.state_column)
         .agg(pl.len().alias("count"))
@@ -366,15 +378,18 @@ def state_distribution(
 
 def mean_time_in_state(
     sequence: StateSequence | SequencePool,
+    per_sequence: bool = False,
 ) -> pl.DataFrame:
     """
     Calculate mean time spent in each state.
 
     Args:
         sequence: StateSequence or SequencePool.
+        per_sequence: If True, return time-in-state for each sequence.
 
     Returns:
-        DataFrame with states and mean time spent in each.
+        If per_sequence=False: DataFrame with states and mean time across sequences.
+        If per_sequence=True: DataFrame with sequence IDs, states, and counts.
     """
     from yasqat.core.sequence import StateSequence
 
@@ -384,6 +399,13 @@ def mean_time_in_state(
     else:
         data = sequence.data
         config = sequence.config
+
+    if per_sequence:
+        return (
+            data.group_by([config.id_column, config.state_column])
+            .agg(pl.len().alias("time_in_state"))
+            .sort([config.id_column, config.state_column])
+        )
 
     n_sequences = data[config.id_column].n_unique()
 
@@ -612,15 +634,30 @@ def transition_proportion(
 
 def modal_states(
     sequence: StateSequence | SequencePool,
+    granularity: str | None = None,
 ) -> pl.DataFrame:
     """
     Get the modal (most frequent) state at each time position.
 
     Args:
         sequence: StateSequence or SequencePool.
+        granularity: Polars ``dt.truncate`` unit string (e.g. ``"1d"``,
+            ``"1w"``, ``"1mo"``, ``"1h"``) for re-bucketing the time column
+            before computing modes. The time column must be a polars
+            datetime/date dtype when this is set. ``None`` (default) uses
+            the raw time values as stored.
+
+            Strings only — integer granularities were removed in v0.3.2
+            (hot-fix B3). For integer-indexed time, pre-bucket the column
+            with ``(pl.col("t") // k * k)`` before constructing the pool.
 
     Returns:
         DataFrame with columns: time, modal_state, frequency, proportion.
+
+    Raises:
+        TypeError: If ``granularity`` is not a string (and not ``None``).
+        ValueError: If ``granularity`` is set but the time column is not
+            a datetime/date dtype.
     """
     from yasqat.core.sequence import StateSequence
 
@@ -633,6 +670,25 @@ def modal_states(
 
     time_col = config.time_column
     state_col = config.state_column
+
+    if granularity is not None:
+        if not isinstance(granularity, str):
+            raise TypeError(
+                f"modal_states: granularity must be a string polars truncate "
+                f"unit (e.g. '1d', '1w'); got {type(granularity).__name__}. "
+                f"Integer granularities were removed in v0.3.2 (hot-fix B3)."
+            )
+        time_dtype = data.schema[time_col]
+        if not time_dtype.is_temporal():
+            raise ValueError(
+                f"modal_states: granularity={granularity!r} requires a "
+                f"polars datetime/date time column; {time_col!r} has dtype "
+                f"{time_dtype}. Either drop granularity or cast the time "
+                f"column to Datetime first."
+            )
+        data = data.with_columns(
+            pl.col(time_col).dt.truncate(granularity).alias(time_col)
+        )
 
     # Count state occurrences at each time point
     counts = data.group_by([time_col, state_col]).agg(pl.len().alias("frequency"))
@@ -721,6 +777,8 @@ def sequence_frequency_table(
 def subsequence_count(
     sequence: StateSequence | SequencePool,
     per_sequence: bool = False,
+    states_filter: list[str] | None = None,
+    use_log: bool = False,
 ) -> int | float | pl.DataFrame:
     """
     Count the number of distinct subsequences from the DSS representation.
@@ -728,14 +786,23 @@ def subsequence_count(
     Uses the DP formula: dp[i] = 2 * dp[i-1] - dp[last[c]] where last[c]
     is the dp value before the previous occurrence of character c.
 
+    For long sequences (>100 states), counts can grow astronomically large
+    (exponential in sequence length). Use ``use_log=True`` to return
+    log2 of the count instead.
+
     Args:
         sequence: StateSequence or SequencePool.
         per_sequence: If True, return counts for each sequence.
+        states_filter: If provided, only count subsequences whose states
+            are all in this list.
+        use_log: If True, return log2 of the count to avoid huge integers.
 
     Returns:
-        If per_sequence=False: Mean distinct subsequence count.
+        If per_sequence=False: Mean distinct subsequence count (or log2 mean).
         If per_sequence=True: DataFrame with sequence IDs and counts.
     """
+    import math
+
     from yasqat.core.pool import SequencePool
     from yasqat.core.sequence import StateSequence
 
@@ -749,39 +816,59 @@ def subsequence_count(
         pool = sequence
 
     config = pool.config
-    counts: list[int] = []
+    counts: list[int | float] = []
     seq_ids: list[int | str] = []
 
     for seq_id in pool.sequence_ids:
         states = pool.get_sequence(seq_id)
-        # DP for counting distinct subsequences
-        # dp[i] = number of distinct subsequences of states[:i]
+
+        # Filter to only the requested states if given
+        if states_filter is not None:
+            allowed = set(states_filter)
+            states = [s for s in states if s in allowed]
+
         n = len(states)
         if n == 0:
             counts.append(0)
             seq_ids.append(seq_id)
             continue
 
-        dp = [0] * (n + 1)
-        dp[0] = 1  # empty subsequence
-        last: dict[str, int] = {}
+        if use_log:
+            # Use log2 arithmetic to avoid overflow
+            log_dp = [0.0] * (n + 1)  # log_dp[0] = log2(1) = 0
+            last: dict[str, int] = {}
+            for i in range(1, n + 1):
+                log_dp[i] = log_dp[i - 1] + 1.0  # log2(2 * dp[i-1])
+                c = states[i - 1]
+                if c in last:
+                    # log2(2*dp[i-1] - dp[last[c]-1])
+                    diff = log_dp[last[c] - 1] - log_dp[i - 1]
+                    if diff > -50:
+                        log_dp[i] = log_dp[i - 1] + math.log2(2.0 - 2.0**diff)
+                last[c] = i
+            counts.append(log_dp[n])
+        else:
+            # Standard DP — Python big ints handle overflow
+            dp = [0] * (n + 1)
+            dp[0] = 1
+            last_seen: dict[str, int] = {}
+            for i in range(1, n + 1):
+                dp[i] = 2 * dp[i - 1]
+                c = states[i - 1]
+                if c in last_seen:
+                    dp[i] -= dp[last_seen[c] - 1]
+                last_seen[c] = i
+            counts.append(dp[n] - 1)
 
-        for i in range(1, n + 1):
-            dp[i] = 2 * dp[i - 1]
-            c = states[i - 1]
-            if c in last:
-                dp[i] -= dp[last[c] - 1]
-            last[c] = i
-
-        # dp[n] includes the empty subsequence; subtract 1 for non-empty count
-        counts.append(dp[n] - 1)
         seq_ids.append(seq_id)
+
+    col_name = "log2_n_subsequences" if use_log else "n_subsequences"
 
     if per_sequence:
         return pl.DataFrame(
             {
                 config.id_column: seq_ids,
-                "n_subsequences": counts,
+                col_name: counts,
             }
         )
 
@@ -827,19 +914,14 @@ def normalized_turbulence(
     assert isinstance(turb_df, pl.DataFrame)
 
     # Get sequence lengths using polars
-    lengths = pool.data.group_by(id_col).agg(
-        pl.len().alias("_length")
-    )
+    lengths = pool.data.group_by(id_col).agg(pl.len().alias("_length"))
 
     # Vectorized normalization: T_max = log2(n)
     result = (
         turb_df.join(lengths, on=id_col)
         .with_columns(
             pl.when(pl.col("_length") > 1)
-            .then(
-                pl.col("turbulence")
-                / pl.col("_length").cast(pl.Float64).log(2)
-            )
+            .then(pl.col("turbulence") / pl.col("_length").cast(pl.Float64).log(2))
             .otherwise(0.0)
             .alias("normalized_turbulence")
         )
@@ -850,7 +932,7 @@ def normalized_turbulence(
     if per_sequence:
         return result
 
-    return float(result["normalized_turbulence"].mean())
+    return cast(float, result["normalized_turbulence"].mean())
 
 
 def sequence_log_probability(

@@ -36,6 +36,9 @@ class TestDissimilarityTree:
         result = dissimilarity_tree(dist, covariates)
         assert isinstance(result, DissTreeResult)
         assert result.n_leaves >= 2
+        # The root should have found a meaningful split with R² > 0
+        assert result.root.pseudo_r2 > 0.0
+        assert result.root.split_variable is not None
 
     def test_labels_cover_all(self, tree_data: tuple[np.ndarray, np.ndarray]) -> None:
         dist, covariates = tree_data
@@ -58,8 +61,9 @@ class TestDissimilarityTree:
         dist = np.ones((n, n)) - np.eye(n)
         covariates = np.random.default_rng(42).random((n, 2))
         result = dissimilarity_tree(dist, covariates, min_r2_gain=0.5)
-        # Uniform distances should not split well
-        assert result.n_leaves >= 1
+        # Uniform distances cannot produce a meaningful split, so exactly 1 leaf
+        assert result.n_leaves == 1
+        assert result.root.is_leaf
 
     def test_custom_covariate_names(
         self, tree_data: tuple[np.ndarray, np.ndarray]
@@ -68,3 +72,120 @@ class TestDissimilarityTree:
         result = dissimilarity_tree(dist, covariates, covariate_names=["age"])
         if result.root.split_variable is not None:
             assert result.root.split_variable == "age"
+
+    def test_deeper_tree_with_structure(self) -> None:
+        """Tree should grow beyond depth 1 when data has nested structure."""
+        n = 40
+        rng = np.random.default_rng(99)
+        # 4 groups of 10 with distinct distance patterns
+        group = np.array([0] * 10 + [1] * 10 + [2] * 10 + [3] * 10)
+        dist = np.zeros((n, n))
+        for i in range(n):
+            for j in range(i + 1, n):
+                if group[i] == group[j]:
+                    dist[i, j] = dist[j, i] = rng.random() * 0.3
+                else:
+                    dist[i, j] = dist[j, i] = 3.0 + rng.random()
+        # Two covariates that separate the 4 groups
+        cov = np.zeros((n, 2))
+        cov[:20, 0] = rng.random(20) * 0.5
+        cov[20:, 0] = 0.5 + rng.random(20) * 0.5
+        cov[:10, 1] = rng.random(10) * 0.5
+        cov[10:20, 1] = 0.5 + rng.random(10) * 0.5
+        cov[20:30, 1] = rng.random(10) * 0.5
+        cov[30:, 1] = 0.5 + rng.random(10) * 0.5
+
+        result = dissimilarity_tree(
+            dist,
+            cov,
+            covariate_names=["x1", "x2"],
+            max_depth=5,
+            min_node_size=5,
+            min_r2_gain=0.001,
+        )
+        # With 4 well-separated groups, we should get at least 3 leaves
+        assert result.n_leaves >= 3
+
+
+class TestDissTreeDepth:
+    def test_deeper_tree_with_structure(self) -> None:
+        """With structured data, tree should find multiple splits."""
+        rng = np.random.default_rng(42)
+        n = 100
+        labels_true = np.array([0] * 25 + [1] * 25 + [2] * 25 + [3] * 25)
+        dist = np.zeros((n, n), dtype=float)
+        for i in range(n):
+            for j in range(i + 1, n):
+                if labels_true[i] == labels_true[j]:
+                    dist[i, j] = rng.uniform(0, 1)
+                else:
+                    dist[i, j] = rng.uniform(3, 6)
+                dist[j, i] = dist[i, j]
+
+        cov = np.column_stack(
+            [
+                labels_true * 10 + rng.normal(0, 1, n),
+                labels_true.astype(float),
+            ]
+        )
+        result = dissimilarity_tree(
+            dist,
+            cov,
+            covariate_names=["age", "group"],
+        )
+        assert result.n_leaves >= 3
+
+    def test_categorical_covariate_string(self) -> None:
+        """Regression (v0.3.2 hot-fix C2): non-numeric covariates must split
+        via one-vs-rest equality, not ``values <= val`` (which was either
+        silently lexicographic or raised for object dtype).
+        """
+        rng = np.random.default_rng(7)
+        n = 40
+        # Two latent groups keyed by a string covariate.
+        cov = np.array(["red"] * 20 + ["blue"] * 20, dtype=object).reshape(-1, 1)
+        dist = np.zeros((n, n))
+        for i in range(n):
+            for j in range(i + 1, n):
+                same = (i < 20) == (j < 20)
+                dist[i, j] = dist[j, i] = (
+                    rng.random() * 0.3 if same else 3.0 + rng.random()
+                )
+
+        result = dissimilarity_tree(
+            dist, cov, covariate_names=["colour"], max_depth=3, min_node_size=5
+        )
+
+        assert result.root.split_variable == "colour"
+        # Split value should be one of the two categories (unboxed, not
+        # np.str_) — chosen by whichever one-vs-rest partition scored best.
+        assert result.root.split_value in {"red", "blue"}
+        assert isinstance(result.root.split_value, str)
+        assert result.n_leaves >= 2
+
+    def test_min_node_size_respected(self) -> None:
+        """Leaves should have at least min_node_size observations."""
+        rng = np.random.default_rng(42)
+        n = 50
+        dist = rng.random((n, n))
+        dist = (dist + dist.T) / 2
+        np.fill_diagonal(dist, 0)
+        cov = rng.random((n, 2))
+        result = dissimilarity_tree(
+            dist,
+            cov,
+            min_node_size=10,
+        )
+
+        def check_leaves(node):
+            if node.is_leaf:
+                assert node.n_observations >= 10, (
+                    f"Leaf has {node.n_observations} obs, expected >= 10"
+                )
+            else:
+                if node.left:
+                    check_leaves(node.left)
+                if node.right:
+                    check_leaves(node.right)
+
+        check_leaves(result.root)

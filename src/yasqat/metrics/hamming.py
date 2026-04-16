@@ -60,8 +60,10 @@ def hamming_distance(
     """
     if len(seq_a) != len(seq_b):
         raise ValueError(
-            f"Sequences must have the same length for Hamming distance. "
-            f"Got {len(seq_a)} and {len(seq_b)}"
+            f"Hamming distance requires sequences of equal length, "
+            f"got {len(seq_a)} and {len(seq_b)}. "
+            f"Consider using DTW, LCS, or optimal matching for "
+            f"unequal-length sequences."
         )
 
     distance = float(_hamming_kernel(seq_a, seq_b))

@@ -75,8 +75,15 @@ def _find_best_split(
     covariates: np.ndarray,
     indices: np.ndarray,
     covariate_names: list[str],
-) -> tuple[int, float, float]:
+    min_node_size: int = 5,
+) -> tuple[int, float | int | str, float]:
     """Find the best binary split on covariates.
+
+    Numeric covariates use a threshold split (``values <= split_val``).
+    Non-numeric covariates use a one-vs-rest equality split
+    (``values == split_val``), matching TraMineR's disstree default for
+    categorical predictors. Dtype is detected per column with
+    ``np.issubdtype(values.dtype, np.number)``.
 
     Returns (best_covariate_idx, best_split_value, best_r2_gain).
     """
@@ -86,7 +93,7 @@ def _find_best_split(
 
     best_gain = 0.0
     best_var = -1
-    best_val = 0.0
+    best_val: float | int | str = 0.0
 
     n_covariates = covariates.shape[1]
 
@@ -97,14 +104,27 @@ def _find_best_split(
         if len(unique_vals) <= 1:
             continue
 
-        for split_val in unique_vals[:-1]:
-            left_mask = values <= split_val
+        is_numeric = np.issubdtype(values.dtype, np.number)
+
+        # Numeric: scan thresholds between consecutive sorted values — the
+        # last unique value is excluded because ``values <= max`` matches all
+        # observations (empty right split).
+        # Categorical: try every unique value as a one-vs-rest split; all
+        # candidates can produce a non-trivial partition (unless only one
+        # category exists, which is caught above).
+        split_candidates = unique_vals[:-1] if is_numeric else unique_vals
+
+        for split_val in split_candidates:
+            if is_numeric:
+                left_mask = values <= split_val
+            else:
+                left_mask = values == split_val
             right_mask = ~left_mask
 
             left_idx = indices[left_mask]
             right_idx = indices[right_mask]
 
-            if len(left_idx) < 1 or len(right_idx) < 1:
+            if len(left_idx) < min_node_size or len(right_idx) < min_node_size:
                 continue
 
             within_ss = _compute_discrepancy(
@@ -116,7 +136,9 @@ def _find_best_split(
             if r2_gain > best_gain:
                 best_gain = r2_gain
                 best_var = var_idx
-                best_val = float(split_val)
+                # Unbox numpy scalars so downstream repr / serialization
+                # doesn't leak ``np.int64(...)`` / ``np.str_(...)`` wrappers.
+                best_val = split_val.item() if hasattr(split_val, "item") else split_val
 
     return best_var, best_val, best_gain
 
@@ -127,7 +149,7 @@ def dissimilarity_tree(
     covariate_names: list[str] | None = None,
     max_depth: int = 5,
     min_node_size: int = 5,
-    min_r2_gain: float = 0.01,
+    min_r2_gain: float = 0.001,
 ) -> DissTreeResult:
     """
     Build a dissimilarity tree by recursive partitioning.
@@ -176,7 +198,7 @@ def dissimilarity_tree(
             return node
 
         var_idx, split_val, r2_gain = _find_best_split(
-            dist_matrix, covariates, indices, covariate_names
+            dist_matrix, covariates, indices, covariate_names, min_node_size
         )
 
         if var_idx < 0 or r2_gain < min_r2_gain:
@@ -185,13 +207,25 @@ def dissimilarity_tree(
             labels[indices] = node_label
             return node
 
+        # Check that both children would have at least 1 observation.
+        # Mirror the split-type logic from _find_best_split so the recursion
+        # partitions on the same rule that was scored.
+        values = covariates[indices, var_idx]
+        if np.issubdtype(values.dtype, np.number):
+            left_mask = values <= split_val
+        else:
+            left_mask = values == split_val
+        right_mask = ~left_mask
+
+        if np.sum(left_mask) < 1 or np.sum(right_mask) < 1:
+            node_label = leaf_counter[0]
+            leaf_counter[0] += 1
+            labels[indices] = node_label
+            return node
+
         node.pseudo_r2 = r2_gain
         node.split_variable = covariate_names[var_idx]
         node.split_value = split_val
-
-        values = covariates[indices, var_idx]
-        left_mask = values <= split_val
-        right_mask = ~left_mask
 
         node.left = _build(indices[left_mask], depth + 1)
         node.right = _build(indices[right_mask], depth + 1)

@@ -172,13 +172,11 @@ def tree_plot(
 
     if not segments:
         # Fallback: show root only
-        segments = [
-            {"x": 0, "y": 0, "xend": 1, "yend": 0, "state": "root", "count": 1}
-        ]
+        segments = [{"x": 0, "y": 0, "xend": 1, "yend": 0, "state": "root", "count": 1}]
         points = [{"x": 0, "y": 0, "state": "root", "count": 1}]
 
-    seg_df = pl.DataFrame(segments).to_pandas()
-    pt_df = pl.DataFrame(points).to_pandas()
+    seg_df = pl.DataFrame(segments)
+    pt_df = pl.DataFrame(points)
 
     # Build color mapping
     colors = {state: alphabet.get_color(state) for state in alphabet.states}
@@ -189,11 +187,13 @@ def tree_plot(
     p = (
         ggplot()
         + geom_segment(
-            seg_df,
-            aes(x="x", y="y", xend="xend", yend="yend", color="state", size="count"),
+            mapping=aes(
+                x="x", y="y", xend="xend", yend="yend", color="state", size="count"
+            ),
+            data=seg_df,
             alpha=0.7,
         )
-        + geom_point(pt_df, aes(x="x", y="y", color="state", size="count"))
+        + geom_point(mapping=aes(x="x", y="y", color="state", size="count"), data=pt_df)
         + scale_color_manual(values=colors)
         + scale_size_continuous(range=(0.5, 4))
         + theme_minimal()

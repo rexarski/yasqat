@@ -51,14 +51,22 @@ class TestPAMClustering:
     def test_medoids_are_actual_points(
         self, simple_distance_matrix: np.ndarray
     ) -> None:
-        """Test that medoids are actual data points."""
+        """Test that medoids are valid indices and belong to their own cluster."""
         result = pam_clustering(simple_distance_matrix, n_clusters=2)
 
         # Medoids should be valid indices
         assert all(0 <= m < 4 for m in result.medoid_indices)
+        # Each medoid must be assigned to its own cluster
+        for m in result.medoid_indices:
+            medoid_cluster = result.labels[m]
+            # At least one other point in the same cluster as the medoid
+            cluster_members = [
+                i for i, lab in enumerate(result.labels) if lab == medoid_cluster
+            ]
+            assert m in cluster_members
 
     def test_initialization_methods(self, simple_distance_matrix: np.ndarray) -> None:
-        """Test different initialization methods."""
+        """Test different initialization methods produce valid clustering."""
         inits = ["build", "random", "k-medoids++"]
 
         for init in inits:
@@ -70,6 +78,11 @@ class TestPAMClustering:
             )
             assert result.n_clusters == 2
             assert len(result.medoid_indices) == 2
+            # All methods should find the clear cluster structure
+            assert result.labels[0] == result.labels[1]
+            assert result.labels[2] == result.labels[3]
+            assert result.labels[0] != result.labels[2]
+            assert result.total_cost >= 0
 
     def test_deterministic_with_random_state(
         self, large_distance_matrix: np.ndarray
@@ -105,13 +118,14 @@ class TestPAMClustering:
         assert result.sequence_ids == seq_ids
 
     def test_cluster_sizes(self, simple_distance_matrix: np.ndarray) -> None:
-        """Test cluster_sizes method."""
+        """Test cluster_sizes method returns correct per-cluster counts."""
         result = pam_clustering(simple_distance_matrix, n_clusters=2)
 
         sizes = result.cluster_sizes()
 
-        assert sum(sizes.values()) == 4
         assert len(sizes) == 2
+        # With 4 points in 2 well-separated clusters, each cluster has 2 points
+        assert sorted(sizes.values()) == [2, 2]
 
     def test_get_cluster_members(self, simple_distance_matrix: np.ndarray) -> None:
         """Test get_cluster_members method."""
@@ -221,3 +235,40 @@ class TestPAMClusteringClass:
 
         assert result.n_clusters == 3
         assert len(result.medoid_indices) == 3
+
+
+class TestPAMClusteringPredict:
+    def test_predict_assigns_to_nearest_medoid(self) -> None:
+        """predict() should assign new points to the nearest medoid."""
+        train_dist = np.array(
+            [
+                [0, 1, 5, 6],
+                [1, 0, 5, 6],
+                [5, 5, 0, 1],
+                [6, 6, 1, 0],
+            ],
+            dtype=np.float64,
+        )
+
+        pam = PAMClustering(n_clusters=2)
+        pam.fit(train_dist, sequence_ids=[0, 1, 2, 3])
+
+        # New distance matrix: rows = new points, columns = training points
+        new_dist = np.array(
+            [
+                [0.5, 0.5, 5.5, 6.5],  # close to 0,1
+                [5.5, 5.5, 0.5, 0.5],  # close to 2,3
+            ],
+            dtype=np.float64,
+        )
+
+        labels = pam.predict(new_dist)
+        assert len(labels) == 2
+        assert labels[0] != labels[1]
+
+    def test_predict_before_fit_raises(self) -> None:
+        """predict() should raise if called before fit()."""
+        pam = PAMClustering(n_clusters=2)
+        new_dist = np.array([[1, 2], [3, 4]], dtype=np.float64)
+        with pytest.raises(ValueError, match=r"fit.*before"):
+            pam.predict(new_dist)

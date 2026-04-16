@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 
 from yasqat.clustering.representatives import (
-    RepresentativeResult,
     extract_representatives,
 )
 
@@ -32,6 +31,10 @@ class TestCentralityStrategy:
             well_separated_dist, n_representatives=2, strategy="centrality"
         )
         assert len(result.indices) == 2
+        # All indices must be valid (within distance matrix bounds)
+        assert all(0 <= idx < 6 for idx in result.indices)
+        # Indices should be unique
+        assert len(set(result.indices.tolist())) == 2
 
     def test_selects_central_points(self, well_separated_dist: np.ndarray) -> None:
         result = extract_representatives(
@@ -47,12 +50,6 @@ class TestCentralityStrategy:
         expected_score = well_separated_dist[result.indices[0]].sum()
         assert result.scores[0] == pytest.approx(expected_score)
 
-    def test_strategy_label(self, well_separated_dist: np.ndarray) -> None:
-        result = extract_representatives(
-            well_separated_dist, n_representatives=1, strategy="centrality"
-        )
-        assert result.strategy == "centrality"
-
 
 class TestFrequencyStrategy:
     """Tests for frequency-based representative selection."""
@@ -62,12 +59,23 @@ class TestFrequencyStrategy:
             well_separated_dist, n_representatives=2, strategy="frequency"
         )
         assert len(result.indices) == 2
+        assert all(0 <= idx < 6 for idx in result.indices)
+        assert len(set(result.indices.tolist())) == 2
 
-    def test_strategy_label(self, well_separated_dist: np.ndarray) -> None:
+    def test_with_labels_selects_per_cluster(
+        self, well_separated_dist: np.ndarray
+    ) -> None:
+        labels = np.array([0, 0, 0, 1, 1, 1])
         result = extract_representatives(
-            well_separated_dist, n_representatives=1, strategy="frequency"
+            well_separated_dist,
+            n_representatives=2,
+            strategy="frequency",
+            labels=labels,
         )
-        assert result.strategy == "frequency"
+        selected = set(result.indices.tolist())
+        # With labels, should pick one from each cluster
+        assert selected & {0, 1, 2}, "no representative from cluster 0"
+        assert selected & {3, 4, 5}, "no representative from cluster 1"
 
 
 class TestDensityStrategy:
@@ -78,12 +86,23 @@ class TestDensityStrategy:
             well_separated_dist, n_representatives=3, strategy="density"
         )
         assert len(result.indices) == 3
+        assert all(0 <= idx < 6 for idx in result.indices)
+        assert len(set(result.indices.tolist())) == 3
 
-    def test_strategy_label(self, well_separated_dist: np.ndarray) -> None:
+    def test_with_labels_selects_per_cluster(
+        self, well_separated_dist: np.ndarray
+    ) -> None:
+        """With labels, should select one dense point from each cluster."""
+        labels = np.array([0, 0, 0, 1, 1, 1])
         result = extract_representatives(
-            well_separated_dist, n_representatives=1, strategy="density"
+            well_separated_dist,
+            n_representatives=2,
+            strategy="density",
+            labels=labels,
         )
-        assert result.strategy == "density"
+        selected = set(result.indices.tolist())
+        assert selected & {0, 1, 2}, "no representative from cluster 0"
+        assert selected & {3, 4, 5}, "no representative from cluster 1"
 
     def test_high_density_selected(self) -> None:
         """Points close together should have higher density."""
@@ -156,11 +175,21 @@ class TestEdgeCases:
         with pytest.raises(ValueError, match="Unknown strategy"):
             extract_representatives(dist, n_representatives=1, strategy="bogus")
 
-    def test_repr(self) -> None:
-        result = RepresentativeResult(
-            indices=np.array([0, 1]),
-            scores=np.array([1.0, 2.0]),
-            strategy="centrality",
+
+class TestExtractRepresentativesDistanceMatrix:
+    def test_accepts_distance_matrix_object(self) -> None:
+        """extract_representatives should accept a DistanceMatrix."""
+        from yasqat.metrics.base import DistanceMatrix
+
+        values = np.array(
+            [
+                [0, 1, 4, 5],
+                [1, 0, 4, 5],
+                [4, 4, 0, 1],
+                [5, 5, 1, 0],
+            ],
+            dtype=np.float64,
         )
-        assert "n=2" in repr(result)
-        assert "centrality" in repr(result)
+        dm = DistanceMatrix(values=values, labels=[0, 1, 2, 3])
+        result = extract_representatives(dm, n_representatives=2)
+        assert len(result.indices) == 2

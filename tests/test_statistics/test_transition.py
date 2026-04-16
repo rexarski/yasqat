@@ -8,6 +8,7 @@ from yasqat.core.pool import SequencePool
 from yasqat.statistics.transition import (
     first_occurrence_time,
     state_duration_stats,
+    state_spell_stats,
     substitution_cost_matrix,
     transition_rate_matrix,
     transition_rates,
@@ -81,18 +82,56 @@ class TestFirstOccurrence:
 
 
 class TestStateDurationStats:
-    """Tests for state duration statistics."""
+    """Tests for state duration statistics (deprecated alias)."""
 
     def test_duration_stats(self, sequence_pool: SequencePool) -> None:
         """Test state duration statistics."""
-        stats = state_duration_stats(sequence_pool)
+        import warnings
+
+        with warnings.catch_warnings(record=True):
+            warnings.simplefilter("always")
+            stats = state_duration_stats(sequence_pool)
 
         assert "state" in stats.columns
-        assert "mean_duration" in stats.columns
-        assert "median_duration" in stats.columns
-        assert "min_duration" in stats.columns
-        assert "max_duration" in stats.columns
+        assert "mean_spell_length" in stats.columns
+        assert "median_spell_length" in stats.columns
+        assert "min_spell_length" in stats.columns
+        assert "max_spell_length" in stats.columns
         assert "n_spells" in stats.columns
+
+
+class TestStateSpellStats:
+    """Tests for state_spell_stats."""
+
+    def test_basic_spell_stats(self, sequence_pool: SequencePool) -> None:
+        """state_spell_stats returns spell-length stats per state."""
+        result = state_spell_stats(sequence_pool)
+        assert "state" in result.columns
+        assert "mean_spell_length" in result.columns
+        assert "median_spell_length" in result.columns
+        assert "min_spell_length" in result.columns
+        assert "max_spell_length" in result.columns
+        assert "std_spell_length" in result.columns
+        assert "n_spells" in result.columns
+
+    def test_spell_stats_values(self, sequence_pool: SequencePool) -> None:
+        """spell-length stats have positive counts and non-negative lengths."""
+        result = state_spell_stats(sequence_pool)
+        assert (result["n_spells"] > 0).all()
+        assert (result["min_spell_length"] >= 1).all()
+        assert (result["mean_spell_length"] >= 1).all()
+
+    def test_backward_compat_alias(self, sequence_pool: SequencePool) -> None:
+        """state_duration_stats still works as a deprecated alias."""
+        import warnings
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            result = state_duration_stats(sequence_pool)
+            assert any(
+                issubclass(warning.category, DeprecationWarning) for warning in w
+            )
+        assert "mean_spell_length" in result.columns
 
 
 class TestExcludeSelfTransitions:

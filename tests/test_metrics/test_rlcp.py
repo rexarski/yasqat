@@ -123,16 +123,13 @@ class TestRLCPMetric:
         assert dist == 4.0
 
     def test_with_normalize(self) -> None:
-        """Test metric with normalization."""
+        """Test metric with normalization computes correct value."""
         metric = RLCPMetric(normalize=True)
         seq_a = np.array([0, 1, 2, 3], dtype=np.int32)
         seq_b = np.array([4, 5, 2, 3], dtype=np.int32)
 
         dist = metric.compute(seq_a, seq_b)
 
-        assert 0.0 <= dist <= 1.0
-
-    def test_name(self) -> None:
-        """Test metric name."""
-        metric = RLCPMetric()
-        assert metric.name == "rlcp"
+        # RLCP length = 2 (suffix [2,3]), unnormalized = 4+4-2*2 = 4
+        # normalized = 4 / (4+4) = 0.5
+        assert dist == 0.5

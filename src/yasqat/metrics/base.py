@@ -41,6 +41,11 @@ class DistanceMatrix:
         """Number of sequences."""
         return int(self.values.shape[0])
 
+    @property
+    def shape(self) -> tuple[int, int]:
+        """Shape of the distance matrix."""
+        return (self.values.shape[0], self.values.shape[1])
+
     def get_distance(self, id1: int | str, id2: int | str) -> float:
         """Get distance between two sequences by label."""
         if self.labels is None:

@@ -37,25 +37,24 @@ DEFAULT_COLORS = [
 @dataclass(frozen=True)
 class Alphabet:
     """
-    State alphabet with optional labels and colors.
+    State alphabet with optional colors.
 
     An alphabet defines the set of valid states for a sequence,
-    along with optional display labels and color mappings.
+    along with an optional color mapping. States are always sorted
+    and deduplicated on construction.
 
     Attributes:
-        states: Tuple of state values (unique, ordered).
-        labels: Optional mapping from states to display labels.
+        states: Tuple of state values (unique, sorted).
         colors: Optional mapping from states to color codes.
     """
 
     states: tuple[str, ...]
-    labels: Mapping[str, str] | None = None
     colors: Mapping[str, str] | None = field(default=None)
 
     def __post_init__(self) -> None:
-        """Validate and set default colors if not provided."""
-        if len(self.states) != len(set(self.states)):
-            raise ValueError("States must be unique")
+        """Sort and deduplicate states, then set default colors if not provided."""
+        sorted_unique = tuple(sorted(set(self.states)))
+        object.__setattr__(self, "states", sorted_unique)
 
         # Set default colors if not provided
         if self.colors is None:
@@ -88,8 +87,10 @@ class Alphabet:
 
     @classmethod
     def from_sequence(cls, states: Sequence[str]) -> Alphabet:
-        """Create an alphabet from a sequence of states."""
-        unique_states = tuple(dict.fromkeys(states))  # Preserve order, remove dups
+        """Create an alphabet from a sequence of states (sorted, deduplicated)."""
+        unique_states = tuple(
+            dict.fromkeys(states)
+        )  # Remove dups, sort happens in __post_init__
         return cls(states=unique_states)
 
     @classmethod
@@ -100,21 +101,18 @@ class Alphabet:
 
     def index_of(self, state: str) -> int:
         """Get the index of a state in the alphabet."""
-        return self.states.index(state)
-
-    def get_label(self, state: str) -> str:
-        """Get the display label for a state."""
-        if self.labels is not None and state in self.labels:
-            return self.labels[state]
-        return state
+        try:
+            return self.states.index(state)
+        except ValueError:
+            raise ValueError(
+                f"State '{state}' not found in alphabet: {self.states}"
+            ) from None
 
     def get_color(self, state: str) -> str:
         """Get the color for a state."""
         if self.colors is not None and state in self.colors:
             return self.colors[state]
-        # Fallback to default
-        idx = self.index_of(state) if state in self else 0
-        return DEFAULT_COLORS[idx % len(DEFAULT_COLORS)]
+        raise KeyError(f"State '{state}' not in alphabet: {self.states}")
 
     def encode(self, states: Sequence[str]) -> np.ndarray:
         """Encode states as integer indices."""
@@ -123,12 +121,9 @@ class Alphabet:
 
     def decode(self, indices: np.ndarray) -> list[str]:
         """Decode integer indices back to states."""
-        return [self.states[i] for i in indices]
+        idx_list = indices.tolist() if hasattr(indices, "tolist") else indices
+        return [self.states[i] for i in idx_list]
 
     def with_colors(self, colors: Mapping[str, str]) -> Alphabet:
         """Create a new alphabet with updated colors."""
-        return Alphabet(states=self.states, labels=self.labels, colors=colors)
-
-    def with_labels(self, labels: Mapping[str, str]) -> Alphabet:
-        """Create a new alphabet with updated labels."""
-        return Alphabet(states=self.states, labels=labels, colors=self.colors)
+        return Alphabet(states=self.states, colors=colors)

@@ -115,6 +115,8 @@ def twed_distance(
     sub_cost: float = 1.0,
     timestamps_a: np.ndarray | None = None,
     timestamps_b: np.ndarray | None = None,
+    *,
+    lam: float | None = None,
 ) -> float:
     """
     Compute Time Warp Edit Distance between two sequences.
@@ -129,10 +131,15 @@ def twed_distance(
         nu: Stiffness parameter (>= 0). Higher values penalize temporal
             distortion more. Default: 0.001.
         lmbda: Deletion/insertion penalty (>= 0). Default: 1.0.
+            Named ``lmbda`` because ``lambda`` is a Python reserved keyword;
+            corresponds to λ in Marteau (2009).
         sm: Substitution cost matrix or method ("constant").
         sub_cost: Cost for non-matching elements when sm="constant".
         timestamps_a: Timestamps for first sequence. If None, uses 0..n-1.
         timestamps_b: Timestamps for second sequence. If None, uses 0..m-1.
+        lam: Keyword-only alias for ``lmbda`` — accepted for ergonomics
+            (``lambda`` itself is reserved in Python). When provided, it
+            overrides ``lmbda``.
 
     Returns:
         TWED distance (0 = identical sequences at identical times).
@@ -144,6 +151,8 @@ def twed_distance(
         >>> twed_distance(seq1, seq2)  # doctest: +SKIP
         1.002
     """
+    if lam is not None:
+        lmbda = lam
     if len(seq_a) == 0 and len(seq_b) == 0:
         return 0.0
     if len(seq_a) == 0 or len(seq_b) == 0:
@@ -156,7 +165,12 @@ def twed_distance(
             sm_matrix = np.full((n_states, n_states), sub_cost, dtype=np.float64)
             np.fill_diagonal(sm_matrix, 0.0)
         else:
-            raise ValueError(f"Unknown substitution method: {sm}")
+            raise ValueError(
+                f"Unknown substitution method: '{sm}'. "
+                f"TWED only supports sm='constant' for auto-generated matrices. "
+                f"For data-driven costs (e.g. transition-rate based), pass a "
+                f"pre-built matrix from substitution_cost_matrix()."
+            )
     else:
         sm_matrix = sm.astype(np.float64)
 
@@ -187,6 +201,8 @@ class TWEDMetric:
         lmbda: float = 1.0,
         sm: np.ndarray | str = "constant",
         sub_cost: float = 1.0,
+        *,
+        lam: float | None = None,
     ) -> None:
         """Initialize TWEDMetric.
 
@@ -195,9 +211,10 @@ class TWEDMetric:
             lmbda: Penalty for deletion/insertion operations (default 1.0).
             sm: Substitution cost matrix or strategy ("constant" for uniform costs).
             sub_cost: Substitution cost when sm is "constant" (default 1.0).
+            lam: Keyword-only alias for ``lmbda`` (overrides if given).
         """
         self.nu = nu
-        self.lmbda = lmbda
+        self.lmbda = lam if lam is not None else lmbda
         self.sm = sm
         self.sub_cost = sub_cost
 

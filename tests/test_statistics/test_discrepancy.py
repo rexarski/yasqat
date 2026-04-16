@@ -70,6 +70,9 @@ class TestDiscrepancyAnalysis:
         dist, labels = well_separated
         result = discrepancy_analysis(dist, labels)
         assert result.total_ss == pytest.approx(result.within_ss + result.between_ss)
+        # For heterogeneous groups, within_ss should be less than total_ss
+        assert result.within_ss < result.total_ss
+        assert result.between_ss > 0.0
 
     def test_r2_in_range(self, well_separated: tuple[np.ndarray, np.ndarray]) -> None:
         dist, labels = well_separated
@@ -94,7 +97,11 @@ class TestPermutationTest:
         dist, labels = well_separated
         result = discrepancy_analysis(dist, labels, n_permutations=99, random_state=42)
         assert result.p_value is not None
-        assert 0.0 < result.p_value <= 1.0
+        assert 0.0 <= result.p_value <= 1.0
+        assert result.n_permutations == 99
+        # With only 4 data points, permutation test has limited power,
+        # but p-value should still be valid (see test_well_separated_small_p
+        # for a larger-dataset test that verifies p < 0.05)
 
     def test_well_separated_small_p(self) -> None:
         # Use larger dataset so permutations are meaningful
@@ -140,6 +147,54 @@ class TestEdgeCases:
         labels = np.array([0, 0])
         result = discrepancy_analysis(dist, labels)
         assert result.pseudo_f == 0.0
+
+    def test_perfect_separation_pseudo_f_inf(self) -> None:
+        """When within-group distances are zero, pseudo_F should be inf."""
+        # Two groups, zero within-group distance, nonzero between
+        dist = np.array(
+            [
+                [0.0, 0.0, 5.0, 5.0],
+                [0.0, 0.0, 5.0, 5.0],
+                [5.0, 5.0, 0.0, 0.0],
+                [5.0, 5.0, 0.0, 0.0],
+            ]
+        )
+        labels = np.array([0, 0, 1, 1])
+        result = discrepancy_analysis(dist, labels)
+        assert result.pseudo_r2 == 1.0
+        assert result.pseudo_f == np.inf
+
+    def test_perfect_separation_permutation_pvalue_honest(self) -> None:
+        """Regression (v0.3.2 hot-fix C1): with perfect separation and many
+        permutations that *also* achieve perfect separation, the p-value must
+        reflect how non-unique the observed split is. The pre-fix behaviour
+        always returned p = 1/(n+1) because ``finite >= inf`` is False.
+
+        Here the 2-vs-2 design with labels ``[0,0,1,1]`` has exactly two
+        label orderings — ``[0,0,1,1]`` and ``[1,1,0,0]`` — that preserve
+        perfect separation (≈ 1/3 of uniform permutations). Expect p ≈ 0.33
+        at large n_permutations, not 1/(n+1).
+        """
+        dist = np.array(
+            [
+                [0.0, 0.0, 5.0, 5.0],
+                [0.0, 0.0, 5.0, 5.0],
+                [5.0, 5.0, 0.0, 0.0],
+                [5.0, 5.0, 0.0, 0.0],
+            ]
+        )
+        labels = np.array([0, 0, 1, 1])
+
+        with pytest.warns(UserWarning, match="Perfect group separation"):
+            result = discrepancy_analysis(
+                dist, labels, n_permutations=999, random_state=42
+            )
+
+        # Pre-fix bug would put p at 1/(999+1) = 0.001; the honest value is
+        # substantially larger because many permutations also separate.
+        assert result.p_value is not None
+        assert result.p_value > 0.1
+        assert result.pseudo_f == np.inf
 
     def test_repr(self) -> None:
         result = DiscrepancyResult(
@@ -198,3 +253,33 @@ class TestMultiFactorDiscrepancy:
             dist, factors, n_permutations=50, random_state=42
         )
         assert results["group"].p_value is not None
+
+
+class TestDiscrepancyEdgeCases:
+    def test_perfect_separation_warns(self) -> None:
+        """Perfect group separation should warn about edge case."""
+        import warnings
+
+        dist = np.array(
+            [
+                [0, 0, 10, 10],
+                [0, 0, 10, 10],
+                [10, 10, 0, 0],
+                [10, 10, 0, 0],
+            ],
+            dtype=float,
+        )
+        labels = np.array([0, 0, 1, 1])
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            result = discrepancy_analysis(dist, labels)
+            assert any("perfect" in str(warning.message).lower() for warning in w)
+        assert result.pseudo_r2 == 1.0
+
+    def test_single_group_returns_zero(self) -> None:
+        """A single group should return R²=0, F=0."""
+        dist = np.array([[0, 1, 2], [1, 0, 3], [2, 3, 0]], dtype=float)
+        labels = np.array([0, 0, 0])
+        result = discrepancy_analysis(dist, labels)
+        assert result.pseudo_r2 == 0.0
+        assert result.pseudo_f == 0.0

@@ -79,6 +79,18 @@ def index_plot(
     # Prepare plot data
     plot_data = data.clone()
 
+    # Validate sort_by up front: the ``Literal`` hint is not enforced at
+    # runtime, and the internal helper's ``if/elif`` chain silently returns
+    # unsorted data for unknown values, which produced confusing plots (see
+    # v0.3.2 hot-fix E1).
+    _valid_sorts = {"from.start", "from.end", "length", None}
+    if sort_by not in _valid_sorts:
+        raise ValueError(
+            f"sort_by={sort_by!r} is not a valid option. "
+            f"Expected one of {sorted(s for s in _valid_sorts if s is not None)} "
+            f"or None."
+        )
+
     # Apply sorting if specified
     if sort_by is not None:
         plot_data = _sort_sequences(plot_data, id_col, time_col, state_col, sort_by)
@@ -88,14 +100,13 @@ def index_plot(
     id_to_pos = {seq_id: i for i, seq_id in enumerate(seq_ids)}
 
     # replace() preserves the source column dtype (Utf8 for string IDs), so
-    # integer positions land as strings.  Cast to Int64 so pandas sees a
-    # numeric column — required for scale_y_reverse() (continuous scale).
+    # integer positions land as strings. Cast to Int64 so plotnine treats
+    # y_pos as a continuous scale — required for scale_y_reverse().
     plot_data = plot_data.with_columns(
         pl.col(id_col).replace(id_to_pos).cast(pl.Int64).alias("y_pos")
     )
 
-    # Convert to pandas for plotnine
-    pdf = plot_data.to_pandas()
+    pdf = plot_data
 
     # Build color mapping
     colors = {state: alphabet.get_color(state) for state in alphabet.states}

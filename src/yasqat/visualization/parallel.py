@@ -79,7 +79,7 @@ def parallel_coordinate_plot(
         .alias("state_num")
     )
 
-    pdf = data.select([config.id_column, config.time_column, "state_num"]).to_pandas()
+    pdf = data.select([config.id_column, config.time_column, "state_num"])
 
     p = (
         ggplot(

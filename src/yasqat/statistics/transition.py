@@ -155,21 +155,24 @@ def first_occurrence_time(
     )
 
 
-def state_duration_stats(
+def state_spell_stats(
     sequence: StateSequence | SequencePool,
 ) -> pl.DataFrame:
     """
-    Calculate duration statistics for each state.
+    Calculate spell-length statistics for each state.
 
     Uses the spell (run-length encoded) representation to compute
-    statistics about how long sequences stay in each state.
+    statistics about how many consecutive observations sequences
+    stay in each state. Note: this counts observation steps, not
+    elapsed wall-clock time.
 
     Args:
         sequence: StateSequence or SequencePool.
 
     Returns:
-        DataFrame with columns: state, mean_duration, median_duration,
-        min_duration, max_duration, std_duration, n_spells.
+        DataFrame with columns: state, mean_spell_length,
+        median_spell_length, min_spell_length, max_spell_length,
+        std_spell_length, n_spells.
     """
     from yasqat.core.sequence import StateSequence
 
@@ -185,16 +188,30 @@ def state_duration_stats(
         sps.group_by(config.state_column)
         .agg(
             [
-                pl.col("duration").mean().alias("mean_duration"),
-                pl.col("duration").median().alias("median_duration"),
-                pl.col("duration").min().alias("min_duration"),
-                pl.col("duration").max().alias("max_duration"),
-                pl.col("duration").std().alias("std_duration"),
+                pl.col("duration").mean().alias("mean_spell_length"),
+                pl.col("duration").median().alias("median_spell_length"),
+                pl.col("duration").min().alias("min_spell_length"),
+                pl.col("duration").max().alias("max_spell_length"),
+                pl.col("duration").std().alias("std_spell_length"),
                 pl.len().alias("n_spells"),
             ]
         )
         .sort(config.state_column)
     )
+
+
+def state_duration_stats(
+    sequence: StateSequence | SequencePool,
+) -> pl.DataFrame:
+    """Deprecated: use state_spell_stats instead."""
+    import warnings
+
+    warnings.warn(
+        "state_duration_stats is renamed to state_spell_stats",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return state_spell_stats(sequence)
 
 
 def substitution_cost_matrix(

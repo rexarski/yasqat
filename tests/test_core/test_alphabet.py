@@ -1,5 +1,9 @@
 """Tests for Alphabet class."""
 
+from __future__ import annotations
+
+import re
+
 import numpy as np
 import polars as pl
 import pytest
@@ -22,20 +26,10 @@ class TestAlphabet:
         assert alpha[2] == "C"
 
     def test_alphabet_unique_states(self) -> None:
-        """Test that duplicate states raise an error."""
-        with pytest.raises(ValueError, match="unique"):
-            Alphabet(states=("A", "B", "A"))
-
-    def test_alphabet_with_labels(self) -> None:
-        """Test alphabet with custom labels."""
-        alpha = Alphabet(
-            states=("A", "B", "C"),
-            labels={"A": "First", "B": "Second", "C": "Third"},
-        )
-
-        assert alpha.get_label("A") == "First"
-        assert alpha.get_label("B") == "Second"
-        assert alpha.get_label("C") == "Third"
+        """Test that duplicate states are deduplicated (not an error)."""
+        alpha = Alphabet(states=("A", "B", "A"))
+        assert len(alpha) == 2
+        assert alpha.states == ("A", "B")
 
     def test_alphabet_with_colors(self) -> None:
         """Test alphabet with custom colors."""
@@ -47,14 +41,44 @@ class TestAlphabet:
         assert alpha.get_color("C") == "#0000FF"
 
     def test_alphabet_default_colors(self) -> None:
-        """Test that default colors are assigned."""
+        """Test that default colors are valid hex strings and distinct per state."""
         alpha = Alphabet(states=("A", "B", "C"))
 
-        # Should have colors assigned
         assert alpha.colors is not None
-        assert "A" in alpha.colors
-        assert "B" in alpha.colors
-        assert "C" in alpha.colors
+        hex_pattern = re.compile(r"^#[0-9a-fA-F]{6}$")
+        color_values = []
+        for state in alpha.states:
+            color = alpha.get_color(state)
+            assert hex_pattern.match(color), (
+                f"Color {color!r} for state {state!r} is not valid hex"
+            )
+            color_values.append(color)
+        # Each state should get a distinct color
+        assert len(set(color_values)) == len(color_values)
+
+    def test_single_state_alphabet(self) -> None:
+        """Alphabet with a single state should work."""
+        alpha = Alphabet(states=("X",))
+        assert len(alpha) == 1
+        assert alpha[0] == "X"
+        assert "X" in alpha
+        assert alpha.colors is not None
+        encoded = alpha.encode(["X", "X"])
+        assert encoded.tolist() == [0, 0]
+        assert alpha.decode(encoded) == ["X", "X"]
+
+    def test_with_colors_does_not_mutate(self) -> None:
+        """with_colors() should return a new object, leaving original unchanged."""
+        alpha = Alphabet(states=("A", "B"))
+        original_color_a = alpha.get_color("A")
+        new_colors = {"A": "#000000", "B": "#FFFFFF"}
+        new_alpha = alpha.with_colors(new_colors)
+
+        # New alphabet has the new colors
+        assert new_alpha.get_color("A") == "#000000"
+        # Original is unchanged
+        assert alpha.get_color("A") == original_color_a
+        assert alpha is not new_alpha
 
     def test_from_sequence(self) -> None:
         """Test creating alphabet from sequence."""
@@ -62,7 +86,7 @@ class TestAlphabet:
         alpha = Alphabet.from_sequence(states)
 
         assert len(alpha) == 4
-        assert alpha.states == ("A", "B", "C", "D")  # Preserves first occurrence order
+        assert alpha.states == ("A", "B", "C", "D")  # Sorted unique states
 
     def test_from_series(self) -> None:
         """Test creating alphabet from polars Series."""
@@ -101,18 +125,42 @@ class TestAlphabet:
         assert new_alpha.get_color("A") == "#111111"
         assert alpha.states == new_alpha.states
 
-    def test_with_labels(self) -> None:
-        """Test creating new alphabet with different labels."""
-        alpha = Alphabet(states=("A", "B", "C"))
-        new_labels = {"A": "Label A", "B": "Label B", "C": "Label C"}
-        new_alpha = alpha.with_labels(new_labels)
-
-        assert new_alpha.get_label("A") == "Label A"
-        assert alpha.states == new_alpha.states
-
     def test_iteration(self) -> None:
         """Test iterating over alphabet."""
         alpha = Alphabet(states=("A", "B", "C"))
         states_list = list(alpha)
 
         assert states_list == ["A", "B", "C"]
+
+
+class TestAlphabetSimplification:
+    """Tests for simplified Alphabet without labels."""
+
+    def test_index_of_clear_error(self) -> None:
+        """index_of() should raise a clear ValueError for missing states."""
+        a = Alphabet(states=("A", "B", "C"))
+        with pytest.raises(ValueError, match="State 'X' not found in alphabet"):
+            a.index_of("X")
+
+    def test_get_color_unknown_state_raises(self) -> None:
+        """get_color() should raise KeyError for states not in alphabet."""
+        a = Alphabet(states=("A", "B", "C"))
+        with pytest.raises(KeyError):
+            a.get_color("Z")
+
+    def test_decode_accepts_ndarray(self) -> None:
+        """decode() should accept np.ndarray input directly."""
+        a = Alphabet(states=("A", "B", "C"))
+        indices = np.array([0, 1, 2, 1, 0], dtype=np.int32)
+        result = a.decode(indices)
+        assert result == ["A", "B", "C", "B", "A"]
+
+    def test_states_sorted_on_init(self) -> None:
+        """States should be sorted regardless of construction order."""
+        a = Alphabet(states=("C", "A", "B"))
+        assert a.states == ("A", "B", "C")
+
+    def test_from_sequence_sorts(self) -> None:
+        """from_sequence() should produce sorted states."""
+        a = Alphabet.from_sequence(["C", "A", "B", "A"])
+        assert a.states == ("A", "B", "C")

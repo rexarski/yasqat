@@ -1,5 +1,7 @@
 """Tests for filtering criteria."""
 
+from __future__ import annotations
+
 import polars as pl
 import pytest
 
@@ -80,6 +82,21 @@ class TestLengthCriterion:
         assert 2 in matching  # length 3
         assert 3 not in matching  # length 5
 
+    def test_length_criterion_min_equals_max(
+        self, test_sequence: StateSequence
+    ) -> None:
+        """min_length == max_length should work like exact_length."""
+        criterion_range = LengthCriterion(min_length=4, max_length=4)
+        criterion_exact = LengthCriterion(exact_length=4)
+
+        matching_range = sorted(criterion_range.get_matching_ids(test_sequence))
+        matching_exact = sorted(criterion_exact.get_matching_ids(test_sequence))
+
+        assert matching_range == matching_exact
+        assert 1 in matching_range  # length 4
+        assert 2 not in matching_range  # length 3
+        assert 3 not in matching_range  # length 5
+
 
 class TestTimeCriterion:
     """Tests for TimeCriterion."""
@@ -108,13 +125,26 @@ class TestContainsStateCriterion:
     """Tests for ContainsStateCriterion."""
 
     def test_contains_any_state(self, test_sequence: StateSequence) -> None:
-        """Test filtering by containing any of the states."""
-        criterion = ContainsStateCriterion(states=["D"])
-        matching = criterion.get_matching_ids(test_sequence)
+        """Test filtering by containing any of multiple query states."""
+        # Single state
+        criterion_single = ContainsStateCriterion(states=["D"])
+        matching_single = criterion_single.get_matching_ids(test_sequence)
+        assert 1 not in matching_single
+        assert 2 not in matching_single
+        assert 3 in matching_single
 
-        assert 1 not in matching  # no D
-        assert 2 not in matching  # no D
-        assert 3 in matching  # has D
+        # Multiple query states: should match sequences containing A OR D
+        criterion_multi = ContainsStateCriterion(states=["A", "D"])
+        matching_multi = criterion_multi.get_matching_ids(test_sequence)
+        assert 1 in matching_multi  # has A
+        assert 2 in matching_multi  # has A
+        assert 3 in matching_multi  # has D
+
+    def test_contains_state_not_in_alphabet(self, test_sequence: StateSequence) -> None:
+        """Filtering by a state not in the data should return empty."""
+        criterion = ContainsStateCriterion(states=["Z"])
+        matching = criterion.get_matching_ids(test_sequence)
+        assert matching == []
 
     def test_contains_all_states(self, test_sequence: StateSequence) -> None:
         """Test filtering by containing all states."""
@@ -198,6 +228,67 @@ class TestPatternCriterion:
         assert 2 in matching  # A-A-C
         assert 3 not in matching
 
+    def test_optional_wildcard_zero_and_one(self) -> None:
+        """Regression: ``?`` wildcard must match both zero- and one-middle.
+
+        Pre-fix, ``A-?-C`` emitted a regex where the separators around the
+        optional group were mandatory, so a two-element sequence ``A,C`` was
+        silently excluded. See v0.3.2 hot-fix F2.
+        """
+        data = pl.DataFrame(
+            {
+                "id": [10, 10, 20, 20, 20, 30, 30, 30, 30],
+                "time": [0, 1, 0, 1, 2, 0, 1, 2, 3],
+                "state": [
+                    "A",
+                    "C",  # seq 10: A,C (zero middle)
+                    "A",
+                    "X",
+                    "C",  # seq 20: A,X,C (one middle)
+                    "A",
+                    "X",
+                    "Y",
+                    "C",  # seq 30: A,X,Y,C (two middles)
+                ],
+            }
+        )
+        seq = StateSequence(data)
+
+        criterion = PatternCriterion(pattern="A-?-C")
+        matching = criterion.get_matching_ids(seq)
+
+        assert 10 in matching  # zero-middle must match
+        assert 20 in matching  # one-middle must match
+        assert 30 not in matching  # two-middle must not match
+
+    def test_plus_wildcard_requires_at_least_one(self) -> None:
+        """Regression: ``+`` wildcard requires at least one middle state."""
+        data = pl.DataFrame(
+            {
+                "id": [10, 10, 20, 20, 20, 30, 30, 30, 30],
+                "time": [0, 1, 0, 1, 2, 0, 1, 2, 3],
+                "state": [
+                    "A",
+                    "C",
+                    "A",
+                    "X",
+                    "C",
+                    "A",
+                    "X",
+                    "Y",
+                    "C",
+                ],
+            }
+        )
+        seq = StateSequence(data)
+
+        criterion = PatternCriterion(pattern="A-+-C")
+        matching = criterion.get_matching_ids(seq)
+
+        assert 10 not in matching  # zero-middle must NOT match
+        assert 20 in matching
+        assert 30 in matching
+
 
 class TestQueryCriterion:
     """Tests for QueryCriterion."""
@@ -268,6 +359,23 @@ class TestFilterSequences:
             filter_sequences(test_sequence, criterion, combine="invalid")
 
 
+class TestPatternCriterionSpecialChars:
+    def test_state_with_dash_in_name(self) -> None:
+        """Pattern matching should work when state names contain dashes."""
+        data = pl.DataFrame(
+            {
+                "id": [1, 1, 1, 2, 2, 2],
+                "time": [0, 1, 2, 0, 1, 2],
+                "state": ["A-1", "B-2", "C-3", "A-1", "X", "C-3"],
+            }
+        )
+        seq = StateSequence(data)
+        criterion = PatternCriterion(pattern="A-1", match_anywhere=True)
+        ids = criterion.get_matching_ids(seq)
+        assert 1 in ids
+        assert 2 in ids
+
+
 class TestCriterionFilter:
     """Tests for criterion.filter() method."""
 
@@ -278,3 +386,47 @@ class TestCriterionFilter:
 
         unique_ids = filtered["id"].unique().sort().to_list()
         assert unique_ids == [1, 3]
+
+
+class TestStartsWithCriterionVectorized:
+    def test_single_state_prefix(self) -> None:
+        """StartsWithCriterion should find sequences starting with given state."""
+        data = pl.DataFrame(
+            {
+                "id": [1, 1, 1, 2, 2, 2, 3, 3, 3],
+                "time": [0, 1, 2, 0, 1, 2, 0, 1, 2],
+                "state": ["A", "B", "C", "A", "A", "B", "B", "A", "C"],
+            }
+        )
+        seq = StateSequence(data)
+        criterion = StartsWithCriterion(states=["A"])
+        ids = criterion.get_matching_ids(seq)
+        assert sorted(ids) == [1, 2]
+
+    def test_multi_state_prefix(self) -> None:
+        """StartsWithCriterion should match multi-state prefixes."""
+        data = pl.DataFrame(
+            {
+                "id": [1, 1, 1, 2, 2, 2],
+                "time": [0, 1, 2, 0, 1, 2],
+                "state": ["A", "B", "C", "A", "B", "B"],
+            }
+        )
+        seq = StateSequence(data)
+        criterion = StartsWithCriterion(states=["A", "B"])
+        ids = criterion.get_matching_ids(seq)
+        assert sorted(ids) == [1, 2]
+
+    def test_empty_states_returns_all(self) -> None:
+        """Empty states list should return all sequence IDs."""
+        data = pl.DataFrame(
+            {
+                "id": [1, 1, 2, 2],
+                "time": [0, 1, 0, 1],
+                "state": ["A", "B", "C", "D"],
+            }
+        )
+        seq = StateSequence(data)
+        criterion = StartsWithCriterion(states=[])
+        ids = criterion.get_matching_ids(seq)
+        assert sorted(ids) == [1, 2]

@@ -8,7 +8,6 @@ import polars as pl
 from plotnine import (
     aes,
     element_blank,
-    geom_point,
     geom_segment,
     ggplot,
     labs,
@@ -20,11 +19,11 @@ from plotnine import (
 
 if TYPE_CHECKING:
     from yasqat.core.pool import SequencePool
-    from yasqat.core.sequence import EventSequence, StateSequence
+    from yasqat.core.sequence import StateSequence
 
 
 def timeline_plot(
-    sequence: StateSequence | EventSequence | SequencePool,
+    sequence: StateSequence | SequencePool,
     max_sequences: int | None = 50,
     title: str | None = None,
     x_label: str = "Time",
@@ -35,12 +34,11 @@ def timeline_plot(
     """
     Create a timeline visualization.
 
-    Shows sequences as horizontal timelines with events or state
-    intervals marked. Useful for examining individual sequences
-    in detail.
+    Shows sequences as horizontal timelines with state intervals marked.
+    Useful for examining individual sequences in detail.
 
     Args:
-        sequence: StateSequence, EventSequence, or SequencePool.
+        sequence: StateSequence or SequencePool.
         max_sequences: Maximum number of sequences to display.
             If None, show all sequences.
         title: Plot title.
@@ -58,28 +56,11 @@ def timeline_plot(
         >>> plot = timeline_plot(pool, max_sequences=20)
         >>> plot.save("timeline.png")
     """
-    from yasqat.core.sequence import EventSequence, StateSequence
+    from yasqat.core.sequence import StateSequence
 
-    # Get data and config based on input type
-    if isinstance(sequence, EventSequence):
-        return _event_timeline_plot(
-            sequence,
-            max_sequences=max_sequences,
-            title=title,
-            x_label=x_label,
-            y_label=y_label,
-            show_legend=show_legend,
-            figsize=figsize,
-        )
-
-    if isinstance(sequence, StateSequence):
-        data = sequence.data
-        config = sequence.config
-        alphabet = sequence.alphabet
-    else:  # SequencePool
-        data = sequence.data
-        config = sequence.config
-        alphabet = sequence.alphabet
+    data = sequence.data
+    config = sequence.config
+    alphabet = sequence.alphabet
 
     id_col = config.id_column
     state_col = config.state_column
@@ -94,12 +75,14 @@ def timeline_plot(
         seq_ids = seq_ids[:max_sequences]
         spells = spells.filter(pl.col(id_col).is_in(seq_ids))
 
-    # Create y-axis positions
+    # Create y-axis positions.
+    # replace() preserves the source column dtype (Utf8 for string IDs), so
+    # integer positions land as strings. Cast to Int64 so plotnine treats
+    # y_pos as a continuous scale — required by scale_y_reverse().
     id_to_pos = {seq_id: i for i, seq_id in enumerate(seq_ids)}
-    spells = spells.with_columns(pl.col(id_col).replace(id_to_pos).alias("y_pos"))
-
-    # Convert to pandas for plotnine
-    pdf = spells.to_pandas()
+    spells = spells.with_columns(
+        pl.col(id_col).replace(id_to_pos).cast(pl.Int64).alias("y_pos")
+    )
 
     # Build color mapping
     colors = {state: alphabet.get_color(state) for state in alphabet.states}
@@ -107,7 +90,7 @@ def timeline_plot(
     # Create plot with segments
     p = (
         ggplot(
-            pdf,
+            spells,
             aes(
                 x="start",
                 xend="end",
@@ -126,69 +109,6 @@ def timeline_plot(
             panel_grid_minor=element_blank(),
         )
         + labs(x=x_label, y=y_label, color="State")
-    )
-
-    if title:
-        p = p + labs(title=title)
-
-    # Auto-suppress legend when alphabet has >15 states (unreadable).
-    # show_legend=None means "auto", True/False are explicit overrides.
-    if show_legend is None:
-        show_legend = len(alphabet) <= 15
-
-    if not show_legend:
-        p = p + theme(legend_position="none")
-
-    return p
-
-
-def _event_timeline_plot(
-    sequence: EventSequence,
-    max_sequences: int | None = 50,
-    title: str | None = None,
-    x_label: str = "Time",
-    y_label: str = "Sequence",
-    show_legend: bool | None = None,
-    figsize: tuple[float, float] = (12, 8),
-) -> ggplot:
-    """Create timeline plot for event sequences."""
-    data = sequence.data
-    config = sequence.config
-    alphabet = sequence.alphabet
-
-    id_col = config.id_column
-    time_col = config.time_column
-    state_col = config.state_column
-
-    # Limit sequences if needed
-    seq_ids = data[id_col].unique(maintain_order=True).to_list()
-    if max_sequences is not None and len(seq_ids) > max_sequences:
-        seq_ids = seq_ids[:max_sequences]
-        data = data.filter(pl.col(id_col).is_in(seq_ids))
-
-    # Create y-axis positions
-    id_to_pos = {seq_id: i for i, seq_id in enumerate(seq_ids)}
-    plot_data = data.with_columns(pl.col(id_col).replace(id_to_pos).alias("y_pos"))
-
-    # Convert to pandas for plotnine
-    pdf = plot_data.to_pandas()
-
-    # Build color mapping
-    colors = {state: alphabet.get_color(state) for state in alphabet.states}
-
-    # Create plot with points for events
-    p = (
-        ggplot(pdf, aes(x=time_col, y="y_pos", color=state_col))
-        + geom_point(size=3, alpha=0.8)
-        + scale_color_manual(values=colors)
-        + scale_y_reverse()
-        + theme_minimal()
-        + theme(
-            figure_size=figsize,
-            panel_grid_major_y=element_blank(),
-            panel_grid_minor=element_blank(),
-        )
-        + labs(x=x_label, y=y_label, color="Event")
     )
 
     if title:
@@ -248,15 +168,12 @@ def spell_duration_plot(
     spells = state_seq.to_sps()
     state_col = config.state_column
 
-    # Convert to pandas
-    pdf = spells.to_pandas()
-
     # Build color mapping
     colors = {state: alphabet.get_color(state) for state in alphabet.states}
 
     # Create boxplot
     p = (
-        ggplot(pdf, aes(x=state_col, y="duration", fill=state_col))
+        ggplot(spells, aes(x=state_col, y="duration", fill=state_col))
         + geom_boxplot(alpha=0.8)
         + scale_fill_manual(values=colors)
         + theme_minimal()

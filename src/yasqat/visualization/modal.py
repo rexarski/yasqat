@@ -27,6 +27,7 @@ def modal_state_plot(
     x_label: str = "Time",
     y_label: str = "Proportion",
     figsize: tuple[float, float] = (10, 6),
+    granularity: str | None = None,
 ) -> ggplot:
     """
     Create a bar chart of the modal (most frequent) state at each time position.
@@ -39,9 +40,20 @@ def modal_state_plot(
         x_label: X-axis label.
         y_label: Y-axis label.
         figsize: Figure size as (width, height).
+        granularity: Polars ``dt.truncate`` unit string (e.g. ``"1d"``,
+            ``"1w"``, ``"1mo"``) forwarded to :func:`modal_states` for
+            re-bucketing the time column before computing modes — useful
+            for reducing the number of bars on dense data. Requires a
+            datetime time column. ``None`` (default) plots one bar per
+            distinct time value. Integer granularities were removed in
+            v0.3.2 (hot-fixes A6/B3).
 
     Returns:
         A plotnine ggplot object.
+
+    Raises:
+        ValueError: If ``sequence`` contains no rows, since plotnine cannot
+            render an empty layer and the resulting error is opaque.
     """
     from yasqat.core.sequence import StateSequence
     from yasqat.statistics.descriptive import modal_states
@@ -51,8 +63,17 @@ def modal_state_plot(
     else:
         alphabet = sequence.alphabet
 
-    modal_df = modal_states(sequence)
-    pdf = modal_df.to_pandas()
+    modal_df = modal_states(sequence, granularity=granularity)
+    # Guard up front: plotnine's error when given an empty DataFrame ("need at
+    # least one layer") hides what actually went wrong. Raise before we ever
+    # reach ggplot so the user sees the real cause.
+    if modal_df.is_empty():
+        raise ValueError(
+            "modal_state_plot: no data to plot. The input sequence has no "
+            "observations (check your filters, or confirm the pool is not "
+            "empty before plotting)."
+        )
+    pdf = modal_df
 
     colors = {state: alphabet.get_color(state) for state in alphabet.states}
 
@@ -106,7 +127,7 @@ def mean_time_plot(
 
     mt_df = mean_time_in_state(sequence)
     state_col = config.state_column
-    pdf = mt_df.to_pandas()
+    pdf = mt_df
 
     colors = {state: alphabet.get_color(state) for state in alphabet.states}
 

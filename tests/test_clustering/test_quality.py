@@ -64,12 +64,14 @@ class TestSilhouetteScores:
     def test_range(
         self, well_separated_clusters: tuple[np.ndarray, np.ndarray]
     ) -> None:
-        """Test that scores are in [-1, 1]."""
+        """Test that scores are in [-1, 1] and positive for well-separated clusters."""
         dist_matrix, labels = well_separated_clusters
         scores = silhouette_scores(dist_matrix, labels)
 
         for s in scores:
             assert -1.0 <= s <= 1.0
+        # Well-separated clusters should all have positive silhouette scores
+        assert all(s > 0.0 for s in scores)
 
     def test_single_cluster(self) -> None:
         """Test with single cluster (all same label)."""
@@ -126,7 +128,7 @@ class TestClusterQuality:
     def test_returns_all_metrics(
         self, well_separated_clusters: tuple[np.ndarray, np.ndarray]
     ) -> None:
-        """Test that all metrics are returned."""
+        """Test that all metrics are returned with values in expected ranges."""
         dist_matrix, labels = well_separated_clusters
         metrics = cluster_quality(dist_matrix, labels)
 
@@ -134,6 +136,9 @@ class TestClusterQuality:
         assert "PBC" in metrics
         assert "HG" in metrics
         assert "R2" in metrics
+        # ASW in [-1, 1], R2 in [0, 1]
+        assert -1.0 <= metrics["ASW"] <= 1.0
+        assert 0.0 <= metrics["R2"] <= 1.0
 
     def test_well_separated_metrics(
         self, well_separated_clusters: tuple[np.ndarray, np.ndarray]
@@ -161,15 +166,17 @@ class TestClusterQuality:
 
         assert metrics["ASW"] == pytest.approx(asw)
 
-    def test_all_values_finite(
+    def test_all_values_finite_and_consistent(
         self, well_separated_clusters: tuple[np.ndarray, np.ndarray]
     ) -> None:
-        """Test that all metric values are finite."""
+        """Test that all metric values are finite and internally consistent."""
         dist_matrix, labels = well_separated_clusters
         metrics = cluster_quality(dist_matrix, labels)
 
         for key, value in metrics.items():
             assert np.isfinite(value), f"{key} is not finite: {value}"
+        # ASW from cluster_quality should match standalone silhouette_score
+        assert metrics["ASW"] == pytest.approx(silhouette_score(dist_matrix, labels))
 
 
 class TestDistanceToCenter:
@@ -258,3 +265,63 @@ class TestPAMRange:
         results = pam_range(dist, k_range=[1, 2, 5])
         # k=1 is <2, k=5 is >=n, so only k=2 would be valid but k=2>=n=2 also skipped
         assert len(results) == 0
+
+    def test_two_tuple_is_inclusive_with_warning(self) -> None:
+        """Regression (v0.3.2 hot-fix D2): a 2-tuple is treated as (start, end)
+        inclusive and triggers a DeprecationWarning — previously only the two
+        endpoints were iterated, silently returning only k=start and k=end.
+        """
+        import warnings
+
+        dist = np.array(
+            [
+                [0.0, 1.0, 5.0, 6.0, 5.0],
+                [1.0, 0.0, 5.0, 6.0, 5.0],
+                [5.0, 5.0, 0.0, 1.0, 0.5],
+                [6.0, 6.0, 1.0, 0.0, 1.5],
+                [5.0, 5.0, 0.5, 1.5, 0.0],
+            ]
+        )
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            results = pam_range(dist, k_values=(2, 4))
+
+        assert set(results.keys()) == {2, 3, 4}
+        assert any(
+            issubclass(w.category, DeprecationWarning) and "2-tuple" in str(w.message)
+            for w in caught
+        )
+
+    def test_k_range_helper_is_inclusive(self) -> None:
+        """k_range(a, b) returns range(a, b+1) — inclusive on both ends."""
+        from yasqat.clustering.quality import k_range
+
+        assert list(k_range(2, 5)) == [2, 3, 4, 5]
+        assert list(k_range(3, 3)) == [3]
+
+    def test_k_values_and_k_range_together_raise(self) -> None:
+        """Passing both ``k_values`` and legacy ``k_range`` is an error."""
+        dist = np.array([[0.0, 1.0], [1.0, 0.0]])
+        with pytest.raises(TypeError, match="both 'k_values' and 'k_range'"):
+            pam_range(dist, k_values=[2], k_range=[2])
+
+
+class TestPamRangeDistanceMatrix:
+    def test_accepts_distance_matrix_object(self) -> None:
+        """pam_range should accept a DistanceMatrix, not just np.ndarray."""
+        from yasqat.metrics.base import DistanceMatrix
+
+        values = np.array(
+            [
+                [0, 1, 5, 6],
+                [1, 0, 5, 6],
+                [5, 5, 0, 1],
+                [6, 6, 1, 0],
+            ],
+            dtype=np.float64,
+        )
+        dm = DistanceMatrix(values=values, labels=[0, 1, 2, 3])
+        result = pam_range(dm, k_range=[2, 3])
+        assert 2 in result
+        assert 3 in result
+        assert "ASW" in result[2]

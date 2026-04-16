@@ -9,6 +9,7 @@ from yasqat.clustering.pam import PAMClustering, pam_clustering
 from yasqat.clustering.quality import (
     cluster_quality,
     distance_to_center,
+    k_range,
     pam_range,
     silhouette_score,
     silhouette_scores,
@@ -23,6 +24,7 @@ __all__ = [
     "distance_to_center",
     "extract_representatives",
     "hierarchical_clustering",
+    "k_range",
     "pam_clustering",
     "pam_range",
     "silhouette_score",
