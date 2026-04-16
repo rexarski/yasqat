@@ -261,46 +261,46 @@ class PatternCriterion(SequenceCriterion):
     match_anywhere: bool = False  # If True, pattern can match anywhere in sequence
 
     def get_matching_ids(self, sequence: BaseSequence) -> list[int | str]:
-        """Return IDs of sequences matching the pattern."""
+        """Return IDs of sequences matching the pattern.
+
+        Vectorized via polars: sequences are joined into a single string per
+        id using ``group_by + str.join``, then filtered with a single
+        ``str.contains`` call. The regex is compiled once, outside the loop.
+        """
         id_col = sequence.config.id_column
         state_col = sequence.config.state_column
         time_col = sequence.config.time_column
 
-        matching_ids = []
+        # Decide which separator the joined sequence string should use, and
+        # therefore which regex dialect to emit. Wildcards require the
+        # null-byte separator so state names containing '-' don't collide
+        # with the grammar; literal patterns keep '-' for backwards compat.
+        _simple_has_wildcards = self.pattern_type == "simple" and any(
+            f"-{w}" in self.pattern or f"{w}-" in self.pattern or self.pattern == w
+            for w in ("*", "+", "?")
+        )
+        sep = "\x00" if _simple_has_wildcards else "-"
 
-        # Convert simple pattern to regex if needed
         if self.pattern_type == "simple":
             regex_pattern = self._simple_to_regex(self.pattern)
         else:
             regex_pattern = self.pattern
 
-        compiled = re.compile(regex_pattern)
+        # Anchor the pattern when a full-sequence match was requested. polars'
+        # str.contains defaults to "search anywhere", matching Python re.search.
+        if not self.match_anywhere:
+            regex_pattern = f"^(?:{regex_pattern})$"
 
-        for seq_id in sequence.sequence_ids:
-            seq_data = sequence.data.filter(pl.col(id_col) == seq_id).sort(time_col)
-            seq_states = seq_data[state_col].to_list()
+        # Build one joined string per sequence, preserving temporal order.
+        joined = (
+            sequence.data.sort([id_col, time_col])
+            .group_by(id_col, maintain_order=True)
+            .agg(pl.col(state_col).cast(pl.String).str.join(sep).alias("_joined"))
+        )
 
-            # Convert to string for pattern matching.
-            # For simple patterns that contain wildcards, use the null-byte
-            # separator so that state names containing '-' don't collide with
-            # the wildcard grammar.  For literal simple patterns (no wildcards)
-            # and for raw regex patterns, keep '-' so that existing multi-state
-            # exact matches and literal dash-in-name substring searches work.
-            _simple_has_wildcards = self.pattern_type == "simple" and any(
-                f"-{w}" in self.pattern or f"{w}-" in self.pattern or self.pattern == w
-                for w in ("*", "+", "?")
-            )
-            sep = "\x00" if _simple_has_wildcards else "-"
-            seq_string = sep.join(str(s) for s in seq_states)
-
-            if self.match_anywhere:
-                if compiled.search(seq_string):
-                    matching_ids.append(seq_id)
-            else:
-                if compiled.fullmatch(seq_string):
-                    matching_ids.append(seq_id)
-
-        return matching_ids
+        # Single vectorized regex pass over all sequences.
+        matched = joined.filter(pl.col("_joined").str.contains(regex_pattern))
+        return matched[id_col].to_list()
 
     def _simple_to_regex(self, pattern: str) -> str:
         """Convert simple pattern to regex.
@@ -344,18 +344,45 @@ class PatternCriterion(SequenceCriterion):
         # Split only on '-' immediately adjacent to a wildcard token.
         parts = re.split(r"(?<=[*+?])-|-(?=[*+?])", pattern)
 
-        regex_parts = []
+        # Emit each non-first segment with its leading separator *absorbed*
+        # into the segment.  For wildcard segments we fold the separator
+        # inside the quantifier group so that "?"/"*" can truly match zero
+        # occurrences — otherwise the surrounding separators would still be
+        # mandatory and patterns like "A-?-C" against "A\x00C" could never
+        # match.  See v0.3.2 hot-fix F2.
+        wildcard_regex_parts: list[str] = []
+        is_first = True
         for part in parts:
-            if part == "*":
-                regex_parts.append(f"{not_sep}+")
-            elif part == "+":
-                regex_parts.append(f"(?:{not_sep}+{escaped_sep})*{not_sep}+")
-            elif part == "?":
-                regex_parts.append(f"(?:{not_sep}+)?")
-            elif part:
-                regex_parts.append(re.escape(part))
+            if not part:
+                continue
 
-        return escaped_sep.join(regex_parts) if regex_parts else ""
+            if part == "*":
+                # Exactly one middle state (any single state). Absorb the
+                # leading separator so the emit chain stays flat.
+                wildcard_regex_parts.append(f"{escaped_sep}{not_sep}+")
+                is_first = False
+            elif part == "+":
+                # One or more middle states, each with a leading separator.
+                wildcard_regex_parts.append(f"(?:{escaped_sep}{not_sep}+)+")
+                is_first = False
+            elif part == "?":
+                # Zero or one middle state, with the separator folded inside
+                # so zero-middle sequences like ``A\x00C`` still match.
+                wildcard_regex_parts.append(f"(?:{escaped_sep}{not_sep}+)?")
+                is_first = False
+            else:
+                # Literal state name. Prepend a separator only if this is not
+                # the first emitted piece, so the chain reads
+                # ``A\x00(…)\x00C`` while still collapsing cleanly when the
+                # middle piece matches zero times.
+                literal = re.escape(part)
+                if is_first:
+                    wildcard_regex_parts.append(literal)
+                else:
+                    wildcard_regex_parts.append(f"{escaped_sep}{literal}")
+                is_first = False
+
+        return "".join(wildcard_regex_parts)
 
 
 @dataclass

@@ -634,19 +634,30 @@ def transition_proportion(
 
 def modal_states(
     sequence: StateSequence | SequencePool,
-    granularity: int | None = None,
+    granularity: str | None = None,
 ) -> pl.DataFrame:
     """
     Get the modal (most frequent) state at each time position.
 
     Args:
         sequence: StateSequence or SequencePool.
-        granularity: If provided, bin time values into buckets of this size
-            before computing modes. E.g. ``granularity=7`` groups weekly
-            when the time column is in days.
+        granularity: Polars ``dt.truncate`` unit string (e.g. ``"1d"``,
+            ``"1w"``, ``"1mo"``, ``"1h"``) for re-bucketing the time column
+            before computing modes. The time column must be a polars
+            datetime/date dtype when this is set. ``None`` (default) uses
+            the raw time values as stored.
+
+            Strings only — integer granularities were removed in v0.3.2
+            (hot-fix B3). For integer-indexed time, pre-bucket the column
+            with ``(pl.col("t") // k * k)`` before constructing the pool.
 
     Returns:
         DataFrame with columns: time, modal_state, frequency, proportion.
+
+    Raises:
+        TypeError: If ``granularity`` is not a string (and not ``None``).
+        ValueError: If ``granularity`` is set but the time column is not
+            a datetime/date dtype.
     """
     from yasqat.core.sequence import StateSequence
 
@@ -660,9 +671,23 @@ def modal_states(
     time_col = config.time_column
     state_col = config.state_column
 
-    if granularity is not None and granularity > 1:
+    if granularity is not None:
+        if not isinstance(granularity, str):
+            raise TypeError(
+                f"modal_states: granularity must be a string polars truncate "
+                f"unit (e.g. '1d', '1w'); got {type(granularity).__name__}. "
+                f"Integer granularities were removed in v0.3.2 (hot-fix B3)."
+            )
+        time_dtype = data.schema[time_col]
+        if not time_dtype.is_temporal():
+            raise ValueError(
+                f"modal_states: granularity={granularity!r} requires a "
+                f"polars datetime/date time column; {time_col!r} has dtype "
+                f"{time_dtype}. Either drop granularity or cast the time "
+                f"column to Datetime first."
+            )
         data = data.with_columns(
-            (pl.col(time_col) // granularity * granularity).alias(time_col)
+            pl.col(time_col).dt.truncate(granularity).alias(time_col)
         )
 
     # Count state occurrences at each time point

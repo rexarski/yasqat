@@ -25,8 +25,27 @@ class RepresentativeResult:
     """Strategy used for selection."""
 
     def __repr__(self) -> str:
+        n = len(self.indices)
+        if n == 0:
+            return f"RepresentativeResult(strategy='{self.strategy}', n=0)"
+
+        # Preview the first few indices/scores so users can sanity-check the
+        # result without having to print the arrays separately. For longer
+        # results we truncate and indicate the total count.
+        preview = 5
+        idx_list = self.indices[:preview].tolist()
+        score_list = [round(float(s), 3) for s in self.scores[:preview]]
+
+        if n > preview:
+            idx_str = f"[{', '.join(map(str, idx_list))}, ... ({n} total)]"
+            score_str = f"[{', '.join(map(str, score_list))}, ...]"
+        else:
+            idx_str = f"[{', '.join(map(str, idx_list))}]"
+            score_str = f"[{', '.join(map(str, score_list))}]"
+
         return (
-            f"RepresentativeResult(n={len(self.indices)}, strategy='{self.strategy}')"
+            f"RepresentativeResult(strategy='{self.strategy}', "
+            f"indices={idx_str}, scores={score_str})"
         )
 
 
@@ -73,6 +92,14 @@ def extract_representatives(
         >>> result = extract_representatives(dist, n_representatives=2)
         >>> len(result.indices)
         2
+
+    To turn the returned indices back into sequences, index into the
+    corresponding :class:`~yasqat.core.SequencePool`::
+
+        >>> # result.indices are positions in the distance matrix, which
+        >>> # are aligned with pool.sequence_ids by construction.
+        >>> rep_ids = [pool.sequence_ids[i] for i in result.indices]
+        >>> rep_sequences = [pool.get_sequence(sid) for sid in rep_ids]
     """
     # Unwrap DistanceMatrix to numpy array
     if hasattr(dist_matrix, "values") and not isinstance(dist_matrix, np.ndarray):

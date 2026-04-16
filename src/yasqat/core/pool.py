@@ -238,23 +238,6 @@ class SequencePool:
 
         return DistanceMatrix(values=distances, labels=ids)
 
-    def to_wide_format(self) -> pl.DataFrame:
-        """
-        Convert to wide format (one row per sequence, columns for time points).
-
-        Returns:
-            DataFrame with sequence IDs as rows and time points as columns.
-        """
-        return self._data.pivot(
-            on=self._config.time_column,
-            index=self._config.id_column,
-            values=self._config.state_column,
-        )
-
-    def to_long_format(self) -> pl.DataFrame:
-        """Return long format (the default format)."""
-        return self._data
-
     def filter_by_length(
         self,
         min_length: int | None = None,

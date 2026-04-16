@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
@@ -23,10 +24,21 @@ class SequenceConfig:
     state_column: str = "state"
     start_column: str = "start"
     end_column: str = "end"
-    granularity: int | float | None = None
-    """Time granularity for duration calculations. When set, to_sps()
-    computes duration as (end_time - start_time) / granularity + 1
-    instead of counting observations."""
+    granularity: str | None = None
+    """Time-unit truncation applied to the time column(s) at construction.
+
+    Accepts any polars :py:meth:`Expr.dt.truncate` unit string — e.g.
+    ``"1d"``, ``"1w"``, ``"1mo"``, ``"1h"``, ``"15m"``, ``"1y"``. When set,
+    the time column (state/event sequences) or both the start and end
+    columns (interval sequences) are rounded **down** to the unit boundary,
+    so observations within the same bucket collapse into a single time
+    point for all downstream operations.
+
+    Requires the relevant column(s) to have a polars datetime/date dtype —
+    a clear ``ValueError`` is raised otherwise. Numeric granularities were
+    removed in v0.3.2 (hot-fix A6); if you have integer-indexed time,
+    pre-bucket it with ``(pl.col("t") // k * k)`` before constructing the
+    sequence."""
 
 
 class BaseSequence(ABC):
@@ -45,10 +57,51 @@ class BaseSequence(ABC):
             data: Polars DataFrame containing sequence data.
             config: Column configuration.
             alphabet: State alphabet (inferred if not provided).
+
+        Raises:
+            ValueError: If the supplied ``alphabet`` does not cover every
+                state observed in ``data[config.state_column]``. (The reverse
+                — an alphabet declaring more states than appear in the data
+                — is fine, since users often declare a domain alphabet
+                larger than the observed sample.)
         """
         self._config = config or SequenceConfig()
         self._data = self._validate_and_prepare(data)
-        self._alphabet = alphabet or self._infer_alphabet()
+
+        # Only validate user-supplied alphabets — an inferred alphabet is a
+        # function of the data and therefore cannot mismatch it by construction
+        # (see v0.3.2 hot-fix A2). The `is not None` narrowing is kept on the
+        # direct branch so mypy can see ``self._alphabet`` is always ``Alphabet``.
+        if alphabet is not None:
+            self._alphabet = alphabet
+            self._validate_alphabet_covers_data()
+        else:
+            self._alphabet = self._infer_alphabet()
+
+    def _validate_alphabet_covers_data(self) -> None:
+        """Raise if observed states aren't a subset of the declared alphabet.
+
+        Only called when the user explicitly passed an ``alphabet`` argument.
+        The check is silent about alphabet states that don't appear in the
+        data — that's a legitimate use of a wider domain alphabet.
+        """
+        state_col = self._config.state_column
+        if state_col not in self._data.columns:
+            # _validate_and_prepare will have already raised for missing
+            # columns in subclasses that require them; interval sequences
+            # that don't carry a state column bypass this check.
+            return
+
+        observed = set(self._data[state_col].drop_nulls().unique().to_list())
+        declared = set(self._alphabet.states)
+        missing = observed - declared
+        if missing:
+            raise ValueError(
+                f"Alphabet does not cover all observed states. "
+                f"Missing from alphabet: {sorted(map(str, missing))}. "
+                f"Alphabet has {len(declared)} states; data contains "
+                f"{len(observed)} distinct states."
+            )
 
     @abstractmethod
     def _validate_and_prepare(self, data: pl.DataFrame) -> pl.DataFrame:
@@ -57,6 +110,38 @@ class BaseSequence(ABC):
     @abstractmethod
     def _infer_alphabet(self) -> Alphabet:
         """Infer the alphabet from the data."""
+
+    def _apply_granularity(
+        self, data: pl.DataFrame, time_cols: list[str]
+    ) -> pl.DataFrame:
+        """Truncate listed datetime columns to ``config.granularity``.
+
+        No-op when ``config.granularity`` is ``None``. Raises ``ValueError``
+        if granularity is set but any listed column is not a datetime/date
+        dtype — see the ``SequenceConfig.granularity`` docstring for the
+        full rationale (v0.3.2 hot-fix A6).
+        """
+        granularity = self._config.granularity
+        if granularity is None:
+            return data
+
+        exprs = []
+        for col in time_cols:
+            if col not in data.columns:
+                continue
+            dtype = data.schema[col]
+            if not dtype.is_temporal():
+                raise ValueError(
+                    f"SequenceConfig.granularity={granularity!r} requires "
+                    f"column {col!r} to be a polars datetime/date dtype; "
+                    f"got {dtype}. Either drop granularity or cast the "
+                    f"column to Datetime before constructing the sequence."
+                )
+            exprs.append(pl.col(col).dt.truncate(granularity).alias(col))
+
+        if exprs:
+            data = data.with_columns(exprs)
+        return data
 
     @property
     def data(self) -> pl.DataFrame:
@@ -126,6 +211,10 @@ class StateSequence(BaseSequence):
             if col not in data.columns:
                 raise ValueError(f"Missing required column: {col}")
 
+        # Apply granularity truncation before sorting so downstream ops see
+        # the bucketed time values (v0.3.2 hot-fix A6).
+        data = self._apply_granularity(data, [self._config.time_column])
+
         # Sort by id and time
         return data.sort([self._config.id_column, self._config.time_column])
 
@@ -160,7 +249,13 @@ class StateSequence(BaseSequence):
         - state_column: State value
         - start: Start time of spell
         - end: End time of spell
-        - duration: Spell duration
+        - duration: Spell duration (number of observations in the spell)
+
+        Note:
+            Under v0.3.2 hot-fix A6, ``SequenceConfig.granularity`` truncates
+            datetime time columns at construction rather than rewriting
+            duration arithmetic here — so ``to_sps`` now always counts rows
+            per spell and there is no per-call granularity branch.
         """
         id_col = self._config.id_column
         time_col = self._config.time_column
@@ -170,17 +265,8 @@ class StateSequence(BaseSequence):
             pl.col(state_col).first().alias(state_col),
             pl.col(time_col).min().alias("start"),
             pl.col(time_col).max().alias("end"),
+            pl.len().alias("duration"),
         ]
-
-        if self._config.granularity is not None:
-            g = self._config.granularity
-            agg_exprs.append(
-                ((pl.col(time_col).max() - pl.col(time_col).min()) / g + 1)
-                .cast(pl.Int64)
-                .alias("duration")
-            )
-        else:
-            agg_exprs.append(pl.len().alias("duration"))
 
         return (
             self._data.with_columns(
@@ -236,147 +322,6 @@ class StateSequence(BaseSequence):
         seq_data = self.get_sequence(seq_id).sort(self._config.time_column)
         return seq_data[self._config.state_column].to_list()
 
-    def to_event_sequence(self) -> EventSequence:
-        """
-        Convert to EventSequence (treat each state observation as an event).
-
-        Returns:
-            EventSequence with the same data.
-        """
-        return EventSequence(
-            data=self._data.select(
-                [
-                    self._config.id_column,
-                    self._config.time_column,
-                    self._config.state_column,
-                ]
-            ),
-            config=self._config,
-            alphabet=self._alphabet,
-        )
-
-    def to_interval_sequence(self) -> IntervalSequence:
-        """
-        Convert to IntervalSequence using spell (run-length) encoding.
-
-        Each consecutive run of the same state becomes an interval
-        with start and end times.
-
-        Returns:
-            IntervalSequence derived from spells.
-        """
-        sps = self.to_sps()
-
-        interval_data = sps.select(
-            [
-                pl.col(self._config.id_column),
-                pl.col("start").alias(self._config.start_column),
-                pl.col("end").alias(self._config.end_column),
-                pl.col(self._config.state_column),
-            ]
-        )
-
-        return IntervalSequence(
-            data=interval_data,
-            config=self._config,
-            alphabet=self._alphabet,
-        )
-
-
-@dataclass
-class EventSequence(BaseSequence):
-    """
-    Event sequence representation.
-
-    An event sequence represents a series of point-in-time events,
-    where each event has a timestamp and an event type.
-
-    The data should be in long format:
-    - id_column: Identifier for each sequence
-    - time_column: Timestamp of the event
-    - state_column: Event type
-    """
-
-    _data: pl.DataFrame = field(default_factory=pl.DataFrame)
-    _config: SequenceConfig = field(default_factory=SequenceConfig)
-    _alphabet: Alphabet = field(default_factory=lambda: Alphabet(states=()))
-
-    def __init__(
-        self,
-        data: pl.DataFrame,
-        config: SequenceConfig | None = None,
-        alphabet: Alphabet | None = None,
-    ) -> None:
-        """Initialize an event sequence."""
-        super().__init__(data, config, alphabet)
-
-    def _validate_and_prepare(self, data: pl.DataFrame) -> pl.DataFrame:
-        """Validate and prepare event sequence data."""
-        required_cols = [
-            self._config.id_column,
-            self._config.time_column,
-            self._config.state_column,
-        ]
-
-        for col in required_cols:
-            if col not in data.columns:
-                raise ValueError(f"Missing required column: {col}")
-
-        # Sort by id and time
-        return data.sort([self._config.id_column, self._config.time_column])
-
-    def _infer_alphabet(self) -> Alphabet:
-        """Infer alphabet from event type column."""
-        return Alphabet.from_series(self._data[self._config.state_column])
-
-    def n_sequences(self) -> int:
-        """Return the number of unique sequences."""
-        return self._data[self._config.id_column].n_unique()
-
-    @property
-    def sequence_ids(self) -> list[int | str]:
-        """Return the unique sequence IDs."""
-        return self._data[self._config.id_column].unique().sort().to_list()
-
-    def get_sequence(self, seq_id: int | str) -> pl.DataFrame:
-        """Get events for a specific sequence ID."""
-        return self._data.filter(pl.col(self._config.id_column) == seq_id)
-
-    def event_counts(self) -> pl.DataFrame:
-        """Count events by type."""
-        return (
-            self._data.group_by(self._config.state_column)
-            .agg(pl.len().alias("count"))
-            .sort("count", descending=True)
-        )
-
-    def events_per_sequence(self) -> pl.DataFrame:
-        """Count events per sequence."""
-        return (
-            self._data.group_by(self._config.id_column)
-            .agg(pl.len().alias("n_events"))
-            .sort(self._config.id_column)
-        )
-
-    def to_state_sequence(self) -> StateSequence:
-        """
-        Convert to StateSequence (treat each event as a state observation).
-
-        Returns:
-            StateSequence with the same data.
-        """
-        return StateSequence(
-            data=self._data.select(
-                [
-                    self._config.id_column,
-                    self._config.time_column,
-                    self._config.state_column,
-                ]
-            ),
-            config=self._config,
-            alphabet=self._alphabet,
-        )
-
 
 @dataclass
 class IntervalSequence(BaseSequence):
@@ -428,6 +373,12 @@ class IntervalSequence(BaseSequence):
         )
         if len(invalid) > 0:
             raise ValueError(f"Found {len(invalid)} intervals where end < start")
+
+        # Truncate both endpoint columns to config.granularity so intervals
+        # collapse to the same bucket boundaries (v0.3.2 hot-fix A6).
+        data = self._apply_granularity(
+            data, [self._config.start_column, self._config.end_column]
+        )
 
         # Sort by id and start time
         return data.sort([self._config.id_column, self._config.start_column])
@@ -526,8 +477,10 @@ class IntervalSequence(BaseSequence):
         """
         Convert interval sequence to state sequence by sampling at time points.
 
-        If multiple intervals overlap at a time point, the first one (by start time)
-        is used.
+        If multiple intervals contain a time point, the interval with the
+        **latest start time** is chosen (the most recently started active
+        interval). This matches the common "last write wins" semantic for
+        time-indexed state inference.
 
         Args:
             time_points: List of time points to sample. If None, uses integer
@@ -535,6 +488,16 @@ class IntervalSequence(BaseSequence):
 
         Returns:
             StateSequence sampled at the given time points.
+
+        Note:
+            Vectorized via ``polars.join_asof`` (v0.3.2). Replaces the previous
+            per-sequence Python loop with a single O((S·T) + I) pass, where
+            S is the number of sequences, T the number of time points, and I
+            the number of intervals. The pre-v0.3.2 tiebreaker was "earliest
+            start among intervals containing t", which is a side-effect of
+            row order rather than a deliberate rule — the new "latest start"
+            tiebreaker is intentional and consistent with join_asof backward
+            search.
         """
         id_col = self._config.id_column
         start_col = self._config.start_column
@@ -557,57 +520,63 @@ class IntervalSequence(BaseSequence):
             max_end_int = int(float(max_end_val))  # type: ignore[arg-type]
             time_points = list(range(min_start_int, max_end_int + 1))
 
-        # Create time points DataFrame
-        time_df = pl.DataFrame({"time": time_points})
-
-        # For each sequence, find the state at each time point
-        results = []
-        for seq_id in self.sequence_ids:
-            seq_data = self.get_sequence(seq_id)
-
-            # Cross join with time points and filter
-            seq_states = (
-                time_df.join(seq_data, how="cross")
-                .filter(
-                    (pl.col("time") >= pl.col(start_col))
-                    & (pl.col("time") < pl.col(end_col))
-                )
-                .group_by("time")
-                .agg(pl.col(state_col).first())  # Take first if overlap
-                .with_columns(pl.lit(seq_id).alias(id_col))
-                .select([id_col, "time", state_col])
+        seq_ids = self._data[id_col].unique(maintain_order=True).to_list()
+        if not seq_ids or not time_points:
+            return StateSequence(
+                data=pl.DataFrame(
+                    schema={id_col: pl.Int64, "time": pl.Int64, state_col: pl.Utf8}
+                ),
+                config=self._config,
+                alphabet=self._alphabet,
             )
-            results.append(seq_states)
 
-        if not results:
-            df = pl.DataFrame(
-                schema={id_col: pl.Int64, "time": pl.Int64, state_col: pl.Utf8}
-            )
-        else:
-            df = pl.concat(results).sort([id_col, "time"])
-
-        return StateSequence(data=df, config=self._config, alphabet=self._alphabet)
-
-    def to_event_sequence(self) -> EventSequence:
-        """
-        Convert to EventSequence (one event per interval start time).
-
-        Returns:
-            EventSequence with one event per interval.
-        """
-        event_data = self._data.select(
-            [
-                pl.col(self._config.id_column),
-                pl.col(self._config.start_column).alias(self._config.time_column),
-                pl.col(self._config.state_column),
-            ]
-        ).sort([self._config.id_column, self._config.time_column])
-
-        return EventSequence(
-            data=event_data,
-            config=self._config,
-            alphabet=self._alphabet,
+        # Build the (id, time) cartesian grid. join_asof requires the left
+        # frame sorted ascending on the asof key ("time") within each `by`
+        # group (id_col) — sort once here and tag the column as sorted so
+        # polars skips the "sortedness cannot be checked" warning.
+        grid = (
+            pl.DataFrame({id_col: seq_ids})
+            .join(pl.DataFrame({"time": time_points}), how="cross")
+            .sort([id_col, "time"])
+            .with_columns(pl.col("time").set_sorted())
         )
+
+        # Right side: intervals already sorted by (id_col, start_col) via
+        # _validate_and_prepare. Tag start_col as sorted for the same reason.
+        intervals = self._data.select(
+            [id_col, start_col, end_col, state_col]
+        ).with_columns(pl.col(start_col).set_sorted())
+
+        # Polars always emits "Sortedness of columns cannot be checked when
+        # 'by' groups provided" for join_asof+by; the invariant is preserved
+        # by the explicit .sort() above, so suppress the informational noise.
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message="Sortedness of columns cannot be checked",
+                category=UserWarning,
+            )
+            joined = grid.join_asof(
+                intervals,
+                left_on="time",
+                right_on=start_col,
+                by=id_col,
+                strategy="backward",
+            )
+
+        result = (
+            joined
+            # Backward asof gives the interval whose start is the largest value
+            # ≤ time within the sequence. It may still be a *past* interval
+            # (already ended), so filter to intervals actually covering time.
+            # The null check handles time points with no matching interval
+            # (e.g. before any interval starts).
+            .filter(pl.col(end_col).is_not_null() & (pl.col("time") < pl.col(end_col)))
+            .select([id_col, "time", state_col])
+            .sort([id_col, "time"])
+        )
+
+        return StateSequence(data=result, config=self._config, alphabet=self._alphabet)
 
     def span(self) -> pl.DataFrame:
         """

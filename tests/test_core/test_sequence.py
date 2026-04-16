@@ -1,4 +1,4 @@
-"""Tests for StateSequence, EventSequence, and IntervalSequence classes."""
+"""Tests for StateSequence and IntervalSequence classes."""
 
 from __future__ import annotations
 
@@ -7,7 +7,6 @@ import pytest
 
 from yasqat.core.alphabet import Alphabet
 from yasqat.core.sequence import (
-    EventSequence,
     IntervalSequence,
     SequenceConfig,
     StateSequence,
@@ -146,58 +145,27 @@ class TestStateSequence:
         assert len(state_sequence.alphabet) == 4
         assert set(state_sequence.alphabet.states) == {"A", "B", "C", "D"}
 
+    def test_alphabet_mismatch_raises(self, simple_sequence_data: pl.DataFrame) -> None:
+        """Supplying an alphabet that doesn't cover the data must raise.
 
-class TestEventSequence:
-    """Tests for EventSequence class."""
+        Regression for v0.3.2 hot-fix A2: previously the mismatch was
+        silently accepted and only surfaced as cryptic encoding errors
+        downstream.
+        """
+        narrow = Alphabet(states=("A", "B"))  # missing C and D
+        with pytest.raises(ValueError, match="Missing from alphabet"):
+            StateSequence(simple_sequence_data, alphabet=narrow)
 
-    def test_create_event_sequence(self) -> None:
-        """Test creating an event sequence."""
-        data = pl.DataFrame(
-            {
-                "id": [1, 1, 1, 2, 2],
-                "time": [0, 5, 10, 2, 8],
-                "state": ["login", "purchase", "logout", "login", "logout"],
-            }
-        )
+    def test_alphabet_wider_than_data_is_ok(
+        self, simple_sequence_data: pl.DataFrame
+    ) -> None:
+        """An alphabet with extra states not in the data is allowed.
 
-        seq = EventSequence(data)
-
-        assert seq.n_sequences() == 2
-        assert len(seq.alphabet) == 3
-
-    def test_event_counts(self) -> None:
-        """Test counting events by type."""
-        data = pl.DataFrame(
-            {
-                "id": [1, 1, 2, 2, 2],
-                "time": [0, 1, 0, 1, 2],
-                "state": ["A", "B", "A", "B", "B"],
-            }
-        )
-
-        seq = EventSequence(data)
-        counts = seq.event_counts()
-
-        assert len(counts) == 2
-        assert counts.filter(pl.col("state") == "B")["count"].item() == 3
-        assert counts.filter(pl.col("state") == "A")["count"].item() == 2
-
-    def test_events_per_sequence(self) -> None:
-        """Test counting events per sequence."""
-        data = pl.DataFrame(
-            {
-                "id": [1, 1, 1, 2, 2],
-                "time": [0, 1, 2, 0, 1],
-                "state": ["A", "B", "C", "A", "B"],
-            }
-        )
-
-        seq = EventSequence(data)
-        counts = seq.events_per_sequence()
-
-        assert len(counts) == 2
-        assert counts.filter(pl.col("id") == 1)["n_events"].item() == 3
-        assert counts.filter(pl.col("id") == 2)["n_events"].item() == 2
+        Users often declare a domain alphabet wider than the observed sample.
+        """
+        wide = Alphabet(states=("A", "B", "C", "D", "E", "F"))
+        seq = StateSequence(simple_sequence_data, alphabet=wide)
+        assert set(seq.alphabet.states) == {"A", "B", "C", "D", "E", "F"}
 
 
 class TestIntervalSequence:
@@ -418,9 +386,9 @@ class TestIntervalSequence:
 
 class TestGranularity:
     def test_granularity_in_config(self) -> None:
-        """Setting granularity should be stored."""
-        config = SequenceConfig(granularity=60)
-        assert config.granularity == 60
+        """Setting granularity should be stored (now string-only, v0.3.2 A6)."""
+        config = SequenceConfig(granularity="1d")
+        assert config.granularity == "1d"
 
     def test_sps_without_granularity(self) -> None:
         """to_sps() without granularity counts observations."""
@@ -439,107 +407,90 @@ class TestGranularity:
         assert durations[0] == 3  # A: 3 observations
         assert durations[1] == 2  # B: 2 observations
 
-    def test_sps_with_granularity(self) -> None:
-        """to_sps() with granularity computes time-based durations."""
+    def test_granularity_truncates_datetime(self) -> None:
+        """v0.3.2 hot-fix A6: granularity is now a polars truncate unit.
+        Datetime timestamps should round DOWN to the unit boundary before
+        any downstream operation sees them."""
+        from datetime import UTC, datetime
+
         data = pl.DataFrame(
             {
                 "id": [1, 1, 1, 1],
-                "time": [0, 10, 100, 110],
+                "time": [
+                    datetime(2026, 4, 16, 8, 15, tzinfo=UTC),
+                    datetime(2026, 4, 16, 23, 59, tzinfo=UTC),
+                    datetime(2026, 4, 17, 0, 30, tzinfo=UTC),
+                    datetime(2026, 4, 17, 12, 0, tzinfo=UTC),
+                ],
                 "state": ["A", "A", "B", "B"],
             }
         )
-        config = SequenceConfig(granularity=10)
+        config = SequenceConfig(granularity="1d")
+        alphabet = Alphabet(states=("A", "B"))
+        seq = StateSequence(data=data, config=config, alphabet=alphabet)
+        stored_times = seq.data["time"].to_list()
+        # All four timestamps must be rounded down to midnight.
+        assert stored_times[0] == datetime(2026, 4, 16, 0, 0, tzinfo=UTC)
+        assert stored_times[1] == datetime(2026, 4, 16, 0, 0, tzinfo=UTC)
+        assert stored_times[2] == datetime(2026, 4, 17, 0, 0, tzinfo=UTC)
+        assert stored_times[3] == datetime(2026, 4, 17, 0, 0, tzinfo=UTC)
+
+    def test_granularity_rejects_non_datetime_column(self) -> None:
+        """v0.3.2 hot-fix A6: string granularity on an integer time column
+        should raise with a clear error, not silently no-op."""
+        data = pl.DataFrame({"id": [1, 1], "time": [0, 10], "state": ["A", "B"]})
+        config = SequenceConfig(granularity="1d")
+        with pytest.raises(ValueError, match="datetime/date dtype"):
+            StateSequence(data=data, config=config)
+
+    def test_sps_with_granularity_counts_rows(self) -> None:
+        """v0.3.2 hot-fix A6: with string granularity truncating datetime,
+        to_sps duration is the row count per spell (the old
+        (end-start)/g + 1 numeric formula was removed)."""
+        from datetime import UTC, datetime
+
+        data = pl.DataFrame(
+            {
+                "id": [1, 1, 1, 1],
+                "time": [
+                    datetime(2026, 4, 16, 0, 0, tzinfo=UTC),
+                    datetime(2026, 4, 16, 12, 0, tzinfo=UTC),
+                    datetime(2026, 4, 17, 0, 0, tzinfo=UTC),
+                    datetime(2026, 4, 17, 12, 0, tzinfo=UTC),
+                ],
+                "state": ["A", "A", "B", "B"],
+            }
+        )
+        config = SequenceConfig(granularity="1d")
         alphabet = Alphabet(states=("A", "B"))
         seq = StateSequence(data=data, config=config, alphabet=alphabet)
         sps = seq.to_sps()
         durations = sps["duration"].to_list()
-        # A: (10-0)/10 + 1 = 2
-        # B: (110-100)/10 + 1 = 2
-        assert durations[0] == 2
-        assert durations[1] == 2
-
-    def test_sps_single_observation_spell(self) -> None:
-        """A single-observation spell has duration 1 regardless of granularity."""
-        data = pl.DataFrame(
-            {
-                "id": [1, 1, 1],
-                "time": [0, 100, 200],
-                "state": ["A", "B", "C"],
-            }
-        )
-        config = SequenceConfig(granularity=50)
-        alphabet = Alphabet(states=("A", "B", "C"))
-        seq = StateSequence(data=data, config=config, alphabet=alphabet)
-        sps = seq.to_sps()
-        durations = sps["duration"].to_list()
-        # Each spell: (t-t)/50 + 1 = 1
-        assert all(d == 1 for d in durations)
+        assert durations[0] == 2  # Two rows in the A-spell (both 2026-04-16)
+        assert durations[1] == 2  # Two rows in the B-spell (both 2026-04-17)
 
 
 class TestTypeConversions:
     """Tests for type conversions between sequence types."""
 
-    def test_state_to_event(self, state_sequence: StateSequence) -> None:
-        event_seq = state_sequence.to_event_sequence()
-        assert isinstance(event_seq, EventSequence)
-        assert event_seq.n_sequences() == state_sequence.n_sequences()
-        # Verify actual state values survive conversion
-        orig_states = state_sequence.get_states_for_sequence(1)
-        conv_states = (
-            event_seq.data.filter(pl.col("id") == 1).sort("time")["state"].to_list()
-        )
-        assert conv_states == orig_states
-
-    def test_state_to_interval(self, state_sequence: StateSequence) -> None:
-        interval_seq = state_sequence.to_interval_sequence()
-        assert isinstance(interval_seq, IntervalSequence)
-        assert interval_seq.n_sequences() == state_sequence.n_sequences()
-        # Verify interval states cover the original states
-        interval_states = (
-            interval_seq.data.filter(pl.col("id") == 1).sort("start")["state"].to_list()
-        )
-        # Seq 1 is [A, A, B, C] -> spells [A, B, C]
-        assert interval_states == ["A", "B", "C"]
-
-    def test_event_to_state(self) -> None:
+    def test_interval_to_state(self) -> None:
+        """IntervalSequence.to_state_sequence expands spells back to per-time rows."""
         data = pl.DataFrame(
             {
-                "id": [1, 1, 2, 2],
-                "time": [0, 1, 0, 1],
-                "state": ["A", "B", "A", "C"],
-            }
-        )
-        event_seq = EventSequence(data)
-        state_seq = event_seq.to_state_sequence()
-        assert isinstance(state_seq, StateSequence)
-        assert state_seq.n_sequences() == 2
-        assert state_seq.get_states_for_sequence(1) == ["A", "B"]
-        assert state_seq.get_states_for_sequence(2) == ["A", "C"]
-
-    def test_interval_to_event(self) -> None:
-        data = pl.DataFrame(
-            {
-                "id": [1, 1],
-                "start": [0, 5],
-                "end": [5, 10],
-                "state": ["A", "B"],
+                "id": [1, 1, 2],
+                "start": [0, 5, 0],
+                "end": [5, 10, 4],
+                "state": ["A", "B", "C"],
             }
         )
         interval_seq = IntervalSequence(data)
-        event_seq = interval_seq.to_event_sequence()
-        assert isinstance(event_seq, EventSequence)
-        assert event_seq.n_sequences() == 1
-        conv_states = event_seq.data.sort("time")["state"].to_list()
-        assert conv_states == ["A", "B"]
+        state_seq = interval_seq.to_state_sequence()
 
-    def test_roundtrip_state_event_state(self, state_sequence: StateSequence) -> None:
-        """State -> Event -> State should preserve data."""
-        event_seq = state_sequence.to_event_sequence()
-        back = event_seq.to_state_sequence()
-        assert back.n_sequences() == state_sequence.n_sequences()
-        assert len(back) == len(state_sequence)
-        # Verify actual state values survive the round-trip
-        for seq_id in [1, 2, 3]:
-            assert back.get_states_for_sequence(
-                seq_id
-            ) == state_sequence.get_states_for_sequence(seq_id)
+        assert isinstance(state_seq, StateSequence)
+        assert state_seq.n_sequences() == 2
+        # Seq 1 covers t=0..9 with A for t<5 and B for t>=5
+        seq1_states = state_seq.get_states_for_sequence(1)
+        assert seq1_states[0] == "A"
+        assert seq1_states[-1] == "B"
+        # Seq 2 is pure C
+        assert set(state_seq.get_states_for_sequence(2)) == {"C"}

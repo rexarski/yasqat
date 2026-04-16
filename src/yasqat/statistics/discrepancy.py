@@ -112,19 +112,41 @@ def discrepancy_analysis(
     # Permutation test
     p_value = None
     if n_permutations > 0:
+        import warnings
+
         if isinstance(random_state, np.random.Generator):
             rng = random_state
         else:
             rng = np.random.default_rng(random_state)
 
+        # When the observed pseudo-F is infinite (perfect separation),
+        # ``finite >= inf`` evaluates False for every finite permutation and
+        # the naive counter would always return p = 1/(n+1) regardless of
+        # how "rare" the observation actually is. Count permutations that
+        # *also* achieve infinite F instead — that's the honest question
+        # being asked. See v0.3.2 hot-fix C1.
+        observed_is_inf = bool(np.isinf(pseudo_f))
+
         n_extreme = 0
-        for _ in range(n_permutations):
-            perm_labels = rng.permutation(labels)
-            perm_total, perm_within = _compute_ss(dist_matrix, perm_labels)
-            perm_between = perm_total - perm_within
-            perm_f = _compute_pseudo_f(perm_between, perm_within, n, perm_labels)
-            if perm_f >= pseudo_f:
-                n_extreme += 1
+        # Suppress per-permutation perfect-separation warnings: the user
+        # already saw the warning for the observed statistic, and emitting
+        # one per permutation would drown the signal.
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message="Perfect group separation detected",
+                category=UserWarning,
+            )
+            for _ in range(n_permutations):
+                perm_labels = rng.permutation(labels)
+                perm_total, perm_within = _compute_ss(dist_matrix, perm_labels)
+                perm_between = perm_total - perm_within
+                perm_f = _compute_pseudo_f(perm_between, perm_within, n, perm_labels)
+                if observed_is_inf:
+                    if np.isinf(perm_f):
+                        n_extreme += 1
+                elif perm_f >= pseudo_f:
+                    n_extreme += 1
 
         p_value = (n_extreme + 1) / (n_permutations + 1)
 

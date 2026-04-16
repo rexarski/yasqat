@@ -8,7 +8,6 @@ import polars as pl
 import pytest
 
 from yasqat.core.sequence import (
-    EventSequence,
     IntervalSequence,
     SequenceConfig,
     StateSequence,
@@ -33,18 +32,6 @@ def state_sequence_data() -> pl.DataFrame:
             "id": [1, 1, 1, 2, 2, 2],
             "time": [0, 1, 2, 0, 1, 2],
             "state": ["A", "B", "C", "A", "A", "B"],
-        }
-    )
-
-
-@pytest.fixture
-def event_sequence_data() -> pl.DataFrame:
-    """Create event sequence data for testing."""
-    return pl.DataFrame(
-        {
-            "id": [1, 1, 2, 2, 2],
-            "time": [0, 5, 2, 8, 15],
-            "state": ["login", "purchase", "login", "view", "logout"],
         }
     )
 
@@ -75,16 +62,6 @@ class TestCSVLoader:
             assert isinstance(seq, StateSequence)
             assert seq.n_sequences() == 2
             assert len(seq.alphabet) == 3
-
-    def test_load_event_sequence_csv(self, event_sequence_data: pl.DataFrame) -> None:
-        """Test loading event sequence from CSV."""
-        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False, mode="w") as f:
-            event_sequence_data.write_csv(f.name)
-
-            seq = load_csv(f.name, sequence_type="event")
-
-            assert isinstance(seq, EventSequence)
-            assert seq.n_sequences() == 2
 
     def test_load_interval_sequence_csv(
         self, interval_sequence_data: pl.DataFrame

@@ -483,20 +483,54 @@ class TestModalStates:
         assert time_0["modal_state"][0] == "A"
         assert time_0["frequency"][0] == 3
 
-    def test_granularity(self) -> None:
-        """Test modal states with time granularity binning."""
+    def test_granularity_datetime(self) -> None:
+        """v0.3.2 hot-fix B3: granularity is now a polars truncate-unit
+        string and requires a datetime time column. Two timestamps within
+        the same day should collapse into one bucket."""
+        from datetime import UTC, datetime
+
         data = pl.DataFrame(
             {
                 "id": [1, 1, 1, 1, 2, 2, 2, 2],
-                "time": [0, 1, 2, 3, 0, 1, 2, 3],
+                "time": [
+                    datetime(2026, 4, 16, 8, 0, tzinfo=UTC),
+                    datetime(2026, 4, 16, 20, 0, tzinfo=UTC),
+                    datetime(2026, 4, 17, 8, 0, tzinfo=UTC),
+                    datetime(2026, 4, 17, 20, 0, tzinfo=UTC),
+                    datetime(2026, 4, 16, 9, 0, tzinfo=UTC),
+                    datetime(2026, 4, 16, 21, 0, tzinfo=UTC),
+                    datetime(2026, 4, 17, 9, 0, tzinfo=UTC),
+                    datetime(2026, 4, 17, 21, 0, tzinfo=UTC),
+                ],
                 "state": ["A", "A", "B", "B", "A", "B", "B", "B"],
             }
         )
         pool = SequencePool(data)
-        # Granularity 2 bins: [0,1] -> 0, [2,3] -> 2
-        result = modal_states(pool, granularity=2)
+        result = modal_states(pool, granularity="1d")
         times = sorted(result["time"].unique().to_list())
-        assert times == [0, 2]
+        assert times == [
+            datetime(2026, 4, 16, 0, 0, tzinfo=UTC),
+            datetime(2026, 4, 17, 0, 0, tzinfo=UTC),
+        ]
+
+    def test_granularity_rejects_int(self) -> None:
+        """v0.3.2 hot-fix B3: integer granularity is no longer accepted."""
+        from yasqat.core.pool import SequencePool
+
+        data = pl.DataFrame({"id": [1, 1], "time": [0, 1], "state": ["A", "B"]})
+        pool = SequencePool(data)
+        with pytest.raises(TypeError, match="must be a string"):
+            modal_states(pool, granularity=2)  # type: ignore[arg-type]
+
+    def test_granularity_requires_datetime_column(self) -> None:
+        """v0.3.2 hot-fix B3: string granularity on an integer time column
+        must raise a clear dtype error, not silently compute nonsense."""
+        from yasqat.core.pool import SequencePool
+
+        data = pl.DataFrame({"id": [1, 1], "time": [0, 1], "state": ["A", "B"]})
+        pool = SequencePool(data)
+        with pytest.raises(ValueError, match="datetime/date"):
+            modal_states(pool, granularity="1d")
 
 
 class TestSequenceFrequencyTable:

@@ -422,7 +422,7 @@ class PAMClustering:
         """Return the full result from the last fit."""
         return self._result
 
-    def predict(self, distance_to_train: np.ndarray) -> np.ndarray:
+    def predict(self, distance_to_train: np.ndarray | DistanceMatrix) -> np.ndarray:
         """
         Assign new sequences to the nearest medoid.
 
@@ -430,17 +430,36 @@ class PAMClustering:
             distance_to_train: Distance matrix of shape (n_new, n_train)
                 where n_train matches the training set size. Each row
                 contains distances from a new point to all training points.
+                Accepts either a raw numpy array or a :class:`DistanceMatrix`
+                — the latter is unwrapped automatically.
 
         Returns:
             Cluster labels for each new point.
 
         Raises:
-            ValueError: If fit() has not been called.
+            ValueError: If fit() has not been called, or if the supplied
+                matrix shape is incompatible with the training set.
         """
         if self._result is None:
             raise ValueError("Must call fit() before predict()")
 
+        # Unwrap DistanceMatrix for consistent indexing with the rest of the API.
+        if hasattr(distance_to_train, "values") and not isinstance(
+            distance_to_train, np.ndarray
+        ):
+            distance_to_train = distance_to_train.values
+
+        distance_to_train = np.atleast_2d(np.asarray(distance_to_train))
+
         medoid_indices = self._result.medoid_indices
+        n_train = len(self._result.labels)
+        if distance_to_train.shape[1] != n_train:
+            raise ValueError(
+                f"distance_to_train has shape {distance_to_train.shape}; "
+                f"expected last dim = n_train = {n_train}. Each row must "
+                "contain distances from a new point to every training point."
+            )
+
         dist_to_medoids = distance_to_train[:, medoid_indices]
         result: np.ndarray[tuple[Any, ...], np.dtype[Any]] = np.argmin(
             dist_to_medoids, axis=1

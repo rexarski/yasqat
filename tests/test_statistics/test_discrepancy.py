@@ -164,6 +164,38 @@ class TestEdgeCases:
         assert result.pseudo_r2 == 1.0
         assert result.pseudo_f == np.inf
 
+    def test_perfect_separation_permutation_pvalue_honest(self) -> None:
+        """Regression (v0.3.2 hot-fix C1): with perfect separation and many
+        permutations that *also* achieve perfect separation, the p-value must
+        reflect how non-unique the observed split is. The pre-fix behaviour
+        always returned p = 1/(n+1) because ``finite >= inf`` is False.
+
+        Here the 2-vs-2 design with labels ``[0,0,1,1]`` has exactly two
+        label orderings — ``[0,0,1,1]`` and ``[1,1,0,0]`` — that preserve
+        perfect separation (≈ 1/3 of uniform permutations). Expect p ≈ 0.33
+        at large n_permutations, not 1/(n+1).
+        """
+        dist = np.array(
+            [
+                [0.0, 0.0, 5.0, 5.0],
+                [0.0, 0.0, 5.0, 5.0],
+                [5.0, 5.0, 0.0, 0.0],
+                [5.0, 5.0, 0.0, 0.0],
+            ]
+        )
+        labels = np.array([0, 0, 1, 1])
+
+        with pytest.warns(UserWarning, match="Perfect group separation"):
+            result = discrepancy_analysis(
+                dist, labels, n_permutations=999, random_state=42
+            )
+
+        # Pre-fix bug would put p at 1/(999+1) = 0.001; the honest value is
+        # substantially larger because many permutations also separate.
+        assert result.p_value is not None
+        assert result.p_value > 0.1
+        assert result.pseudo_f == np.inf
+
     def test_repr(self) -> None:
         result = DiscrepancyResult(
             pseudo_r2=0.75,

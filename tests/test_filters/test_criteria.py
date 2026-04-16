@@ -228,6 +228,67 @@ class TestPatternCriterion:
         assert 2 in matching  # A-A-C
         assert 3 not in matching
 
+    def test_optional_wildcard_zero_and_one(self) -> None:
+        """Regression: ``?`` wildcard must match both zero- and one-middle.
+
+        Pre-fix, ``A-?-C`` emitted a regex where the separators around the
+        optional group were mandatory, so a two-element sequence ``A,C`` was
+        silently excluded. See v0.3.2 hot-fix F2.
+        """
+        data = pl.DataFrame(
+            {
+                "id": [10, 10, 20, 20, 20, 30, 30, 30, 30],
+                "time": [0, 1, 0, 1, 2, 0, 1, 2, 3],
+                "state": [
+                    "A",
+                    "C",  # seq 10: A,C (zero middle)
+                    "A",
+                    "X",
+                    "C",  # seq 20: A,X,C (one middle)
+                    "A",
+                    "X",
+                    "Y",
+                    "C",  # seq 30: A,X,Y,C (two middles)
+                ],
+            }
+        )
+        seq = StateSequence(data)
+
+        criterion = PatternCriterion(pattern="A-?-C")
+        matching = criterion.get_matching_ids(seq)
+
+        assert 10 in matching  # zero-middle must match
+        assert 20 in matching  # one-middle must match
+        assert 30 not in matching  # two-middle must not match
+
+    def test_plus_wildcard_requires_at_least_one(self) -> None:
+        """Regression: ``+`` wildcard requires at least one middle state."""
+        data = pl.DataFrame(
+            {
+                "id": [10, 10, 20, 20, 20, 30, 30, 30, 30],
+                "time": [0, 1, 0, 1, 2, 0, 1, 2, 3],
+                "state": [
+                    "A",
+                    "C",
+                    "A",
+                    "X",
+                    "C",
+                    "A",
+                    "X",
+                    "Y",
+                    "C",
+                ],
+            }
+        )
+        seq = StateSequence(data)
+
+        criterion = PatternCriterion(pattern="A-+-C")
+        matching = criterion.get_matching_ids(seq)
+
+        assert 10 not in matching  # zero-middle must NOT match
+        assert 20 in matching
+        assert 30 in matching
+
 
 class TestQueryCriterion:
     """Tests for QueryCriterion."""

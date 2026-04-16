@@ -109,15 +109,32 @@ def optimal_matching_distance(
     else:
         sm_matrix = sm.astype(np.float64)
 
-    # Validate that the substitution matrix covers all state indices
-    max_state = max(int(seq_a.max()), int(seq_b.max()))
-    if sm_matrix.shape[0] <= max_state or sm_matrix.shape[1] <= max_state:
+    # Validate substitution matrix shape. Requirements:
+    #   (1) square — the numba kernel indexes ``sm_matrix[a, b]`` symmetrically
+    #   (2) large enough to cover the highest state index in either sequence.
+    # Oversized matrices are permitted: they correspond to a pool-wide
+    # substitution matrix applied to a pair that happens to use a subset of
+    # the alphabet. The semantic trap (matrix built from a *different* pool
+    # whose state-index ordering disagrees with this pair's encoding) is a
+    # pool-level consistency issue that can't be detected from shape alone.
+    # See v0.3.2 hot-fix B2.
+    if sm_matrix.ndim != 2 or sm_matrix.shape[0] != sm_matrix.shape[1]:
         raise ValueError(
-            f"Substitution matrix has shape {sm_matrix.shape} but sequences "
-            f"contain state index {max_state}. The matrix must have dimensions "
-            f"at least ({max_state + 1}, {max_state + 1}) to cover all states. "
-            f"If you built the matrix with substitution_cost_matrix(), make sure "
-            f"it was built from the same alphabet/pool that encoded the sequences."
+            f"Substitution matrix must be square; got shape {sm_matrix.shape}. "
+            f"Build it with `substitution_cost_matrix(pool)` or pass a square "
+            f"numpy array sized at least (n_states, n_states)."
+        )
+
+    max_state = max(int(seq_a.max()), int(seq_b.max()))
+    required = max_state + 1
+    if sm_matrix.shape[0] < required:
+        raise ValueError(
+            f"Substitution matrix has shape {sm_matrix.shape} but the "
+            f"sequences contain state index {max_state}, which requires "
+            f"a matrix of shape at least ({required}, {required}). "
+            f"If you built the matrix with `substitution_cost_matrix()`, "
+            f"make sure it was built from the same alphabet/pool that "
+            f"encoded these sequences."
         )
 
     distance = _optimal_matching_kernel(seq_a, seq_b, indel, sm_matrix)

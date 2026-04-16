@@ -122,7 +122,7 @@ def sunburst_plot(
             arc_id += 1
             angle_pos += angle_span
 
-    plot_df = pl.DataFrame(arc_records).to_pandas()
+    plot_df = pl.DataFrame(arc_records)
 
     # Build color mapping
     colors = {state: alphabet.get_color(state) for state in alphabet.states}

@@ -53,22 +53,6 @@ class TestSequencePool:
         assert len(lengths) == 3
         assert lengths["length"].to_list() == [4, 4, 4]
 
-    def test_to_wide_format(self, sequence_pool: SequencePool) -> None:
-        """Test converting to wide format."""
-        wide = sequence_pool.to_wide_format()
-
-        assert len(wide) == 3
-        assert set(wide.columns) == {"id", "0", "1", "2", "3"}
-
-    def test_to_long_format(self, sequence_pool: SequencePool) -> None:
-        """Test getting long format."""
-        long_df = sequence_pool.to_long_format()
-
-        assert len(long_df) == 12
-        assert "id" in long_df.columns
-        assert "time" in long_df.columns
-        assert "state" in long_df.columns
-
     def test_filter_by_length(self, large_sequence_data: pl.DataFrame) -> None:
         """Test filtering sequences by length."""
         pool = SequencePool(large_sequence_data)

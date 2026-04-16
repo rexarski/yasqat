@@ -76,8 +76,14 @@ def _find_best_split(
     indices: np.ndarray,
     covariate_names: list[str],
     min_node_size: int = 5,
-) -> tuple[int, float, float]:
+) -> tuple[int, float | int | str, float]:
     """Find the best binary split on covariates.
+
+    Numeric covariates use a threshold split (``values <= split_val``).
+    Non-numeric covariates use a one-vs-rest equality split
+    (``values == split_val``), matching TraMineR's disstree default for
+    categorical predictors. Dtype is detected per column with
+    ``np.issubdtype(values.dtype, np.number)``.
 
     Returns (best_covariate_idx, best_split_value, best_r2_gain).
     """
@@ -87,7 +93,7 @@ def _find_best_split(
 
     best_gain = 0.0
     best_var = -1
-    best_val = 0.0
+    best_val: float | int | str = 0.0
 
     n_covariates = covariates.shape[1]
 
@@ -98,8 +104,21 @@ def _find_best_split(
         if len(unique_vals) <= 1:
             continue
 
-        for split_val in unique_vals[:-1]:
-            left_mask = values <= split_val
+        is_numeric = np.issubdtype(values.dtype, np.number)
+
+        # Numeric: scan thresholds between consecutive sorted values — the
+        # last unique value is excluded because ``values <= max`` matches all
+        # observations (empty right split).
+        # Categorical: try every unique value as a one-vs-rest split; all
+        # candidates can produce a non-trivial partition (unless only one
+        # category exists, which is caught above).
+        split_candidates = unique_vals[:-1] if is_numeric else unique_vals
+
+        for split_val in split_candidates:
+            if is_numeric:
+                left_mask = values <= split_val
+            else:
+                left_mask = values == split_val
             right_mask = ~left_mask
 
             left_idx = indices[left_mask]
@@ -117,7 +136,9 @@ def _find_best_split(
             if r2_gain > best_gain:
                 best_gain = r2_gain
                 best_var = var_idx
-                best_val = float(split_val)
+                # Unbox numpy scalars so downstream repr / serialization
+                # doesn't leak ``np.int64(...)`` / ``np.str_(...)`` wrappers.
+                best_val = split_val.item() if hasattr(split_val, "item") else split_val
 
     return best_var, best_val, best_gain
 
@@ -186,9 +207,14 @@ def dissimilarity_tree(
             labels[indices] = node_label
             return node
 
-        # Check that both children would have at least 1 observation
+        # Check that both children would have at least 1 observation.
+        # Mirror the split-type logic from _find_best_split so the recursion
+        # partitions on the same rule that was scored.
         values = covariates[indices, var_idx]
-        left_mask = values <= split_val
+        if np.issubdtype(values.dtype, np.number):
+            left_mask = values <= split_val
+        else:
+            left_mask = values == split_val
         right_mask = ~left_mask
 
         if np.sum(left_mask) < 1 or np.sum(right_mask) < 1:

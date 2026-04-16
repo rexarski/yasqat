@@ -10,7 +10,6 @@ from yasqat import io as io  # re-export so `yasqat.io` works
 from yasqat.core.alphabet import Alphabet
 from yasqat.core.pool import SequencePool
 from yasqat.core.sequence import (
-    EventSequence,
     IntervalSequence,
     SequenceConfig,
     StateSequence,
@@ -23,7 +22,6 @@ except PackageNotFoundError:
 
 __all__ = [
     "Alphabet",
-    "EventSequence",
     "IntervalSequence",
     "SequenceConfig",
     "SequencePool",

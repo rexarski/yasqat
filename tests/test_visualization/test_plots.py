@@ -138,6 +138,53 @@ class TestModalStatePlot:
         plot = modal_state_plot(sequence_pool, title="Modal States")
         assert isinstance(plot, ggplot)
 
+    def test_granularity_passthrough(self) -> None:
+        """Regression (v0.3.2 hot-fix E4 + B3): granularity kwarg must
+        forward to modal_states as a polars truncate-unit string and
+        requires a datetime time column."""
+        from datetime import UTC, datetime
+
+        import polars as pl
+
+        from yasqat.core.pool import SequencePool
+
+        data = pl.DataFrame(
+            {
+                "id": [1, 1, 2, 2],
+                "time": [
+                    datetime(2026, 4, 16, 10, tzinfo=UTC),
+                    datetime(2026, 4, 17, 10, tzinfo=UTC),
+                    datetime(2026, 4, 16, 12, tzinfo=UTC),
+                    datetime(2026, 4, 17, 12, tzinfo=UTC),
+                ],
+                "state": ["A", "B", "A", "A"],
+            }
+        )
+        pool = SequencePool(data)
+        plot = modal_state_plot(pool, granularity="1d")
+        assert isinstance(plot, ggplot)
+
+    def test_empty_data_raises_clear_error(self) -> None:
+        """Regression (v0.3.2 hot-fix E4): an empty pool should raise a
+        readable ValueError instead of the opaque plotnine "need at least
+        one layer" error."""
+        import polars as pl
+        import pytest
+
+        from yasqat.core.pool import SequencePool
+
+        empty = SequencePool(
+            pl.DataFrame(
+                {
+                    "id": pl.Series([], dtype=pl.Int64),
+                    "time": pl.Series([], dtype=pl.Int64),
+                    "state": pl.Series([], dtype=pl.Utf8),
+                }
+            )
+        )
+        with pytest.raises(ValueError, match="no data to plot"):
+            modal_state_plot(empty)
+
 
 class TestMeanTimePlot:
     """Tests for mean time plot."""

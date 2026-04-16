@@ -82,8 +82,7 @@ def distribution_plot(
         (pl.col("count") / pl.col("total")).alias("proportion")
     )
 
-    # Convert to pandas for plotnine
-    pdf = proportions.to_pandas()
+    pdf = proportions
 
     # Build color mapping
     colors = {state: alphabet.get_color(state) for state in alphabet.states}
@@ -190,7 +189,7 @@ def entropy_plot(
                 (pl.col("entropy") / max_entropy).alias("entropy")
             )
 
-    entropy_df = entropy_df.sort(time_col).to_pandas()
+    entropy_df = entropy_df.sort(time_col)
 
     # Create plot
     p = (
@@ -279,7 +278,7 @@ def frequency_plot(
             "pattern": [pat for pat, _ in sorted_patterns],
             "frequency": [cnt for _, cnt in sorted_patterns],
         }
-    ).to_pandas()
+    )
 
     # Create plot
     plot = (

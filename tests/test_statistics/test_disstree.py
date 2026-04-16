@@ -135,6 +135,34 @@ class TestDissTreeDepth:
         )
         assert result.n_leaves >= 3
 
+    def test_categorical_covariate_string(self) -> None:
+        """Regression (v0.3.2 hot-fix C2): non-numeric covariates must split
+        via one-vs-rest equality, not ``values <= val`` (which was either
+        silently lexicographic or raised for object dtype).
+        """
+        rng = np.random.default_rng(7)
+        n = 40
+        # Two latent groups keyed by a string covariate.
+        cov = np.array(["red"] * 20 + ["blue"] * 20, dtype=object).reshape(-1, 1)
+        dist = np.zeros((n, n))
+        for i in range(n):
+            for j in range(i + 1, n):
+                same = (i < 20) == (j < 20)
+                dist[i, j] = dist[j, i] = (
+                    rng.random() * 0.3 if same else 3.0 + rng.random()
+                )
+
+        result = dissimilarity_tree(
+            dist, cov, covariate_names=["colour"], max_depth=3, min_node_size=5
+        )
+
+        assert result.root.split_variable == "colour"
+        # Split value should be one of the two categories (unboxed, not
+        # np.str_) — chosen by whichever one-vs-rest partition scored best.
+        assert result.root.split_value in {"red", "blue"}
+        assert isinstance(result.root.split_value, str)
+        assert result.n_leaves >= 2
+
     def test_min_node_size_respected(self) -> None:
         """Leaves should have at least min_node_size observations."""
         rng = np.random.default_rng(42)

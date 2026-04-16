@@ -266,6 +266,45 @@ class TestPAMRange:
         # k=1 is <2, k=5 is >=n, so only k=2 would be valid but k=2>=n=2 also skipped
         assert len(results) == 0
 
+    def test_two_tuple_is_inclusive_with_warning(self) -> None:
+        """Regression (v0.3.2 hot-fix D2): a 2-tuple is treated as (start, end)
+        inclusive and triggers a DeprecationWarning — previously only the two
+        endpoints were iterated, silently returning only k=start and k=end.
+        """
+        import warnings
+
+        dist = np.array(
+            [
+                [0.0, 1.0, 5.0, 6.0, 5.0],
+                [1.0, 0.0, 5.0, 6.0, 5.0],
+                [5.0, 5.0, 0.0, 1.0, 0.5],
+                [6.0, 6.0, 1.0, 0.0, 1.5],
+                [5.0, 5.0, 0.5, 1.5, 0.0],
+            ]
+        )
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            results = pam_range(dist, k_values=(2, 4))
+
+        assert set(results.keys()) == {2, 3, 4}
+        assert any(
+            issubclass(w.category, DeprecationWarning) and "2-tuple" in str(w.message)
+            for w in caught
+        )
+
+    def test_k_range_helper_is_inclusive(self) -> None:
+        """k_range(a, b) returns range(a, b+1) — inclusive on both ends."""
+        from yasqat.clustering.quality import k_range
+
+        assert list(k_range(2, 5)) == [2, 3, 4, 5]
+        assert list(k_range(3, 3)) == [3]
+
+    def test_k_values_and_k_range_together_raise(self) -> None:
+        """Passing both ``k_values`` and legacy ``k_range`` is an error."""
+        dist = np.array([[0.0, 1.0], [1.0, 0.0]])
+        with pytest.raises(TypeError, match="both 'k_values' and 'k_range'"):
+            pam_range(dist, k_values=[2], k_range=[2])
+
 
 class TestPamRangeDistanceMatrix:
     def test_accepts_distance_matrix_object(self) -> None:
