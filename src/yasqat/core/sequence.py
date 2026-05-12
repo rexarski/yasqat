@@ -362,6 +362,17 @@ class StateSequence(BaseSequence):
             ).drop("count")
         return counts
 
+    def duration(self) -> pl.DataFrame:
+        """Return spell durations as a thin alias over ``to_sps()``.
+
+        Returns:
+            polars DataFrame with columns ``id, state, duration`` — one row
+            per run-length spell, in temporal order within each sequence.
+        """
+        id_col = self._config.id_column
+        state_col = self._config.state_column
+        return self.to_sps().select([id_col, state_col, "duration"])
+
 
 @dataclass
 class IntervalSequence(BaseSequence):

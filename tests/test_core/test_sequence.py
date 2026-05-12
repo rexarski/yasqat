@@ -229,6 +229,27 @@ class TestStateSequenceMethods:
         assert by_id[(1, "B")] == pytest.approx(0.5)
         assert by_id[(2, "C")] == pytest.approx(1.0)
 
+    def test_duration_returns_spell_durations(self) -> None:
+        data = pl.DataFrame(
+            {
+                "id": [1, 1, 1, 1, 2, 2, 2],
+                "time": [0, 1, 2, 3, 0, 1, 2],
+                "state": ["A", "A", "B", "B", "C", "C", "C"],
+            }
+        )
+        seq = StateSequence(data)
+        result = seq.duration()
+
+        assert result.columns == ["id", "state", "duration"]
+        rows = [
+            (row["id"], row["state"], row["duration"]) for row in result.to_dicts()
+        ]
+        assert rows == [
+            (1, "A", 2),
+            (1, "B", 2),
+            (2, "C", 3),
+        ]
+
 
 class TestIntervalSequence:
     """Tests for IntervalSequence class."""
