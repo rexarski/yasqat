@@ -322,6 +322,19 @@ class StateSequence(BaseSequence):
         seq_data = self.get_sequence(seq_id).sort(self._config.time_column)
         return seq_data[self._config.state_column].to_list()
 
+    def state_counts(self) -> pl.DataFrame:
+        """Return pool-wide row count per state.
+
+        Returns:
+            polars DataFrame with columns ``state, count`` sorted by state.
+        """
+        state_col = self._config.state_column
+        return (
+            self._data.group_by(state_col)
+            .agg(pl.len().alias("count"))
+            .sort(state_col)
+        )
+
 
 @dataclass
 class IntervalSequence(BaseSequence):

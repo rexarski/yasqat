@@ -168,6 +168,25 @@ class TestStateSequence:
         assert set(seq.alphabet.states) == {"A", "B", "C", "D", "E", "F"}
 
 
+class TestStateSequenceMethods:
+    """Tests for new analytical methods on StateSequence (v0.4.0)."""
+
+    def test_state_counts_returns_count_per_state(self) -> None:
+        data = pl.DataFrame(
+            {
+                "id": [1, 1, 1, 2, 2, 2, 3, 3],
+                "time": [0, 1, 2, 0, 1, 2, 0, 1],
+                "state": ["A", "B", "A", "A", "A", "C", "B", "B"],
+            }
+        )
+        seq = StateSequence(data)
+        result = seq.state_counts()
+
+        assert result.columns == ["state", "count"]
+        as_dict = {row["state"]: row["count"] for row in result.to_dicts()}
+        assert as_dict == {"A": 4, "B": 3, "C": 1}
+
+
 class TestIntervalSequence:
     """Tests for IntervalSequence class."""
 
