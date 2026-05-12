@@ -402,6 +402,30 @@ class StateSequence(BaseSequence):
             .sort(id_col)
         )
 
+    def span(self) -> pl.DataFrame:
+        """Return temporal span per sequence.
+
+        For integer time columns, ``span`` is an integer; for datetime time
+        columns, ``span`` is a polars Duration (``last - first``).
+
+        Returns:
+            polars DataFrame with columns ``id, first, last, span`` sorted
+            by ``id``.
+        """
+        id_col = self._config.id_column
+        time_col = self._config.time_column
+        return (
+            self._data.group_by(id_col)
+            .agg(
+                [
+                    pl.col(time_col).min().alias("first"),
+                    pl.col(time_col).max().alias("last"),
+                ]
+            )
+            .with_columns((pl.col("last") - pl.col("first")).alias("span"))
+            .sort(id_col)
+        )
+
 
 @dataclass
 class IntervalSequence(BaseSequence):

@@ -282,6 +282,50 @@ class TestStateSequenceMethods:
         as_dict = {row["id"]: row["n_spells"] for row in result.to_dicts()}
         assert as_dict == {1: 3, 2: 3, 3: 1}
 
+    def test_span_integer_time(self) -> None:
+        data = pl.DataFrame(
+            {
+                "id": [1, 1, 1, 2, 2],
+                "time": [0, 1, 5, 10, 12],
+                "state": ["A", "B", "A", "C", "C"],
+            }
+        )
+        seq = StateSequence(data)
+        result = seq.span()
+
+        assert result.columns == ["id", "first", "last", "span"]
+        as_dict = {row["id"]: row for row in result.to_dicts()}
+        assert as_dict[1]["first"] == 0
+        assert as_dict[1]["last"] == 5
+        assert as_dict[1]["span"] == 5
+        assert as_dict[2]["first"] == 10
+        assert as_dict[2]["last"] == 12
+        assert as_dict[2]["span"] == 2
+
+    def test_span_datetime_time(self) -> None:
+        from datetime import UTC, datetime
+
+        data = pl.DataFrame(
+            {
+                "id": [1, 1, 1],
+                "time": [
+                    datetime(2026, 1, 1, tzinfo=UTC),
+                    datetime(2026, 1, 5, tzinfo=UTC),
+                    datetime(2026, 1, 10, tzinfo=UTC),
+                ],
+                "state": ["A", "B", "A"],
+            }
+        )
+        seq = StateSequence(data)
+        result = seq.span()
+
+        row = result.to_dicts()[0]
+        assert row["id"] == 1
+        assert row["first"] == datetime(2026, 1, 1, tzinfo=UTC)
+        assert row["last"] == datetime(2026, 1, 10, tzinfo=UTC)
+        # span is a polars Duration
+        assert row["span"].days == 9
+
 
 class TestIntervalSequence:
     """Tests for IntervalSequence class."""
