@@ -250,6 +250,23 @@ class TestStateSequenceMethods:
             (2, "C", 3),
         ]
 
+    def test_total_duration_by_state_aggregates_spell_durations(self) -> None:
+        data = pl.DataFrame(
+            {
+                "id": [1, 1, 1, 1, 2, 2, 2],
+                "time": [0, 1, 2, 3, 0, 1, 2],
+                "state": ["A", "A", "B", "B", "A", "A", "B"],
+            }
+        )
+        seq = StateSequence(data)
+        result = seq.total_duration_by_state()
+
+        assert result.columns == ["state", "total_duration"]
+        as_dict = {
+            row["state"]: row["total_duration"] for row in result.to_dicts()
+        }
+        assert as_dict == {"A": 4, "B": 3}
+
 
 class TestIntervalSequence:
     """Tests for IntervalSequence class."""

@@ -373,6 +373,21 @@ class StateSequence(BaseSequence):
         state_col = self._config.state_column
         return self.to_sps().select([id_col, state_col, "duration"])
 
+    def total_duration_by_state(self) -> pl.DataFrame:
+        """Sum spell durations per state across the pool.
+
+        Returns:
+            polars DataFrame with columns ``state, total_duration`` sorted
+            descending by ``total_duration``.
+        """
+        state_col = self._config.state_column
+        return (
+            self.to_sps()
+            .group_by(state_col)
+            .agg(pl.col("duration").sum().alias("total_duration"))
+            .sort("total_duration", descending=True)
+        )
+
 
 @dataclass
 class IntervalSequence(BaseSequence):
