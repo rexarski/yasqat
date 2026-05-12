@@ -388,6 +388,20 @@ class StateSequence(BaseSequence):
             .sort("total_duration", descending=True)
         )
 
+    def spells_per_sequence(self) -> pl.DataFrame:
+        """Count distinct run-length spells per sequence.
+
+        Returns:
+            polars DataFrame with columns ``id, n_spells`` sorted by ``id``.
+        """
+        id_col = self._config.id_column
+        return (
+            self.to_sps()
+            .group_by(id_col)
+            .agg(pl.len().alias("n_spells"))
+            .sort(id_col)
+        )
+
 
 @dataclass
 class IntervalSequence(BaseSequence):
