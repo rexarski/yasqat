@@ -186,6 +186,49 @@ class TestStateSequenceMethods:
         as_dict = {row["state"]: row["count"] for row in result.to_dicts()}
         assert as_dict == {"A": 4, "B": 3, "C": 1}
 
+    def test_state_per_sequence_counts_default(self) -> None:
+        data = pl.DataFrame(
+            {
+                "id": [1, 1, 1, 2, 2, 2],
+                "time": [0, 1, 2, 0, 1, 2],
+                "state": ["A", "B", "A", "B", "B", "C"],
+            }
+        )
+        seq = StateSequence(data)
+        result = seq.state_per_sequence()
+
+        assert result.columns == ["id", "state", "count"]
+        by_id = {
+            (row["id"], row["state"]): row["count"]
+            for row in result.to_dicts()
+        }
+        assert by_id == {
+            (1, "A"): 2,
+            (1, "B"): 1,
+            (2, "B"): 2,
+            (2, "C"): 1,
+        }
+
+    def test_state_per_sequence_proportion_mode(self) -> None:
+        data = pl.DataFrame(
+            {
+                "id": [1, 1, 1, 1, 2, 2],
+                "time": [0, 1, 2, 3, 0, 1],
+                "state": ["A", "A", "B", "B", "C", "C"],
+            }
+        )
+        seq = StateSequence(data)
+        result = seq.state_per_sequence(proportion=True)
+
+        assert result.columns == ["id", "state", "proportion"]
+        by_id = {
+            (row["id"], row["state"]): row["proportion"]
+            for row in result.to_dicts()
+        }
+        assert by_id[(1, "A")] == pytest.approx(0.5)
+        assert by_id[(1, "B")] == pytest.approx(0.5)
+        assert by_id[(2, "C")] == pytest.approx(1.0)
+
 
 class TestIntervalSequence:
     """Tests for IntervalSequence class."""

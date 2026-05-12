@@ -335,6 +335,33 @@ class StateSequence(BaseSequence):
             .sort(state_col)
         )
 
+    def state_per_sequence(self, *, proportion: bool = False) -> pl.DataFrame:
+        """Return per-sequence state distribution.
+
+        Args:
+            proportion: When ``True``, return ``proportion`` (within-sequence
+                share) instead of raw ``count``. Default: ``False`` (counts).
+
+        Returns:
+            polars DataFrame with columns ``id, state, count`` (or
+            ``id, state, proportion``) sorted by ``id`` then ``state``.
+        """
+        id_col = self._config.id_column
+        state_col = self._config.state_column
+
+        counts = (
+            self._data.group_by([id_col, state_col])
+            .agg(pl.len().alias("count"))
+            .sort([id_col, state_col])
+        )
+        if proportion:
+            return counts.with_columns(
+                (pl.col("count") / pl.col("count").sum().over(id_col)).alias(
+                    "proportion"
+                )
+            ).drop("count")
+        return counts
+
 
 @dataclass
 class IntervalSequence(BaseSequence):
