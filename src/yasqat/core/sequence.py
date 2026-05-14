@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import polars as pl
@@ -37,7 +37,6 @@ class SequenceConfig:
     sequence."""
 
 
-@dataclass
 class StateSequence:
     """
     State sequence representation.
@@ -54,10 +53,6 @@ class StateSequence:
     :meth:`from_intervals` classmethod which samples the intervals on a
     discrete grid and returns a ``StateSequence``.
     """
-
-    _data: pl.DataFrame = field(default_factory=pl.DataFrame)
-    _config: SequenceConfig = field(default_factory=SequenceConfig)
-    _alphabet: Alphabet = field(default_factory=lambda: Alphabet(states=()))
 
     def __init__(
         self,

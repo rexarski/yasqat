@@ -166,6 +166,22 @@ class TestStateSequence:
         seq = StateSequence(simple_sequence_data, alphabet=wide)
         assert set(seq.alphabet.states) == {"A", "B", "C", "D", "E", "F"}
 
+    def test_equality_does_not_raise(
+        self, simple_sequence_data: pl.DataFrame
+    ) -> None:
+        """``s == s`` and ``s1 == s2`` must not raise.
+
+        Regression for a v0.4.0 issue where ``StateSequence`` was decorated
+        with ``@dataclass``, which generated an ``__eq__`` that delegated to
+        ``polars.DataFrame.__eq__`` and crashed with "the truth value of a
+        DataFrame is ambiguous". Identity-based comparison (the default for
+        a mutable container with no explicit ``__eq__``) is correct here.
+        """
+        s1 = StateSequence(simple_sequence_data)
+        s2 = StateSequence(simple_sequence_data)
+        assert s1 == s1
+        assert s1 != s2  # distinct instances are not equal by default
+
 
 class TestStateSequenceMethods:
     """Tests for new analytical methods on StateSequence (v0.4.0)."""
@@ -324,7 +340,6 @@ class TestStateSequenceMethods:
         assert row["last"] == datetime(2026, 1, 10, tzinfo=UTC)
         # span is a polars Duration
         assert row["span"].days == 9
-
 
 
 class TestGranularity:
