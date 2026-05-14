@@ -10,14 +10,14 @@ from typing import TYPE_CHECKING
 import polars as pl
 
 if TYPE_CHECKING:
-    from yasqat.core.sequence import BaseSequence
+    from yasqat.core.sequence import StateSequence
 
 
 class SequenceCriterion(ABC):
     """Abstract base class for sequence filtering criteria."""
 
     @abstractmethod
-    def get_matching_ids(self, sequence: BaseSequence) -> list[int | str]:
+    def get_matching_ids(self, sequence: StateSequence) -> list[int | str]:
         """
         Return IDs of sequences that match this criterion.
 
@@ -28,7 +28,7 @@ class SequenceCriterion(ABC):
             List of matching sequence IDs.
         """
 
-    def filter(self, sequence: BaseSequence) -> pl.DataFrame:
+    def filter(self, sequence: StateSequence) -> pl.DataFrame:
         """
         Filter sequence data to only matching sequences.
 
@@ -63,7 +63,7 @@ class LengthCriterion(SequenceCriterion):
     max_length: int | None = None
     exact_length: int | None = None
 
-    def get_matching_ids(self, sequence: BaseSequence) -> list[int | str]:
+    def get_matching_ids(self, sequence: StateSequence) -> list[int | str]:
         """Return IDs of sequences with matching length."""
         id_col = sequence.config.id_column
 
@@ -104,31 +104,17 @@ class TimeCriterion(SequenceCriterion):
     end_before: int | float | None = None
     contains_time: int | float | None = None
 
-    def get_matching_ids(self, sequence: BaseSequence) -> list[int | str]:
+    def get_matching_ids(self, sequence: StateSequence) -> list[int | str]:
         """Return IDs of sequences matching time criteria."""
         id_col = sequence.config.id_column
         config = sequence.config
 
-        # Determine time columns based on sequence type
-        if (
-            hasattr(config, "start_column")
-            and config.start_column in sequence.data.columns
-        ):
-            # Interval sequence
-            time_stats = sequence.data.group_by(id_col).agg(
-                [
-                    pl.col(config.start_column).min().alias("_start"),
-                    pl.col(config.end_column).max().alias("_end"),
-                ]
-            )
-        else:
-            # State or event sequence
-            time_stats = sequence.data.group_by(id_col).agg(
-                [
-                    pl.col(config.time_column).min().alias("_start"),
-                    pl.col(config.time_column).max().alias("_end"),
-                ]
-            )
+        time_stats = sequence.data.group_by(id_col).agg(
+            [
+                pl.col(config.time_column).min().alias("_start"),
+                pl.col(config.time_column).max().alias("_end"),
+            ]
+        )
 
         # Apply time filters
         if self.start_after is not None:
@@ -163,7 +149,7 @@ class ContainsStateCriterion(SequenceCriterion):
     require_all: bool = False
     exclude: bool = False
 
-    def get_matching_ids(self, sequence: BaseSequence) -> list[int | str]:
+    def get_matching_ids(self, sequence: StateSequence) -> list[int | str]:
         """Return IDs of sequences containing (or not containing) specified states."""
         id_col = sequence.config.id_column
         state_col = sequence.config.state_column
@@ -206,7 +192,7 @@ class StartsWithCriterion(SequenceCriterion):
 
     states: list[str]
 
-    def get_matching_ids(self, sequence: BaseSequence) -> list[int | str]:
+    def get_matching_ids(self, sequence: StateSequence) -> list[int | str]:
         """Return IDs of sequences starting with the specified states."""
         id_col = sequence.config.id_column
         state_col = sequence.config.state_column
@@ -260,7 +246,7 @@ class PatternCriterion(SequenceCriterion):
     pattern_type: str = "simple"  # "simple" or "regex"
     match_anywhere: bool = False  # If True, pattern can match anywhere in sequence
 
-    def get_matching_ids(self, sequence: BaseSequence) -> list[int | str]:
+    def get_matching_ids(self, sequence: StateSequence) -> list[int | str]:
         """Return IDs of sequences matching the pattern.
 
         Vectorized via polars: sequences are joined into a single string per
@@ -401,7 +387,7 @@ class QueryCriterion(SequenceCriterion):
 
     expression: pl.Expr
 
-    def get_matching_ids(self, sequence: BaseSequence) -> list[int | str]:
+    def get_matching_ids(self, sequence: StateSequence) -> list[int | str]:
         """Return IDs of sequences where any row matches the expression."""
         id_col = sequence.config.id_column
 
@@ -413,7 +399,7 @@ class QueryCriterion(SequenceCriterion):
 
 
 def filter_sequences(
-    sequence: BaseSequence,
+    sequence: StateSequence,
     criteria: SequenceCriterion | list[SequenceCriterion],
     combine: str = "and",
 ) -> pl.DataFrame:

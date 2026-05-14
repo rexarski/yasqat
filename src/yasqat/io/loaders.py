@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Any, Literal
 import polars as pl
 
 from yasqat.core.sequence import (
-    IntervalSequence,
     SequenceConfig,
     StateSequence,
 )
@@ -20,22 +19,18 @@ if TYPE_CHECKING:
 
 def load_csv(
     path: str | Path,
-    sequence_type: str = "state",
     config: SequenceConfig | None = None,
     **kwargs: Any,
-) -> StateSequence | IntervalSequence:
-    """
-    Load sequence data from a CSV file.
+) -> StateSequence:
+    """Load state-shaped sequence data from a CSV file.
 
-    Uses polars for fast CSV parsing.
+    For interval-shaped input, read with polars then call
+    ``StateSequence.from_intervals(df, time_points=...)``.
 
     Args:
         path: Path to the CSV file.
-        sequence_type: Type of sequence to create. One of:
-            - "state": StateSequence (default)
-            - "interval": IntervalSequence
         config: Column configuration. If None, uses defaults
-            (id, time, state for state; id, start, end, state for interval).
+            (id, time, state).
         **kwargs: Additional arguments passed to polars.read_csv().
             Common options include:
             - separator: Column delimiter (default: ",")
@@ -44,27 +39,24 @@ def load_csv(
             - dtypes: Column data types
 
     Returns:
-        A StateSequence or IntervalSequence object.
+        A StateSequence object.
 
     Example:
         >>> from yasqat.io import load_csv
-        >>> seq = load_csv("data.csv", sequence_type="state")
+        >>> seq = load_csv("data.csv")
         >>> seq.n_sequences()
         100
     """
     config = config or SequenceConfig()
     data = pl.read_csv(path, **kwargs)
-
-    return _create_sequence(data, sequence_type, config)
+    return StateSequence(data, config)
 
 
 def load_json(
     path: str | Path,
-    sequence_type: str = "state",
     config: SequenceConfig | None = None,
-) -> StateSequence | IntervalSequence:
-    """
-    Load sequence data from a JSON file.
+) -> StateSequence:
+    """Load state-shaped sequence data from a JSON file.
 
     Expects JSON in one of these formats:
     1. Array of records: [{"id": 1, "time": 0, "state": "A"}, ...]
@@ -72,30 +64,26 @@ def load_json(
 
     Args:
         path: Path to the JSON file.
-        sequence_type: Type of sequence ("state" or "interval").
         config: Column configuration.
 
     Returns:
-        A StateSequence or IntervalSequence object.
+        A StateSequence object.
 
     Example:
         >>> from yasqat.io import load_json
-        >>> seq = load_json("data.json", sequence_type="state")
+        >>> seq = load_json("data.json")
     """
     config = config or SequenceConfig()
     data = pl.read_json(path)
-
-    return _create_sequence(data, sequence_type, config)
+    return StateSequence(data, config)
 
 
 def load_parquet(
     path: str | Path,
-    sequence_type: str = "state",
     config: SequenceConfig | None = None,
     **kwargs: Any,
-) -> StateSequence | IntervalSequence:
-    """
-    Load sequence data from a Parquet file.
+) -> StateSequence:
+    """Load state-shaped sequence data from a Parquet file.
 
     Parquet is recommended for large datasets due to:
     - Columnar storage (efficient for sequence analysis)
@@ -104,12 +92,11 @@ def load_parquet(
 
     Args:
         path: Path to the Parquet file.
-        sequence_type: Type of sequence ("state" or "interval").
         config: Column configuration.
         **kwargs: Additional arguments passed to polars.read_parquet().
 
     Returns:
-        A StateSequence or IntervalSequence object.
+        A StateSequence object.
 
     Example:
         >>> from yasqat.io import load_parquet
@@ -117,17 +104,15 @@ def load_parquet(
     """
     config = config or SequenceConfig()
     data = pl.read_parquet(path, **kwargs)
-
-    return _create_sequence(data, sequence_type, config)
+    return StateSequence(data, config)
 
 
 def save_csv(
-    sequence: StateSequence | IntervalSequence,
+    sequence: StateSequence,
     path: str | Path,
     **kwargs: Any,
 ) -> None:
-    """
-    Save sequence data to a CSV file.
+    """Save sequence data to a CSV file.
 
     Args:
         sequence: Sequence object to save.
@@ -146,11 +131,10 @@ def save_csv(
 
 
 def save_json(
-    sequence: StateSequence | IntervalSequence,
+    sequence: StateSequence,
     path: str | Path,
 ) -> None:
-    """
-    Save sequence data to a JSON file.
+    """Save sequence data to a JSON file.
 
     Args:
         sequence: Sequence object to save.
@@ -167,13 +151,12 @@ CompressionCodec = Literal["lz4", "uncompressed", "snappy", "gzip", "brotli", "z
 
 
 def save_parquet(
-    sequence: StateSequence | IntervalSequence,
+    sequence: StateSequence,
     path: str | Path,
     compression: CompressionCodec = "zstd",
     **kwargs: Any,
 ) -> None:
-    """
-    Save sequence data to a Parquet file.
+    """Save sequence data to a Parquet file.
 
     Args:
         sequence: Sequence object to save.
@@ -194,8 +177,7 @@ def load_dataframe(
     alphabet: Alphabet | None = None,
     drop_nulls: bool = False,
 ) -> SequencePool:
-    """
-    Build a SequencePool directly from a polars DataFrame.
+    """Build a SequencePool directly from a polars DataFrame.
 
     This is the recommended entry point when loading data from Hive tables,
     Spark (via parquet export or Arrow bridge), or any other source that
@@ -223,7 +205,6 @@ def load_dataframe(
     if drop_nulls:
         df = df.drop_nulls(subset=[config.state_column])
 
-    # Validate alphabet covers all data states
     if alphabet is not None:
         data_states = set(df[config.state_column].unique().to_list())
         alphabet_states = set(alphabet.states)
@@ -235,54 +216,3 @@ def load_dataframe(
             )
 
     return SequencePool(data=df, config=config, alphabet=alphabet)
-
-
-def _create_sequence(
-    data: pl.DataFrame,
-    sequence_type: str,
-    config: SequenceConfig,
-) -> StateSequence | IntervalSequence:
-    """Create the appropriate sequence type from a DataFrame."""
-    if sequence_type == "state":
-        return StateSequence(data, config)
-    elif sequence_type == "interval":
-        return IntervalSequence(data, config)
-    else:
-        raise ValueError(
-            f"Unknown sequence_type: {sequence_type}. "
-            f"Expected one of: 'state', 'interval'"
-        )
-
-
-# Additional utility functions
-
-
-def infer_sequence_type(
-    data: pl.DataFrame,
-    config: SequenceConfig | None = None,
-) -> str:
-    """
-    Infer the sequence type from DataFrame columns.
-
-    Returns ``"interval"`` if both ``start_column`` and ``end_column`` are
-    present, otherwise ``"state"``. Note that "state" and "event" sequences
-    share an identical column structure (id + time + state) and therefore
-    cannot be distinguished from the data alone — they are the same long
-    format with different semantic interpretations. yasqat collapses both
-    into a single :class:`StateSequence` type.
-
-    Args:
-        data: Input DataFrame.
-        config: Column configuration.
-
-    Returns:
-        Inferred sequence type: ``"state"`` or ``"interval"``.
-    """
-    config = config or SequenceConfig()
-
-    has_start = config.start_column in data.columns
-    has_end = config.end_column in data.columns
-
-    if has_start and has_end:
-        return "interval"
-    return "state"

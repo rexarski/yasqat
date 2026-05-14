@@ -3,14 +3,12 @@
 from yasqat.core.alphabet import Alphabet
 from yasqat.core.pool import SequencePool
 from yasqat.core.sequence import (
-    IntervalSequence,
     SequenceConfig,
     StateSequence,
 )
 
 __all__ = [
     "Alphabet",
-    "IntervalSequence",
     "SequenceConfig",
     "SequencePool",
     "StateSequence",
