@@ -629,6 +629,116 @@ class TestGranularity:
         assert durations[1] == 2  # Two rows in the B-spell (both 2026-04-17)
 
 
+class TestFromIntervals:
+    """Tests for StateSequence.from_intervals classmethod (v0.4.0)."""
+
+    def test_happy_path_integer_time(self) -> None:
+        data = pl.DataFrame(
+            {
+                "id": [1, 1, 2, 2],
+                "start": [0, 5, 0, 3],
+                "end": [3, 8, 3, 6],
+                "state": ["A", "B", "X", "Y"],
+            }
+        )
+        seq = StateSequence.from_intervals(data, time_points=[0, 2, 5, 7])
+
+        assert isinstance(seq, StateSequence)
+        rows = seq.data.sort(["id", "time"]).to_dicts()
+        assert rows == [
+            {"id": 1, "time": 0, "state": "A"},
+            {"id": 1, "time": 2, "state": "A"},
+            {"id": 1, "time": 5, "state": "B"},
+            {"id": 1, "time": 7, "state": "B"},
+            {"id": 2, "time": 0, "state": "X"},
+            {"id": 2, "time": 2, "state": "X"},
+            {"id": 2, "time": 5, "state": "Y"},
+        ]
+
+    def test_default_time_points_integer(self) -> None:
+        data = pl.DataFrame(
+            {
+                "id": [1, 1],
+                "start": [0, 4],
+                "end": [3, 6],
+                "state": ["A", "B"],
+            }
+        )
+        seq = StateSequence.from_intervals(data)
+        times = sorted(seq.data["time"].to_list())
+        assert times == [0, 1, 2, 4, 5]
+
+    def test_datetime_with_no_time_points_raises(self) -> None:
+        from datetime import UTC, datetime
+
+        data = pl.DataFrame(
+            {
+                "id": [1],
+                "start": [datetime(2026, 1, 1, tzinfo=UTC)],
+                "end": [datetime(2026, 1, 5, tzinfo=UTC)],
+                "state": ["A"],
+            }
+        )
+        with pytest.raises(ValueError, match="explicit time_points"):
+            StateSequence.from_intervals(data)
+
+    def test_datetime_with_explicit_time_points(self) -> None:
+        from datetime import UTC, datetime
+
+        data = pl.DataFrame(
+            {
+                "id": [1, 1],
+                "start": [datetime(2026, 1, 1, tzinfo=UTC), datetime(2026, 1, 5, tzinfo=UTC)],
+                "end": [datetime(2026, 1, 4, tzinfo=UTC), datetime(2026, 1, 8, tzinfo=UTC)],
+                "state": ["A", "B"],
+            }
+        )
+        seq = StateSequence.from_intervals(
+            data,
+            time_points=[
+                datetime(2026, 1, 2, tzinfo=UTC),
+                datetime(2026, 1, 6, tzinfo=UTC),
+            ],
+        )
+        rows = seq.data.sort("time").to_dicts()
+        assert rows == [
+            {"id": 1, "time": datetime(2026, 1, 2, tzinfo=UTC), "state": "A"},
+            {"id": 1, "time": datetime(2026, 1, 6, tzinfo=UTC), "state": "B"},
+        ]
+
+    def test_missing_required_column_raises(self) -> None:
+        data = pl.DataFrame(
+            {"id": [1], "start": [0], "state": ["A"]}
+        )
+        with pytest.raises(ValueError, match="Missing required columns"):
+            StateSequence.from_intervals(data, time_points=[0])
+
+    def test_invalid_intervals_raise(self) -> None:
+        data = pl.DataFrame(
+            {
+                "id": [1],
+                "start": [5],
+                "end": [3],
+                "state": ["A"],
+            }
+        )
+        with pytest.raises(ValueError, match="end < start"):
+            StateSequence.from_intervals(data, time_points=[0])
+
+    def test_latest_start_tiebreak_preserved(self) -> None:
+        data = pl.DataFrame(
+            {
+                "id": [1, 1],
+                "start": [0, 4],
+                "end": [10, 8],
+                "state": ["EARLY", "LATE"],
+            }
+        )
+        seq = StateSequence.from_intervals(data, time_points=[5])
+        rows = seq.data.to_dicts()
+        assert rows == [{"id": 1, "time": 5, "state": "LATE"}]
+
+
 class TestTypeConversions:
     """Tests for type conversions between sequence types."""
 

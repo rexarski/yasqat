@@ -5,7 +5,7 @@ from __future__ import annotations
 import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import polars as pl
 
@@ -321,6 +321,132 @@ class StateSequence(BaseSequence):
         """Get the list of states for a specific sequence."""
         seq_data = self.get_sequence(seq_id).sort(self._config.time_column)
         return seq_data[self._config.state_column].to_list()
+
+    @classmethod
+    def from_intervals(
+        cls,
+        data: pl.DataFrame,
+        *,
+        time_points: list[Any] | None = None,
+        config: SequenceConfig | None = None,
+        alphabet: Alphabet | None = None,
+        id_col: str = "id",
+        start_col: str = "start",
+        end_col: str = "end",
+        state_col: str = "state",
+    ) -> StateSequence:
+        """Construct a StateSequence by sampling interval-shaped data on a grid.
+
+        Replaces the v0.3.x ``IntervalSequence(...).to_state_sequence(...)``
+        pathway. Lifts the ``join_asof`` machinery from the deleted
+        ``IntervalSequence``.
+
+        Args:
+            data: Interval-shaped polars DataFrame containing ``id_col``,
+                ``start_col``, ``end_col``, ``state_col``.
+            time_points: Sample points. If ``None`` and start/end are integer,
+                uses ``range(min(start), max(end) + 1)``. If ``None`` and
+                start/end are datetime, raises ``ValueError`` — pass an
+                explicit list (no obvious default granularity).
+            config: SequenceConfig for the resulting StateSequence. Defaults
+                to id/time/state with sensible column names.
+            alphabet: Optional explicit Alphabet. Inferred from data if None.
+            id_col, start_col, end_col, state_col: Column names in the input
+                DataFrame.
+
+        Returns:
+            A StateSequence sampled at the given time points. Tiebreaker when
+            multiple intervals contain the same time point: the interval with
+            the largest ``start`` wins (backward asof semantics, preserved
+            from v0.3.2).
+
+        Raises:
+            ValueError: missing required columns, ``end < start`` rows, or
+                datetime input without explicit ``time_points``.
+        """
+        cfg = config or SequenceConfig(
+            id_column=id_col, time_column="time", state_column=state_col
+        )
+
+        required = [id_col, start_col, end_col, state_col]
+        missing = [c for c in required if c not in data.columns]
+        if missing:
+            raise ValueError(f"Missing required columns: {missing}")
+
+        invalid = data.filter(pl.col(end_col) < pl.col(start_col))
+        if len(invalid) > 0:
+            raise ValueError(f"Found {len(invalid)} intervals where end < start")
+
+        start_dtype = data.schema[start_col]
+        end_dtype = data.schema[end_col]
+        if time_points is None and (
+            start_dtype.is_temporal() or end_dtype.is_temporal()
+        ):
+            raise ValueError(
+                "from_intervals requires explicit time_points when start/end "
+                f"are datetime/date (got start: {start_dtype}, end: {end_dtype}). "
+                "There is no obvious default granularity for datetime — pass a "
+                "list of sample points (e.g. a list of datetime objects)."
+            )
+
+        if time_points is None:
+            min_start_val = data[start_col].min()
+            max_end_val = data[end_col].max()
+            if min_start_val is None or max_end_val is None:
+                return cls(
+                    data=pl.DataFrame(
+                        schema={id_col: pl.Int64, "time": pl.Int64, state_col: pl.Utf8}
+                    ),
+                    config=cfg,
+                    alphabet=alphabet,
+                )
+            time_points = list(range(int(min_start_val), int(max_end_val) + 1))  # type: ignore[arg-type]
+
+        seq_ids = data[id_col].unique(maintain_order=True).to_list()
+        if not seq_ids or not time_points:
+            return cls(
+                data=pl.DataFrame(
+                    schema={id_col: pl.Int64, "time": pl.Int64, state_col: pl.Utf8}
+                ),
+                config=cfg,
+                alphabet=alphabet,
+            )
+
+        intervals_sorted = data.sort([id_col, start_col])
+
+        grid = (
+            pl.DataFrame({id_col: seq_ids})
+            .join(pl.DataFrame({"time": time_points}), how="cross")
+            .sort([id_col, "time"])
+            .with_columns(pl.col("time").set_sorted())
+        )
+
+        intervals = intervals_sorted.select(
+            [id_col, start_col, end_col, state_col]
+        ).with_columns(pl.col(start_col).set_sorted())
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message="Sortedness of columns cannot be checked",
+                category=UserWarning,
+            )
+            joined = grid.join_asof(
+                intervals,
+                left_on="time",
+                right_on=start_col,
+                by=id_col,
+                strategy="backward",
+            )
+
+        result = (
+            joined
+            .filter(pl.col(end_col).is_not_null() & (pl.col("time") < pl.col(end_col)))
+            .select([id_col, "time", state_col])
+            .sort([id_col, "time"])
+        )
+
+        return cls(data=result, config=cfg, alphabet=alphabet)
 
     def state_counts(self) -> pl.DataFrame:
         """Return pool-wide row count per state.
