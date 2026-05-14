@@ -367,6 +367,12 @@ class StateSequence(BaseSequence):
         cfg = config or SequenceConfig(
             id_column=id_col, time_column="time", state_column=state_col
         )
+        # Output column names come from cfg so the resulting StateSequence
+        # passes its own _validate_and_prepare. Input columns are addressed
+        # via the *_col parameters; we rename to cfg-space at the boundary.
+        out_id = cfg.id_column
+        out_time = cfg.time_column
+        out_state = cfg.state_column
 
         required = [id_col, start_col, end_col, state_col]
         missing = [c for c in required if c not in data.columns]
@@ -389,14 +395,14 @@ class StateSequence(BaseSequence):
                 "list of sample points (e.g. a list of datetime objects)."
             )
 
+        empty_schema = {out_id: pl.Int64, out_time: pl.Int64, out_state: pl.Utf8}
+
         if time_points is None:
             min_start_val = data[start_col].min()
             max_end_val = data[end_col].max()
             if min_start_val is None or max_end_val is None:
                 return cls(
-                    data=pl.DataFrame(
-                        schema={id_col: pl.Int64, "time": pl.Int64, state_col: pl.Utf8}
-                    ),
+                    data=pl.DataFrame(schema=empty_schema),
                     config=cfg,
                     alphabet=alphabet,
                 )
@@ -405,26 +411,36 @@ class StateSequence(BaseSequence):
         seq_ids = data[id_col].unique(maintain_order=True).to_list()
         if not seq_ids or not time_points:
             return cls(
-                data=pl.DataFrame(
-                    schema={id_col: pl.Int64, "time": pl.Int64, state_col: pl.Utf8}
-                ),
+                data=pl.DataFrame(schema=empty_schema),
                 config=cfg,
                 alphabet=alphabet,
             )
 
-        intervals_sorted = data.sort([id_col, start_col])
-
+        # Build the (id, time) cartesian grid. join_asof requires the left
+        # frame sorted ascending on the asof key (out_time) within each `by`
+        # group (out_id) — sort once here and tag the column as sorted so
+        # polars skips the "sortedness cannot be checked" warning.
         grid = (
-            pl.DataFrame({id_col: seq_ids})
-            .join(pl.DataFrame({"time": time_points}), how="cross")
-            .sort([id_col, "time"])
-            .with_columns(pl.col("time").set_sorted())
+            pl.DataFrame({out_id: seq_ids})
+            .join(pl.DataFrame({out_time: time_points}), how="cross")
+            .sort([out_id, out_time])
+            .with_columns(pl.col(out_time).set_sorted())
         )
 
-        intervals = intervals_sorted.select(
-            [id_col, start_col, end_col, state_col]
-        ).with_columns(pl.col(start_col).set_sorted())
+        # Right side: explicitly sort by (id, start) and rename input id/state
+        # columns into cfg-space so the join_asof `by` clause and the final
+        # select operate on a single naming vocabulary. Tag start_col as
+        # sorted for the same reason as out_time above.
+        intervals = (
+            data.sort([id_col, start_col])
+            .select([id_col, start_col, end_col, state_col])
+            .rename({id_col: out_id, state_col: out_state})
+            .with_columns(pl.col(start_col).set_sorted())
+        )
 
+        # Polars always emits "Sortedness of columns cannot be checked when
+        # 'by' groups provided" for join_asof+by; the invariant is preserved
+        # by the explicit .sort() above, so suppress the informational noise.
         with warnings.catch_warnings():
             warnings.filterwarnings(
                 "ignore",
@@ -433,17 +449,22 @@ class StateSequence(BaseSequence):
             )
             joined = grid.join_asof(
                 intervals,
-                left_on="time",
+                left_on=out_time,
                 right_on=start_col,
-                by=id_col,
+                by=out_id,
                 strategy="backward",
             )
 
         result = (
             joined
-            .filter(pl.col(end_col).is_not_null() & (pl.col("time") < pl.col(end_col)))
-            .select([id_col, "time", state_col])
-            .sort([id_col, "time"])
+            # Backward asof gives the interval whose start is the largest value
+            # ≤ time within the sequence. It may still be a *past* interval
+            # (already ended), so filter to intervals actually covering time.
+            # The null check handles time points with no matching interval
+            # (e.g. before any interval starts).
+            .filter(pl.col(end_col).is_not_null() & (pl.col(out_time) < pl.col(end_col)))
+            .select([out_id, out_time, out_state])
+            .sort([out_id, out_time])
         )
 
         return cls(data=result, config=cfg, alphabet=alphabet)

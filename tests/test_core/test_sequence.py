@@ -738,6 +738,27 @@ class TestFromIntervals:
         rows = seq.data.to_dicts()
         assert rows == [{"id": 1, "time": 5, "state": "LATE"}]
 
+    def test_custom_config_renames_output_columns(self) -> None:
+        data = pl.DataFrame(
+            {
+                "id": [1, 1],
+                "start": [0, 4],
+                "end": [3, 6],
+                "state": ["A", "B"],
+            }
+        )
+        cfg = SequenceConfig(
+            id_column="trajectory", time_column="step", state_column="status"
+        )
+        seq = StateSequence.from_intervals(data, time_points=[1, 5], config=cfg)
+
+        assert seq.data.columns == ["trajectory", "step", "status"]
+        rows = seq.data.sort("step").to_dicts()
+        assert rows == [
+            {"trajectory": 1, "step": 1, "status": "A"},
+            {"trajectory": 1, "step": 5, "status": "B"},
+        ]
+
 
 class TestTypeConversions:
     """Tests for type conversions between sequence types."""
