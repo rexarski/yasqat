@@ -1,5 +1,97 @@
 # Changelog
 
+## 0.4.0 (UNRELEASED)
+
+### Breaking changes — sequence model unification
+
+- **`IntervalSequence` removed.** Interval-shaped input is now sampled into
+  a `StateSequence` via the new `StateSequence.from_intervals(df, time_points=...)`
+  classmethod. Every time point in a `StateSequence` carries exactly one state.
+- **`BaseSequence` ABC removed.** `StateSequence` is the only sequence class.
+- **`SequenceConfig.start_column` and `SequenceConfig.end_column` removed.**
+  These only applied to the deleted `IntervalSequence`.
+- **`infer_sequence_type()` removed.** No longer meaningful with a single
+  sequence type.
+- **Loader signatures simplified.** `load_csv`, `load_json`, `load_parquet`
+  no longer take a `sequence_type` parameter and always return `StateSequence`.
+  `save_csv` / `save_json` / `save_parquet` parameter types narrowed
+  similarly.
+- **`StateSequence.intervals_per_sequence` is `spells_per_sequence`** — same
+  return shape, name now matches the TraMineR "spell" terminology and the
+  unified model.
+
+### Breaking changes — visualization module removed
+
+- **`yasqat.visualization` removed in full.** `index_plot`, `timeline_plot`,
+  `distribution_plot`, `entropy_plot`, `modal_state_plot`, `mean_time_plot`,
+  `parallel_coordinate_plot`, `sunburst_plot`, `tree_plot`, and
+  `spell_duration_plot` are all gone.
+- **`plotnine` and `matplotlib` removed from dependencies.** Users now feed
+  the polars DataFrames returned by yasqat methods (`to_sps()`,
+  `state_distribution()`, `state_counts()`, etc.) directly into their tool
+  of choice (matplotlib, altair, observable, …). `Alphabet.colors` is
+  retained as a hand-off for consistent palette use.
+- **`demo_showcase.ipynb` removed.**
+
+### Breaking changes — filters
+
+- **`PatternCriterion` removed.** The dual-grammar (simple wildcards + regex)
+  with its dual-separator hack was fragile. Users needing pattern matching
+  use polars expressions directly. Migration example:
+
+  ```python
+  # Old:
+  PatternCriterion(pattern="A-*-C")
+  # New (polars expression):
+  matched_ids = (
+      seq.data
+      .group_by("id")
+      .agg(pl.col("state").str.join("-").alias("s"))
+      .filter(pl.col("s").str.contains(r"^A-[^-]+-C$"))
+      .get_column("id")
+      .to_list()
+  )
+  ```
+
+  This is more code than `PatternCriterion("A-*-C")` was. The tradeoff is
+  "verbose but transparent" instead of "concise but fragile".
+
+### New methods on `StateSequence`
+
+- **`state_counts()`** — pool-wide row count per state.
+- **`state_per_sequence(*, proportion: bool = False)`** — per-sequence state
+  distribution. Counts by default; pass `proportion=True` for within-sequence
+  shares.
+- **`duration()`** — thin alias over `to_sps()` returning
+  `[id, state, duration]`.
+- **`total_duration_by_state()`** — sum spell durations per state.
+- **`spells_per_sequence()`** — distinct run-length spells per sequence
+  (replaces the old `IntervalSequence.intervals_per_sequence`).
+- **`span()`** — `[id, first, last, span]` per sequence. Works for integer
+  and datetime time columns; for datetime, `span` is a `pl.Duration`.
+
+### New constructor
+
+- **`StateSequence.from_intervals(data, *, time_points=..., ...)`** —
+  build a `StateSequence` by sampling interval-shaped data on a grid.
+  Lifts the `join_asof` machinery from the deleted
+  `IntervalSequence.to_state_sequence`. Latest-start tiebreak preserved.
+  Datetime input requires explicit `time_points` (raises `ValueError`
+  otherwise — there is no obvious default granularity).
+
+### CI
+
+- Bumped `actions/checkout@v4` → `@v5` and `astral-sh/setup-uv@v5` → `@v6`
+  to stay on Node 24 ahead of the June 2026 Node 20 deprecation.
+
+### Deferred
+
+- An OM (`optimal_matching_distance`) bug with substitution matrices is
+  tracked separately at
+  `docs/superpowers/specs/2026-05-11-om-subcost-investigation.md`. Pre-investigation
+  reading flags `OptimalMatchingMetric` not subclassing `SequenceMetric`
+  as the most likely structural culprit. Fix awaits a sharp repro.
+
 ## 0.3.2 (2026-04-16)
 
 ### Breaking changes
