@@ -423,7 +423,9 @@ class StateSequence:
             # (already ended), so filter to intervals actually covering time.
             # The null check handles time points with no matching interval
             # (e.g. before any interval starts).
-            .filter(pl.col(end_col).is_not_null() & (pl.col(out_time) < pl.col(end_col)))
+            .filter(
+                pl.col(end_col).is_not_null() & (pl.col(out_time) < pl.col(end_col))
+            )
             .select([out_id, out_time, out_state])
             .sort([out_id, out_time])
         )
@@ -438,9 +440,7 @@ class StateSequence:
         """
         state_col = self._config.state_column
         return (
-            self._data.group_by(state_col)
-            .agg(pl.len().alias("count"))
-            .sort(state_col)
+            self._data.group_by(state_col).agg(pl.len().alias("count")).sort(state_col)
         )
 
     def state_per_sequence(self, *, proportion: bool = False) -> pl.DataFrame:
@@ -504,10 +504,7 @@ class StateSequence:
         """
         id_col = self._config.id_column
         return (
-            self.to_sps()
-            .group_by(id_col)
-            .agg(pl.len().alias("n_spells"))
-            .sort(id_col)
+            self.to_sps().group_by(id_col).agg(pl.len().alias("n_spells")).sort(id_col)
         )
 
     def span(self) -> pl.DataFrame:

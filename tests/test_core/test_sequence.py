@@ -166,9 +166,7 @@ class TestStateSequence:
         seq = StateSequence(simple_sequence_data, alphabet=wide)
         assert set(seq.alphabet.states) == {"A", "B", "C", "D", "E", "F"}
 
-    def test_equality_does_not_raise(
-        self, simple_sequence_data: pl.DataFrame
-    ) -> None:
+    def test_equality_does_not_raise(self, simple_sequence_data: pl.DataFrame) -> None:
         """``s == s`` and ``s1 == s2`` must not raise.
 
         Regression for a v0.4.0 issue where ``StateSequence`` was decorated
@@ -213,10 +211,7 @@ class TestStateSequenceMethods:
         result = seq.state_per_sequence()
 
         assert result.columns == ["id", "state", "count"]
-        by_id = {
-            (row["id"], row["state"]): row["count"]
-            for row in result.to_dicts()
-        }
+        by_id = {(row["id"], row["state"]): row["count"] for row in result.to_dicts()}
         assert by_id == {
             (1, "A"): 2,
             (1, "B"): 1,
@@ -237,8 +232,7 @@ class TestStateSequenceMethods:
 
         assert result.columns == ["id", "state", "proportion"]
         by_id = {
-            (row["id"], row["state"]): row["proportion"]
-            for row in result.to_dicts()
+            (row["id"], row["state"]): row["proportion"] for row in result.to_dicts()
         }
         assert by_id[(1, "A")] == pytest.approx(0.5)
         assert by_id[(1, "B")] == pytest.approx(0.5)
@@ -256,9 +250,7 @@ class TestStateSequenceMethods:
         result = seq.duration()
 
         assert result.columns == ["id", "state", "duration"]
-        rows = [
-            (row["id"], row["state"], row["duration"]) for row in result.to_dicts()
-        ]
+        rows = [(row["id"], row["state"], row["duration"]) for row in result.to_dicts()]
         assert rows == [
             (1, "A", 2),
             (1, "B", 2),
@@ -277,9 +269,7 @@ class TestStateSequenceMethods:
         result = seq.total_duration_by_state()
 
         assert result.columns == ["state", "total_duration"]
-        as_dict = {
-            row["state"]: row["total_duration"] for row in result.to_dicts()
-        }
+        as_dict = {row["state"]: row["total_duration"] for row in result.to_dicts()}
         assert as_dict == {"A": 4, "B": 3}
 
     def test_spells_per_sequence_counts_runs(self) -> None:
@@ -487,8 +477,14 @@ class TestFromIntervals:
         data = pl.DataFrame(
             {
                 "id": [1, 1],
-                "start": [datetime(2026, 1, 1, tzinfo=UTC), datetime(2026, 1, 5, tzinfo=UTC)],
-                "end": [datetime(2026, 1, 4, tzinfo=UTC), datetime(2026, 1, 8, tzinfo=UTC)],
+                "start": [
+                    datetime(2026, 1, 1, tzinfo=UTC),
+                    datetime(2026, 1, 5, tzinfo=UTC),
+                ],
+                "end": [
+                    datetime(2026, 1, 4, tzinfo=UTC),
+                    datetime(2026, 1, 8, tzinfo=UTC),
+                ],
                 "state": ["A", "B"],
             }
         )
@@ -506,9 +502,7 @@ class TestFromIntervals:
         ]
 
     def test_missing_required_column_raises(self) -> None:
-        data = pl.DataFrame(
-            {"id": [1], "start": [0], "state": ["A"]}
-        )
+        data = pl.DataFrame({"id": [1], "start": [0], "state": ["A"]})
         with pytest.raises(ValueError, match="Missing required columns"):
             StateSequence.from_intervals(data, time_points=[0])
 
@@ -557,5 +551,3 @@ class TestFromIntervals:
             {"trajectory": 1, "step": 1, "status": "A"},
             {"trajectory": 1, "step": 5, "status": "B"},
         ]
-
-
