@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.0 (UNRELEASED)
+## 0.4.0 (2026-05-19)
 
 ### Breaking changes — sequence model unification
 
