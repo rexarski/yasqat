@@ -7,9 +7,9 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 A modern Python library for categorical sequence analysis, built on
-[polars](https://pola.rs/) and [plotnine](https://plotnine.org/). Designed for
-social-science and life-course research — labour-market trajectories, health
-pathways, educational histories, and similar domains.
+[polars](https://pola.rs/). Designed for social-science and life-course
+research — labour-market trajectories, health pathways, educational
+histories, and similar domains.
 
 Inspired by [TraMineR](http://traminer.unige.ch/) (R) and
 [TanaT](https://tanat.gitlabpages.inria.fr/core/tanat/) (Python).
@@ -17,7 +17,8 @@ Inspired by [TraMineR](http://traminer.unige.ch/) (R) and
 ## Features
 
 - **Polars-native data structures** — `Alphabet`, `StateSequence`,
-  `IntervalSequence`, `SequencePool` for fast sequence manipulation
+  `SequencePool` for fast sequence manipulation. Interval-shaped input is
+  sampled into a `StateSequence` via `StateSequence.from_intervals(df, time_points=...)`.
 - **Distance metrics** — Optimal Matching, Hamming, LCS, LCP, RLCP, DTW,
   SoftDTW, Chi², Euclidean, DHD, TWED, and OM variants (OMloc, OMspell,
   OMstran, NMS, NMSMST, SVRspell), with convenience length/similarity
@@ -38,10 +39,10 @@ Inspired by [TraMineR](http://traminer.unige.ch/) (R) and
   badness, integration (per-state), proportion positive
 - **Subsequence mining** — frequent subsequence discovery with support
   thresholds and minimum length, returned as polars DataFrames
-- **Visualization** — index, distribution, frequency, spell duration,
-  timeline, modal state, mean time, parallel coordinate, sunburst, and
-  tree plots (all return composable `ggplot` objects)
-- **Filtering** — length, time, state, and pattern-based sequence filtering
+- **Plot-library agnostic** — every method returns a polars `DataFrame`,
+  so users can plot with their tool of choice (matplotlib, altair,
+  observable, …). `Alphabet.colors` is exposed for consistent palette use.
+- **Filtering** — length, time, state, and starts-with sequence filtering
 - **Data I/O** — CSV, Parquet, and DataFrame loading (Hive/Spark/Arrow
   interop) with automatic type inference
 - **Synthetic data** — Markov-chain and financial trajectory generators
@@ -68,13 +69,12 @@ result = pam_clustering(dm, n_clusters=4)
 
 # Descriptive statistics
 from yasqat.statistics import longitudinal_entropy, turbulence
-longitudinal_entropy(pool.state_sequence)
-turbulence(pool.state_sequence)
+longitudinal_entropy(pool)
+turbulence(pool)
 
-# Visualize (all return composable ggplot objects)
-from yasqat.visualization import index_plot, sunburst_plot
-index_plot(pool)
-sunburst_plot(pool)
+# Plot with your library of choice — yasqat methods return polars DataFrames
+state_distribution = pool.to_state_sequence().state_per_sequence(proportion=True)
+# Hand `state_distribution` to matplotlib, altair, plotnine, etc.
 ```
 
 ## Development
@@ -105,5 +105,5 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 - Inspired by [TraMineR](http://traminer.unige.ch/) (R) and
   [TanaT](https://gitlab.inria.fr/tanat/core/tanat) (Python)
-- Built with [polars](https://pola.rs/), [plotnine](https://plotnine.org/),
+- Built with [polars](https://pola.rs/),
   [numba](https://numba.pydata.org/), and [scipy](https://scipy.org/)

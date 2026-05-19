@@ -3,7 +3,6 @@
 from yasqat.filters.criteria import (
     ContainsStateCriterion,
     LengthCriterion,
-    PatternCriterion,
     QueryCriterion,
     SequenceCriterion,
     StartsWithCriterion,
@@ -14,7 +13,6 @@ from yasqat.filters.criteria import (
 __all__ = [
     "ContainsStateCriterion",
     "LengthCriterion",
-    "PatternCriterion",
     "QueryCriterion",
     "SequenceCriterion",
     "StartsWithCriterion",

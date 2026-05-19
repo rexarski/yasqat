@@ -1,7 +1,6 @@
 """Data I/O utilities for loading and saving sequence data."""
 
 from yasqat.io.loaders import (
-    infer_sequence_type,
     load_csv,
     load_dataframe,
     load_json,
@@ -12,7 +11,6 @@ from yasqat.io.loaders import (
 )
 
 __all__ = [
-    "infer_sequence_type",
     "load_csv",
     "load_dataframe",
     "load_json",

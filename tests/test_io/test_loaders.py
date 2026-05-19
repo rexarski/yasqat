@@ -8,12 +8,10 @@ import polars as pl
 import pytest
 
 from yasqat.core.sequence import (
-    IntervalSequence,
     SequenceConfig,
     StateSequence,
 )
 from yasqat.io.loaders import (
-    infer_sequence_type,
     load_csv,
     load_dataframe,
     load_json,
@@ -36,19 +34,6 @@ def state_sequence_data() -> pl.DataFrame:
     )
 
 
-@pytest.fixture
-def interval_sequence_data() -> pl.DataFrame:
-    """Create interval sequence data for testing."""
-    return pl.DataFrame(
-        {
-            "id": [1, 1, 2, 2],
-            "start": [0, 5, 0, 3],
-            "end": [5, 10, 3, 8],
-            "state": ["working", "meeting", "working", "break"],
-        }
-    )
-
-
 class TestCSVLoader:
     """Tests for CSV loading and saving."""
 
@@ -57,23 +42,11 @@ class TestCSVLoader:
         with tempfile.NamedTemporaryFile(suffix=".csv", delete=False, mode="w") as f:
             state_sequence_data.write_csv(f.name)
 
-            seq = load_csv(f.name, sequence_type="state")
+            seq = load_csv(f.name)
 
             assert isinstance(seq, StateSequence)
             assert seq.n_sequences() == 2
             assert len(seq.alphabet) == 3
-
-    def test_load_interval_sequence_csv(
-        self, interval_sequence_data: pl.DataFrame
-    ) -> None:
-        """Test loading interval sequence from CSV."""
-        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False, mode="w") as f:
-            interval_sequence_data.write_csv(f.name)
-
-            seq = load_csv(f.name, sequence_type="interval")
-
-            assert isinstance(seq, IntervalSequence)
-            assert seq.n_sequences() == 2
 
     def test_save_and_load_csv(self, state_sequence_data: pl.DataFrame) -> None:
         """Test round-trip save and load preserves actual data values."""
@@ -81,7 +54,7 @@ class TestCSVLoader:
 
         with tempfile.NamedTemporaryFile(suffix=".csv", delete=False, mode="w") as f:
             save_csv(seq, f.name)
-            loaded = load_csv(f.name, sequence_type="state")
+            loaded = load_csv(f.name)
 
             assert loaded.n_sequences() == seq.n_sequences()
             assert len(loaded.data) == len(seq.data)
@@ -93,9 +66,7 @@ class TestCSVLoader:
     def test_load_nonexistent_file(self) -> None:
         """Loading from a path that does not exist should raise an error."""
         with pytest.raises((FileNotFoundError, OSError)):
-            load_csv(
-                "/tmp/nonexistent_yasqat_test_file_12345.csv", sequence_type="state"
-            )
+            load_csv("/tmp/nonexistent_yasqat_test_file_12345.csv")
 
     def test_load_csv_with_nulls(self) -> None:
         """Test that load_dataframe drop_nulls parameter works on CSV data."""
@@ -114,14 +85,6 @@ class TestCSVLoader:
             assert pool[1] == ["A", "B"]
             assert pool[2] == ["C", "C"]
 
-    def test_invalid_sequence_type(self, state_sequence_data: pl.DataFrame) -> None:
-        """Test error with invalid sequence type."""
-        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False, mode="w") as f:
-            state_sequence_data.write_csv(f.name)
-
-            with pytest.raises(ValueError, match="Unknown sequence_type"):
-                load_csv(f.name, sequence_type="invalid")
-
 
 class TestJSONLoader:
     """Tests for JSON loading and saving."""
@@ -131,7 +94,7 @@ class TestJSONLoader:
         with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as f:
             state_sequence_data.write_json(f.name)
 
-            seq = load_json(f.name, sequence_type="state")
+            seq = load_json(f.name)
 
             assert isinstance(seq, StateSequence)
             assert seq.n_sequences() == 2
@@ -142,7 +105,7 @@ class TestJSONLoader:
 
         with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as f:
             save_json(seq, f.name)
-            loaded = load_json(f.name, sequence_type="state")
+            loaded = load_json(f.name)
 
             assert loaded.n_sequences() == seq.n_sequences()
             assert loaded.get_states_for_sequence(1) == seq.get_states_for_sequence(1)
@@ -160,7 +123,7 @@ class TestParquetLoader:
         with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as f:
             state_sequence_data.write_parquet(f.name)
 
-            seq = load_parquet(f.name, sequence_type="state")
+            seq = load_parquet(f.name)
 
             assert isinstance(seq, StateSequence)
             assert seq.n_sequences() == 2
@@ -171,7 +134,7 @@ class TestParquetLoader:
 
         with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as f:
             save_parquet(seq, f.name)
-            loaded = load_parquet(f.name, sequence_type="state")
+            loaded = load_parquet(f.name)
 
             assert loaded.n_sequences() == seq.n_sequences()
             assert loaded.get_states_for_sequence(1) == seq.get_states_for_sequence(1)
@@ -185,46 +148,9 @@ class TestParquetLoader:
         for compression in ["zstd", "snappy"]:
             with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as f:
                 save_parquet(seq, f.name, compression=compression)
-                loaded = load_parquet(f.name, sequence_type="state")
+                loaded = load_parquet(f.name)
 
                 assert loaded.n_sequences() == seq.n_sequences()
-
-
-class TestInferSequenceType:
-    """Tests for sequence type inference."""
-
-    def test_infer_state_sequence(self, state_sequence_data: pl.DataFrame) -> None:
-        """Test inferring state sequence type."""
-        seq_type = infer_sequence_type(state_sequence_data)
-
-        # Has id, time, state -> state sequence
-        assert seq_type == "state"
-
-    def test_infer_interval_sequence(
-        self, interval_sequence_data: pl.DataFrame
-    ) -> None:
-        """Test inferring interval sequence type."""
-        seq_type = infer_sequence_type(interval_sequence_data)
-
-        # Has start and end -> interval sequence
-        assert seq_type == "interval"
-
-
-class TestInferSequenceTypeSimplified:
-    def test_interval_detection(self) -> None:
-        """Should detect interval when start and end columns present."""
-        df = pl.DataFrame({"id": [1], "start": [0], "end": [5], "state": ["A"]})
-        assert infer_sequence_type(df) == "interval"
-
-    def test_state_detection(self) -> None:
-        """Should return 'state' when time column present (no start/end)."""
-        df = pl.DataFrame({"id": [1, 1], "time": [0, 1], "state": ["A", "B"]})
-        assert infer_sequence_type(df) == "state"
-
-    def test_default_state(self) -> None:
-        """Should default to 'state' when no time columns found."""
-        df = pl.DataFrame({"id": [1], "state": ["A"]})
-        assert infer_sequence_type(df) == "state"
 
 
 class TestLoadDataFrame:

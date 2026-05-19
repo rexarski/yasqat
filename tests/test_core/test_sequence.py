@@ -1,4 +1,4 @@
-"""Tests for StateSequence and IntervalSequence classes."""
+"""Tests for StateSequence classes."""
 
 from __future__ import annotations
 
@@ -7,7 +7,6 @@ import pytest
 
 from yasqat.core.alphabet import Alphabet
 from yasqat.core.sequence import (
-    IntervalSequence,
     SequenceConfig,
     StateSequence,
 )
@@ -167,221 +166,170 @@ class TestStateSequence:
         seq = StateSequence(simple_sequence_data, alphabet=wide)
         assert set(seq.alphabet.states) == {"A", "B", "C", "D", "E", "F"}
 
+    def test_equality_does_not_raise(self, simple_sequence_data: pl.DataFrame) -> None:
+        """``s == s`` and ``s1 == s2`` must not raise.
 
-class TestIntervalSequence:
-    """Tests for IntervalSequence class."""
+        Regression for a v0.4.0 issue where ``StateSequence`` was decorated
+        with ``@dataclass``, which generated an ``__eq__`` that delegated to
+        ``polars.DataFrame.__eq__`` and crashed with "the truth value of a
+        DataFrame is ambiguous". Identity-based comparison (the default for
+        a mutable container with no explicit ``__eq__``) is correct here.
+        """
+        s1 = StateSequence(simple_sequence_data)
+        s2 = StateSequence(simple_sequence_data)
+        assert s1 == s1
+        assert s1 != s2  # distinct instances are not equal by default
 
-    def test_create_interval_sequence(self) -> None:
-        """Test creating an interval sequence."""
+
+class TestStateSequenceMethods:
+    """Tests for new analytical methods on StateSequence (v0.4.0)."""
+
+    def test_state_counts_returns_count_per_state(self) -> None:
         data = pl.DataFrame(
             {
-                "id": [1, 1, 2, 2],
-                "start": [0, 5, 0, 3],
-                "end": [5, 10, 3, 8],
-                "state": ["working", "meeting", "working", "break"],
+                "id": [1, 1, 1, 2, 2, 2, 3, 3],
+                "time": [0, 1, 2, 0, 1, 2, 0, 1],
+                "state": ["A", "B", "A", "A", "A", "C", "B", "B"],
             }
         )
+        seq = StateSequence(data)
+        result = seq.state_counts()
 
-        seq = IntervalSequence(data)
+        assert result.columns == ["state", "count"]
+        as_dict = {row["state"]: row["count"] for row in result.to_dicts()}
+        assert as_dict == {"A": 4, "B": 3, "C": 1}
 
-        assert seq.n_sequences() == 2
-        assert len(seq.alphabet) == 3
-
-    def test_interval_validation(self) -> None:
-        """Test that invalid intervals (end < start) raise error."""
+    def test_state_per_sequence_counts_default(self) -> None:
         data = pl.DataFrame(
             {
-                "id": [1],
-                "start": [5],
-                "end": [3],  # Invalid: end < start
-                "state": ["A"],
+                "id": [1, 1, 1, 2, 2, 2],
+                "time": [0, 1, 2, 0, 1, 2],
+                "state": ["A", "B", "A", "B", "B", "C"],
             }
         )
+        seq = StateSequence(data)
+        result = seq.state_per_sequence()
 
-        with pytest.raises(ValueError, match="end < start"):
-            IntervalSequence(data)
+        assert result.columns == ["id", "state", "count"]
+        by_id = {(row["id"], row["state"]): row["count"] for row in result.to_dicts()}
+        assert by_id == {
+            (1, "A"): 2,
+            (1, "B"): 1,
+            (2, "B"): 2,
+            (2, "C"): 1,
+        }
 
-    def test_duration(self) -> None:
-        """Test duration computation."""
+    def test_state_per_sequence_proportion_mode(self) -> None:
         data = pl.DataFrame(
             {
-                "id": [1, 1],
-                "start": [0, 5],
-                "end": [5, 15],
-                "state": ["A", "B"],
+                "id": [1, 1, 1, 1, 2, 2],
+                "time": [0, 1, 2, 3, 0, 1],
+                "state": ["A", "A", "B", "B", "C", "C"],
             }
         )
+        seq = StateSequence(data)
+        result = seq.state_per_sequence(proportion=True)
 
-        seq = IntervalSequence(data)
-        durations = seq.duration()
+        assert result.columns == ["id", "state", "proportion"]
+        by_id = {
+            (row["id"], row["state"]): row["proportion"] for row in result.to_dicts()
+        }
+        assert by_id[(1, "A")] == pytest.approx(0.5)
+        assert by_id[(1, "B")] == pytest.approx(0.5)
+        assert by_id[(2, "C")] == pytest.approx(1.0)
 
-        assert "duration" in durations.columns
-        # First interval: 5-0=5, Second: 15-5=10
-        dur_list = durations.sort("start")["duration"].to_list()
-        assert dur_list == [5, 10]
-
-    def test_total_duration_by_state(self) -> None:
-        """Test total duration by state."""
+    def test_duration_returns_spell_durations(self) -> None:
         data = pl.DataFrame(
             {
-                "id": [1, 1, 2],
-                "start": [0, 5, 0],
-                "end": [5, 10, 10],
-                "state": ["A", "A", "B"],
+                "id": [1, 1, 1, 1, 2, 2, 2],
+                "time": [0, 1, 2, 3, 0, 1, 2],
+                "state": ["A", "A", "B", "B", "C", "C", "C"],
             }
         )
+        seq = StateSequence(data)
+        result = seq.duration()
 
-        seq = IntervalSequence(data)
-        totals = seq.total_duration_by_state()
+        assert result.columns == ["id", "state", "duration"]
+        rows = [(row["id"], row["state"], row["duration"]) for row in result.to_dicts()]
+        assert rows == [
+            (1, "A", 2),
+            (1, "B", 2),
+            (2, "C", 3),
+        ]
 
-        # A: 5 + 5 = 10, B: 10
-        a_total = totals.filter(pl.col("state") == "A")["total_duration"].item()
-        b_total = totals.filter(pl.col("state") == "B")["total_duration"].item()
-        assert a_total == 10
-        assert b_total == 10
+    def test_total_duration_by_state_aggregates_spell_durations(self) -> None:
+        data = pl.DataFrame(
+            {
+                "id": [1, 1, 1, 1, 2, 2, 2],
+                "time": [0, 1, 2, 3, 0, 1, 2],
+                "state": ["A", "A", "B", "B", "A", "A", "B"],
+            }
+        )
+        seq = StateSequence(data)
+        result = seq.total_duration_by_state()
 
-    def test_intervals_per_sequence(self) -> None:
-        """Test counting intervals per sequence."""
+        assert result.columns == ["state", "total_duration"]
+        as_dict = {row["state"]: row["total_duration"] for row in result.to_dicts()}
+        assert as_dict == {"A": 4, "B": 3}
+
+    def test_spells_per_sequence_counts_runs(self) -> None:
+        data = pl.DataFrame(
+            {
+                "id": [1, 1, 1, 1, 2, 2, 2, 3, 3],
+                "time": [0, 1, 2, 3, 0, 1, 2, 0, 1],
+                "state": ["A", "A", "B", "C", "X", "Y", "X", "Z", "Z"],
+            }
+        )
+        seq = StateSequence(data)
+        result = seq.spells_per_sequence()
+
+        assert result.columns == ["id", "n_spells"]
+        as_dict = {row["id"]: row["n_spells"] for row in result.to_dicts()}
+        assert as_dict == {1: 3, 2: 3, 3: 1}
+
+    def test_span_integer_time(self) -> None:
         data = pl.DataFrame(
             {
                 "id": [1, 1, 1, 2, 2],
-                "start": [0, 5, 10, 0, 5],
-                "end": [5, 10, 15, 5, 10],
-                "state": ["A", "B", "A", "C", "D"],
+                "time": [0, 1, 5, 10, 12],
+                "state": ["A", "B", "A", "C", "C"],
             }
         )
+        seq = StateSequence(data)
+        result = seq.span()
 
-        seq = IntervalSequence(data)
-        counts = seq.intervals_per_sequence()
+        assert result.columns == ["id", "first", "last", "span"]
+        as_dict = {row["id"]: row for row in result.to_dicts()}
+        assert as_dict[1]["first"] == 0
+        assert as_dict[1]["last"] == 5
+        assert as_dict[1]["span"] == 5
+        assert as_dict[2]["first"] == 10
+        assert as_dict[2]["last"] == 12
+        assert as_dict[2]["span"] == 2
 
-        assert counts.filter(pl.col("id") == 1)["n_intervals"].item() == 3
-        assert counts.filter(pl.col("id") == 2)["n_intervals"].item() == 2
+    def test_span_datetime_time(self) -> None:
+        from datetime import UTC, datetime
 
-    def test_overlapping_intervals(self) -> None:
-        """Test detecting overlapping intervals."""
         data = pl.DataFrame(
             {
-                "id": [1, 1],
-                "start": [0, 3],
-                "end": [5, 8],  # Overlaps: 3-5
-                "state": ["A", "B"],
+                "id": [1, 1, 1],
+                "time": [
+                    datetime(2026, 1, 1, tzinfo=UTC),
+                    datetime(2026, 1, 5, tzinfo=UTC),
+                    datetime(2026, 1, 10, tzinfo=UTC),
+                ],
+                "state": ["A", "B", "A"],
             }
         )
+        seq = StateSequence(data)
+        result = seq.span()
 
-        seq = IntervalSequence(data)
-        overlaps = seq.overlapping_intervals(1)
-
-        assert len(overlaps) == 1  # One pair of overlapping intervals
-
-    def test_no_overlaps(self) -> None:
-        """Test non-overlapping intervals."""
-        data = pl.DataFrame(
-            {
-                "id": [1, 1],
-                "start": [0, 5],
-                "end": [5, 10],  # No overlap
-                "state": ["A", "B"],
-            }
-        )
-
-        seq = IntervalSequence(data)
-        overlaps = seq.overlapping_intervals(1)
-
-        assert len(overlaps) == 0
-
-    def test_has_overlaps(self) -> None:
-        """Test has_overlaps method."""
-        data_with = pl.DataFrame(
-            {
-                "id": [1, 1],
-                "start": [0, 3],
-                "end": [5, 8],
-                "state": ["A", "B"],
-            }
-        )
-
-        data_without = pl.DataFrame(
-            {
-                "id": [1, 1],
-                "start": [0, 5],
-                "end": [5, 10],
-                "state": ["A", "B"],
-            }
-        )
-
-        assert IntervalSequence(data_with).has_overlaps() is True
-        assert IntervalSequence(data_without).has_overlaps() is False
-
-    def test_span(self) -> None:
-        """Test getting temporal span."""
-        data = pl.DataFrame(
-            {
-                "id": [1, 1, 2],
-                "start": [0, 5, 10],
-                "end": [5, 15, 20],
-                "state": ["A", "B", "C"],
-            }
-        )
-
-        seq = IntervalSequence(data)
-        spans = seq.span()
-
-        assert "first_start" in spans.columns
-        assert "last_end" in spans.columns
-        assert "span" in spans.columns
-
-        # Sequence 1: 0-15, span=15
-        # Sequence 2: 10-20, span=10
-        seq1_span = spans.filter(pl.col("id") == 1)["span"].item()
-        seq2_span = spans.filter(pl.col("id") == 2)["span"].item()
-        assert seq1_span == 15
-        assert seq2_span == 10
-
-    def test_to_state_sequence(self) -> None:
-        """Test converting to state sequence."""
-        data = pl.DataFrame(
-            {
-                "id": [1, 1],
-                "start": [0, 3],
-                "end": [3, 6],
-                "state": ["A", "B"],
-            }
-        )
-
-        seq = IntervalSequence(data)
-        state_seq = seq.to_state_sequence(time_points=[0, 1, 2, 3, 4, 5])
-
-        assert isinstance(state_seq, StateSequence)
-        assert "time" in state_seq.data.columns
-        assert "state" in state_seq.data.columns
-
-        # At t=0,1,2: A; at t=3,4,5: B
-        states = state_seq.data.sort("time")["state"].to_list()
-        assert states[:3] == ["A", "A", "A"]
-        assert states[3:] == ["B", "B", "B"]
-
-    def test_custom_config(self) -> None:
-        """Test interval sequence with custom config."""
-        data = pl.DataFrame(
-            {
-                "entity_id": [1, 1],
-                "begin": [0, 5],
-                "finish": [5, 10],
-                "category": ["X", "Y"],
-            }
-        )
-
-        config = SequenceConfig(
-            id_column="entity_id",
-            start_column="begin",
-            end_column="finish",
-            state_column="category",
-        )
-
-        seq = IntervalSequence(data, config=config)
-
-        assert seq.n_sequences() == 1
-        assert len(seq.alphabet) == 2
+        row = result.to_dicts()[0]
+        assert row["id"] == 1
+        assert row["first"] == datetime(2026, 1, 1, tzinfo=UTC)
+        assert row["last"] == datetime(2026, 1, 10, tzinfo=UTC)
+        # span is a polars Duration
+        assert row["span"].days == 9
 
 
 class TestGranularity:
@@ -470,27 +418,136 @@ class TestGranularity:
         assert durations[1] == 2  # Two rows in the B-spell (both 2026-04-17)
 
 
-class TestTypeConversions:
-    """Tests for type conversions between sequence types."""
+class TestFromIntervals:
+    """Tests for StateSequence.from_intervals classmethod (v0.4.0)."""
 
-    def test_interval_to_state(self) -> None:
-        """IntervalSequence.to_state_sequence expands spells back to per-time rows."""
+    def test_happy_path_integer_time(self) -> None:
         data = pl.DataFrame(
             {
-                "id": [1, 1, 2],
-                "start": [0, 5, 0],
-                "end": [5, 10, 4],
-                "state": ["A", "B", "C"],
+                "id": [1, 1, 2, 2],
+                "start": [0, 5, 0, 3],
+                "end": [3, 8, 3, 6],
+                "state": ["A", "B", "X", "Y"],
             }
         )
-        interval_seq = IntervalSequence(data)
-        state_seq = interval_seq.to_state_sequence()
+        seq = StateSequence.from_intervals(data, time_points=[0, 2, 5, 7])
 
-        assert isinstance(state_seq, StateSequence)
-        assert state_seq.n_sequences() == 2
-        # Seq 1 covers t=0..9 with A for t<5 and B for t>=5
-        seq1_states = state_seq.get_states_for_sequence(1)
-        assert seq1_states[0] == "A"
-        assert seq1_states[-1] == "B"
-        # Seq 2 is pure C
-        assert set(state_seq.get_states_for_sequence(2)) == {"C"}
+        assert isinstance(seq, StateSequence)
+        rows = seq.data.sort(["id", "time"]).to_dicts()
+        assert rows == [
+            {"id": 1, "time": 0, "state": "A"},
+            {"id": 1, "time": 2, "state": "A"},
+            {"id": 1, "time": 5, "state": "B"},
+            {"id": 1, "time": 7, "state": "B"},
+            {"id": 2, "time": 0, "state": "X"},
+            {"id": 2, "time": 2, "state": "X"},
+            {"id": 2, "time": 5, "state": "Y"},
+        ]
+
+    def test_default_time_points_integer(self) -> None:
+        data = pl.DataFrame(
+            {
+                "id": [1, 1],
+                "start": [0, 4],
+                "end": [3, 6],
+                "state": ["A", "B"],
+            }
+        )
+        seq = StateSequence.from_intervals(data)
+        times = sorted(seq.data["time"].to_list())
+        assert times == [0, 1, 2, 4, 5]
+
+    def test_datetime_with_no_time_points_raises(self) -> None:
+        from datetime import UTC, datetime
+
+        data = pl.DataFrame(
+            {
+                "id": [1],
+                "start": [datetime(2026, 1, 1, tzinfo=UTC)],
+                "end": [datetime(2026, 1, 5, tzinfo=UTC)],
+                "state": ["A"],
+            }
+        )
+        with pytest.raises(ValueError, match="explicit time_points"):
+            StateSequence.from_intervals(data)
+
+    def test_datetime_with_explicit_time_points(self) -> None:
+        from datetime import UTC, datetime
+
+        data = pl.DataFrame(
+            {
+                "id": [1, 1],
+                "start": [
+                    datetime(2026, 1, 1, tzinfo=UTC),
+                    datetime(2026, 1, 5, tzinfo=UTC),
+                ],
+                "end": [
+                    datetime(2026, 1, 4, tzinfo=UTC),
+                    datetime(2026, 1, 8, tzinfo=UTC),
+                ],
+                "state": ["A", "B"],
+            }
+        )
+        seq = StateSequence.from_intervals(
+            data,
+            time_points=[
+                datetime(2026, 1, 2, tzinfo=UTC),
+                datetime(2026, 1, 6, tzinfo=UTC),
+            ],
+        )
+        rows = seq.data.sort("time").to_dicts()
+        assert rows == [
+            {"id": 1, "time": datetime(2026, 1, 2, tzinfo=UTC), "state": "A"},
+            {"id": 1, "time": datetime(2026, 1, 6, tzinfo=UTC), "state": "B"},
+        ]
+
+    def test_missing_required_column_raises(self) -> None:
+        data = pl.DataFrame({"id": [1], "start": [0], "state": ["A"]})
+        with pytest.raises(ValueError, match="Missing required columns"):
+            StateSequence.from_intervals(data, time_points=[0])
+
+    def test_invalid_intervals_raise(self) -> None:
+        data = pl.DataFrame(
+            {
+                "id": [1],
+                "start": [5],
+                "end": [3],
+                "state": ["A"],
+            }
+        )
+        with pytest.raises(ValueError, match="end < start"):
+            StateSequence.from_intervals(data, time_points=[0])
+
+    def test_latest_start_tiebreak_preserved(self) -> None:
+        data = pl.DataFrame(
+            {
+                "id": [1, 1],
+                "start": [0, 4],
+                "end": [10, 8],
+                "state": ["EARLY", "LATE"],
+            }
+        )
+        seq = StateSequence.from_intervals(data, time_points=[5])
+        rows = seq.data.to_dicts()
+        assert rows == [{"id": 1, "time": 5, "state": "LATE"}]
+
+    def test_custom_config_renames_output_columns(self) -> None:
+        data = pl.DataFrame(
+            {
+                "id": [1, 1],
+                "start": [0, 4],
+                "end": [3, 6],
+                "state": ["A", "B"],
+            }
+        )
+        cfg = SequenceConfig(
+            id_column="trajectory", time_column="step", state_column="status"
+        )
+        seq = StateSequence.from_intervals(data, time_points=[1, 5], config=cfg)
+
+        assert seq.data.columns == ["trajectory", "step", "status"]
+        rows = seq.data.sort("step").to_dicts()
+        assert rows == [
+            {"trajectory": 1, "step": 1, "status": "A"},
+            {"trajectory": 1, "step": 5, "status": "B"},
+        ]
