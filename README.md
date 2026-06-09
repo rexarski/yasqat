@@ -74,7 +74,7 @@ turbulence(pool)
 
 # Plot with your library of choice — yasqat methods return polars DataFrames
 state_distribution = pool.to_state_sequence().state_per_sequence(proportion=True)
-# Hand `state_distribution` to matplotlib, altair, plotnine, etc.
+# Hand `state_distribution` to matplotlib, altair, etc.
 ```
 
 ## Development
