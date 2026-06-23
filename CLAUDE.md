@@ -55,6 +55,14 @@ in metrics, scipy for hierarchical linkage.
 **Errors** — raise `ValueError` with a clear message for bad input; validate at
 public API boundaries and trust internal calls; never `assert` in library code.
 
+**Sequence containers** — `statistics.*` functions accept *either* a
+`StateSequence` or a `SequencePool`. Type the argument as
+`core.protocols.SequenceData` (the shared `data`/`config`/`alphabet` surface) and
+normalize at the top of the body with `SequencePool.coerce(sequence)` (or
+`StateSequence.coerce(sequence)` when you need the format-conversion methods).
+Don't reintroduce `StateSequence | SequencePool` unions or inline
+`isinstance`/`_get_pool` coercion — `coerce` is the one seam.
+
 **Testing** — pytest with `--strict-markers`; test paths mirror source
 (`tests/test_metrics/test_hamming.py` ↔ `src/yasqat/metrics/hamming.py`); classes
 `TestFeatureName` with descriptive methods, all annotated `-> None`; shared

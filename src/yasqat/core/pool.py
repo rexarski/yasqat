@@ -13,6 +13,7 @@ from yasqat.core.alphabet import Alphabet
 from yasqat.core.sequence import SequenceConfig, StateSequence
 
 if TYPE_CHECKING:
+    from yasqat.core.protocols import SequenceData
     from yasqat.metrics.base import DistanceMatrix
 
 
@@ -126,6 +127,23 @@ class SequencePool:
             data=self._data,
             config=self._config,
             alphabet=self._alphabet,
+        )
+
+    @classmethod
+    def coerce(cls, sequence: SequenceData) -> SequencePool:
+        """Normalize any sequence container to a ``SequencePool``.
+
+        Returns ``sequence`` unchanged if it is already a ``SequencePool``;
+        otherwise builds one from its ``data``/``config``/``alphabet``. This is
+        the single seam through which ``statistics.*`` accepts either a
+        ``StateSequence`` or a ``SequencePool``.
+        """
+        if isinstance(sequence, cls):
+            return sequence
+        return cls(
+            data=sequence.data,
+            config=sequence.config,
+            alphabet=sequence.alphabet,
         )
 
     def sequence_lengths(self) -> pl.DataFrame:

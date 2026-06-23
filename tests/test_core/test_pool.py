@@ -7,6 +7,7 @@ import polars as pl
 import pytest
 
 from yasqat.core.pool import SequencePool
+from yasqat.core.sequence import StateSequence
 from yasqat.metrics.base import DistanceMatrix
 
 
@@ -225,3 +226,20 @@ class TestRecodeStates:
         recoded = sequence_pool.recode_states({"A": "X"})
         assert sequence_pool[1] == ["A", "A", "B", "C"]
         assert recoded[1] == ["X", "X", "B", "C"]
+
+
+class TestCoerce:
+    """Tests for SequencePool.coerce, the single union-normalization seam."""
+
+    def test_pool_is_returned_unchanged(self, sequence_pool: SequencePool) -> None:
+        """A SequencePool coerces to itself (identity, no rebuild)."""
+        assert SequencePool.coerce(sequence_pool) is sequence_pool
+
+    def test_state_sequence_is_converted(self, state_sequence: StateSequence) -> None:
+        """A StateSequence coerces to an equivalent SequencePool."""
+        pool = SequencePool.coerce(state_sequence)
+
+        assert isinstance(pool, SequencePool)
+        assert pool.sequence_ids == state_sequence.sequence_ids
+        assert pool.alphabet == state_sequence.alphabet
+        assert pool.get_sequence(1) == ["A", "A", "B", "C"]

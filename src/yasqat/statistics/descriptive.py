@@ -7,13 +7,14 @@ from typing import TYPE_CHECKING, cast
 import numpy as np
 import polars as pl
 
+from yasqat.core.pool import SequencePool
+
 if TYPE_CHECKING:
-    from yasqat.core.pool import SequencePool
-    from yasqat.core.sequence import StateSequence
+    from yasqat.core.protocols import SequenceData
 
 
 def longitudinal_entropy(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
     normalize: bool = True,
     per_sequence: bool = False,
 ) -> float | pl.DataFrame:
@@ -38,17 +39,7 @@ def longitudinal_entropy(
     Example:
         >>> entropy = longitudinal_entropy(seq, normalize=True)
     """
-    from yasqat.core.pool import SequencePool
-    from yasqat.core.sequence import StateSequence
-
-    if isinstance(sequence, StateSequence):
-        pool = SequencePool(
-            data=sequence.data,
-            config=sequence.config,
-            alphabet=sequence.alphabet,
-        )
-    else:
-        pool = sequence
+    pool = SequencePool.coerce(sequence)
 
     config = pool.config
     n_states = len(pool.alphabet)
@@ -84,7 +75,7 @@ def longitudinal_entropy(
 
 
 def transition_count(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
     per_sequence: bool = False,
 ) -> int | pl.DataFrame:
     """
@@ -101,17 +92,7 @@ def transition_count(
         If per_sequence=False: Total number of transitions.
         If per_sequence=True: DataFrame with sequence IDs and counts.
     """
-    from yasqat.core.pool import SequencePool
-    from yasqat.core.sequence import StateSequence
-
-    if isinstance(sequence, StateSequence):
-        pool = SequencePool(
-            data=sequence.data,
-            config=sequence.config,
-            alphabet=sequence.alphabet,
-        )
-    else:
-        pool = sequence
+    pool = SequencePool.coerce(sequence)
 
     config = pool.config
     counts = []
@@ -137,7 +118,7 @@ def transition_count(
 
 
 def sequence_length(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
     per_sequence: bool = False,
 ) -> int | float | pl.DataFrame:
     """
@@ -151,17 +132,7 @@ def sequence_length(
         If per_sequence=False: Mean sequence length.
         If per_sequence=True: DataFrame with sequence IDs and lengths.
     """
-    from yasqat.core.pool import SequencePool
-    from yasqat.core.sequence import StateSequence
-
-    if isinstance(sequence, StateSequence):
-        pool = SequencePool(
-            data=sequence.data,
-            config=sequence.config,
-            alphabet=sequence.alphabet,
-        )
-    else:
-        pool = sequence
+    pool = SequencePool.coerce(sequence)
 
     config = pool.config
     lengths = []
@@ -184,7 +155,7 @@ def sequence_length(
 
 
 def complexity_index(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
     per_sequence: bool = False,
 ) -> float | pl.DataFrame:
     """
@@ -202,17 +173,7 @@ def complexity_index(
         If per_sequence=False: Mean complexity across sequences.
         If per_sequence=True: DataFrame with sequence IDs and complexity.
     """
-    from yasqat.core.pool import SequencePool
-    from yasqat.core.sequence import StateSequence
-
-    if isinstance(sequence, StateSequence):
-        pool = SequencePool(
-            data=sequence.data,
-            config=sequence.config,
-            alphabet=sequence.alphabet,
-        )
-    else:
-        pool = sequence
+    pool = SequencePool.coerce(sequence)
 
     config = pool.config
     complexities = []
@@ -246,7 +207,7 @@ def complexity_index(
 
 
 def turbulence(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
     per_sequence: bool = False,
 ) -> float | pl.DataFrame:
     """
@@ -269,17 +230,7 @@ def turbulence(
         If per_sequence=False: Mean turbulence across sequences.
         If per_sequence=True: DataFrame with sequence IDs and turbulence.
     """
-    from yasqat.core.pool import SequencePool
-    from yasqat.core.sequence import StateSequence
-
-    if isinstance(sequence, StateSequence):
-        pool = SequencePool(
-            data=sequence.data,
-            config=sequence.config,
-            alphabet=sequence.alphabet,
-        )
-    else:
-        pool = sequence
+    pool = SequencePool.coerce(sequence)
 
     config = pool.config
     id_col = config.id_column
@@ -324,7 +275,7 @@ def turbulence(
 
 
 def state_distribution(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
     time_point: int | None = None,
     per_sequence: bool = False,
 ) -> pl.DataFrame:
@@ -340,14 +291,8 @@ def state_distribution(
     Returns:
         DataFrame with states and their frequencies/proportions.
     """
-    from yasqat.core.sequence import StateSequence
-
-    if isinstance(sequence, StateSequence):
-        data = sequence.data
-        config = sequence.config
-    else:
-        data = sequence.data
-        config = sequence.config
+    data = sequence.data
+    config = sequence.config
 
     if time_point is not None:
         data = data.filter(pl.col(config.time_column) == time_point)
@@ -377,7 +322,7 @@ def state_distribution(
 
 
 def mean_time_in_state(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
     per_sequence: bool = False,
 ) -> pl.DataFrame:
     """
@@ -391,14 +336,8 @@ def mean_time_in_state(
         If per_sequence=False: DataFrame with states and mean time across sequences.
         If per_sequence=True: DataFrame with sequence IDs, states, and counts.
     """
-    from yasqat.core.sequence import StateSequence
-
-    if isinstance(sequence, StateSequence):
-        data = sequence.data
-        config = sequence.config
-    else:
-        data = sequence.data
-        config = sequence.config
+    data = sequence.data
+    config = sequence.config
 
     if per_sequence:
         return (
@@ -425,7 +364,7 @@ def mean_time_in_state(
 
 
 def spell_count(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
     per_sequence: bool = False,
 ) -> int | float | pl.DataFrame:
     """
@@ -441,17 +380,7 @@ def spell_count(
         If per_sequence=False: Mean spell count across sequences.
         If per_sequence=True: DataFrame with sequence IDs and spell counts.
     """
-    from yasqat.core.pool import SequencePool
-    from yasqat.core.sequence import StateSequence
-
-    if isinstance(sequence, StateSequence):
-        pool = SequencePool(
-            data=sequence.data,
-            config=sequence.config,
-            alphabet=sequence.alphabet,
-        )
-    else:
-        pool = sequence
+    pool = SequencePool.coerce(sequence)
 
     config = pool.config
     counts = []
@@ -480,7 +409,7 @@ def spell_count(
 
 
 def visited_states(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
     per_sequence: bool = False,
 ) -> int | float | pl.DataFrame:
     """
@@ -494,17 +423,7 @@ def visited_states(
         If per_sequence=False: Mean number of visited states.
         If per_sequence=True: DataFrame with sequence IDs and counts.
     """
-    from yasqat.core.pool import SequencePool
-    from yasqat.core.sequence import StateSequence
-
-    if isinstance(sequence, StateSequence):
-        pool = SequencePool(
-            data=sequence.data,
-            config=sequence.config,
-            alphabet=sequence.alphabet,
-        )
-    else:
-        pool = sequence
+    pool = SequencePool.coerce(sequence)
 
     config = pool.config
     counts = []
@@ -527,7 +446,7 @@ def visited_states(
 
 
 def visited_proportion(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
     per_sequence: bool = False,
 ) -> float | pl.DataFrame:
     """
@@ -543,17 +462,7 @@ def visited_proportion(
         If per_sequence=False: Mean visited proportion.
         If per_sequence=True: DataFrame with sequence IDs and proportions.
     """
-    from yasqat.core.pool import SequencePool
-    from yasqat.core.sequence import StateSequence
-
-    if isinstance(sequence, StateSequence):
-        pool = SequencePool(
-            data=sequence.data,
-            config=sequence.config,
-            alphabet=sequence.alphabet,
-        )
-    else:
-        pool = sequence
+    pool = SequencePool.coerce(sequence)
 
     config = pool.config
     n_states = len(pool.alphabet)
@@ -579,7 +488,7 @@ def visited_proportion(
 
 
 def transition_proportion(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
     per_sequence: bool = False,
 ) -> float | pl.DataFrame:
     """
@@ -595,17 +504,7 @@ def transition_proportion(
         If per_sequence=False: Mean transition proportion.
         If per_sequence=True: DataFrame with sequence IDs and proportions.
     """
-    from yasqat.core.pool import SequencePool
-    from yasqat.core.sequence import StateSequence
-
-    if isinstance(sequence, StateSequence):
-        pool = SequencePool(
-            data=sequence.data,
-            config=sequence.config,
-            alphabet=sequence.alphabet,
-        )
-    else:
-        pool = sequence
+    pool = SequencePool.coerce(sequence)
 
     config = pool.config
     proportions = []
@@ -633,7 +532,7 @@ def transition_proportion(
 
 
 def modal_states(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
     granularity: str | None = None,
 ) -> pl.DataFrame:
     """
@@ -659,14 +558,8 @@ def modal_states(
         ValueError: If ``granularity`` is set but the time column is not
             a datetime/date dtype.
     """
-    from yasqat.core.sequence import StateSequence
-
-    if isinstance(sequence, StateSequence):
-        data = sequence.data
-        config = sequence.config
-    else:
-        data = sequence.data
-        config = sequence.config
+    data = sequence.data
+    config = sequence.config
 
     time_col = config.time_column
     state_col = config.state_column
@@ -724,7 +617,7 @@ def modal_states(
 
 
 def sequence_frequency_table(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
     n_top: int | None = None,
 ) -> pl.DataFrame:
     """
@@ -739,17 +632,7 @@ def sequence_frequency_table(
     Returns:
         DataFrame with columns: pattern, count, proportion.
     """
-    from yasqat.core.pool import SequencePool
-    from yasqat.core.sequence import StateSequence
-
-    if isinstance(sequence, StateSequence):
-        pool = SequencePool(
-            data=sequence.data,
-            config=sequence.config,
-            alphabet=sequence.alphabet,
-        )
-    else:
-        pool = sequence
+    pool = SequencePool.coerce(sequence)
 
     # Build patterns
     patterns: list[str] = []
@@ -775,7 +658,7 @@ def sequence_frequency_table(
 
 
 def subsequence_count(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
     per_sequence: bool = False,
     states_filter: list[str] | None = None,
     use_log: bool = False,
@@ -803,17 +686,7 @@ def subsequence_count(
     """
     import math
 
-    from yasqat.core.pool import SequencePool
-    from yasqat.core.sequence import StateSequence
-
-    if isinstance(sequence, StateSequence):
-        pool = SequencePool(
-            data=sequence.data,
-            config=sequence.config,
-            alphabet=sequence.alphabet,
-        )
-    else:
-        pool = sequence
+    pool = SequencePool.coerce(sequence)
 
     config = pool.config
     counts: list[int | float] = []
@@ -876,7 +749,7 @@ def subsequence_count(
 
 
 def normalized_turbulence(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
     per_sequence: bool = False,
 ) -> float | pl.DataFrame:
     """
@@ -894,17 +767,7 @@ def normalized_turbulence(
         If per_sequence=False: Mean normalized turbulence.
         If per_sequence=True: DataFrame with sequence IDs and values.
     """
-    from yasqat.core.pool import SequencePool
-    from yasqat.core.sequence import StateSequence
-
-    if isinstance(sequence, StateSequence):
-        pool = SequencePool(
-            data=sequence.data,
-            config=sequence.config,
-            alphabet=sequence.alphabet,
-        )
-    else:
-        pool = sequence
+    pool = SequencePool.coerce(sequence)
 
     config = pool.config
     id_col = config.id_column
@@ -936,7 +799,7 @@ def normalized_turbulence(
 
 
 def sequence_log_probability(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
     per_sequence: bool = False,
 ) -> float | pl.DataFrame:
     """
@@ -955,18 +818,9 @@ def sequence_log_probability(
         If per_sequence=False: Mean log-probability across sequences.
         If per_sequence=True: DataFrame with sequence IDs and log-probabilities.
     """
-    from yasqat.core.pool import SequencePool
-    from yasqat.core.sequence import StateSequence
     from yasqat.statistics.transition import transition_rate_matrix
 
-    if isinstance(sequence, StateSequence):
-        pool = SequencePool(
-            data=sequence.data,
-            config=sequence.config,
-            alphabet=sequence.alphabet,
-        )
-    else:
-        pool = sequence
+    pool = SequencePool.coerce(sequence)
 
     config = pool.config
     alphabet = pool.alphabet

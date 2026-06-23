@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import warnings
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import polars as pl
 
 from yasqat.core.alphabet import Alphabet
+
+if TYPE_CHECKING:
+    from yasqat.core.protocols import SequenceData
 
 
 @dataclass
@@ -274,6 +277,23 @@ class StateSequence:
         """Get the list of states for a specific sequence."""
         seq_data = self.get_sequence(seq_id).sort(self._config.time_column)
         return seq_data[self._config.state_column].to_list()
+
+    @classmethod
+    def coerce(cls, sequence: SequenceData) -> StateSequence:
+        """Normalize any sequence container to a ``StateSequence``.
+
+        Returns ``sequence`` unchanged if it is already a ``StateSequence``;
+        otherwise builds one from its ``data``/``config``/``alphabet``. The
+        mirror of :meth:`SequencePool.coerce`, for callers that need the
+        format-conversion surface (``to_sts``/``to_sps``/``to_dss``).
+        """
+        if isinstance(sequence, cls):
+            return sequence
+        return cls(
+            data=sequence.data,
+            config=sequence.config,
+            alphabet=sequence.alphabet,
+        )
 
     @classmethod
     def from_intervals(

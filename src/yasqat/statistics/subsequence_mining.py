@@ -11,9 +11,10 @@ from typing import TYPE_CHECKING
 
 import polars as pl
 
+from yasqat.core.pool import SequencePool
+
 if TYPE_CHECKING:
-    from yasqat.core.pool import SequencePool
-    from yasqat.core.sequence import StateSequence
+    from yasqat.core.protocols import SequenceData
 
 
 @dataclass
@@ -40,7 +41,7 @@ def _is_subsequence(pattern: tuple[str, ...], sequence: list[str]) -> bool:
 
 
 def frequent_subsequences(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
     min_support: float = 0.1,
     max_length: int = 5,
     min_length: int = 1,
@@ -70,17 +71,7 @@ def frequent_subsequences(
         >>> results = frequent_subsequences(pool, min_support=0.5)
         >>> results.filter(pl.col("subsequence").list.len() == 2)
     """
-    from yasqat.core.pool import SequencePool
-    from yasqat.core.sequence import StateSequence
-
-    if isinstance(sequence, StateSequence):
-        pool = SequencePool(
-            data=sequence.data,
-            config=sequence.config,
-            alphabet=sequence.alphabet,
-        )
-    else:
-        pool = sequence
+    pool = SequencePool.coerce(sequence)
 
     n_sequences = len(pool)
     min_count = max(1, int(min_support * n_sequences))

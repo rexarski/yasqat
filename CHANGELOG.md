@@ -27,6 +27,23 @@
 - **`"softdtw"` is now selectable in `SequencePool.compute_distances(...)`.**
   Registering it in the dispatch closed a gap where SoftDTW had no pool-level
   matrix path.
+- **`SequencePool.coerce()` and `StateSequence.coerce()` classmethods.** Each
+  normalizes any sequence container (`StateSequence` or `SequencePool`) to its
+  own type — identity if already that type, otherwise rebuilt from the shared
+  `data`/`config`/`alphabet`. These are the single seam through which
+  `statistics.*` accepts either container.
+
+### Internal
+
+- **`statistics.*` now accept the `SequenceData` protocol via one coercion
+  seam.** The 31 functions across `descriptive`, `normative`, `transition`, and
+  `subsequence_mining` previously each inlined an `isinstance` coercion (16 in
+  `descriptive` alone) or routed through a private `_get_pool`. They now type
+  their argument as `core.protocols.SequenceData` and normalize via
+  `SequencePool.coerce` / `StateSequence.coerce`. Behaviour is unchanged; the
+  duplicated coercion and several dead identical-arm `isinstance` branches are
+  gone. (Progresses the `StateSequence`/`SequencePool` role cleanup; the
+  canonical-type decision is deferred.)
 
 ## 0.4.1 (2026-06-22)
 

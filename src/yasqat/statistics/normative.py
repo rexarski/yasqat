@@ -12,23 +12,10 @@ from typing import TYPE_CHECKING
 import numpy as np
 import polars as pl
 
+from yasqat.core.pool import SequencePool
+
 if TYPE_CHECKING:
-    from yasqat.core.pool import SequencePool
-    from yasqat.core.sequence import StateSequence
-
-
-def _get_pool(sequence: StateSequence | SequencePool) -> SequencePool:
-    """Convert StateSequence to SequencePool if needed."""
-    from yasqat.core.pool import SequencePool
-    from yasqat.core.sequence import StateSequence
-
-    if isinstance(sequence, StateSequence):
-        return SequencePool(
-            data=sequence.data,
-            config=sequence.config,
-            alphabet=sequence.alphabet,
-        )
-    return sequence
+    from yasqat.core.protocols import SequenceData
 
 
 def _state_signs(
@@ -49,7 +36,7 @@ def _state_signs(
 
 
 def proportion_positive(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
     positive_states: set[str],
     per_sequence: bool = False,
 ) -> float | pl.DataFrame:
@@ -65,7 +52,7 @@ def proportion_positive(
         If per_sequence=False: Mean proportion positive.
         If per_sequence=True: DataFrame with sequence IDs and proportions.
     """
-    pool = _get_pool(sequence)
+    pool = SequencePool.coerce(sequence)
     config = pool.config
     proportions = []
     seq_ids = []
@@ -88,7 +75,7 @@ def proportion_positive(
 
 
 def volatility(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
     positive_states: set[str],
     negative_states: set[str],
     per_sequence: bool = False,
@@ -109,7 +96,7 @@ def volatility(
         If per_sequence=False: Mean volatility.
         If per_sequence=True: DataFrame with sequence IDs and values.
     """
-    pool = _get_pool(sequence)
+    pool = SequencePool.coerce(sequence)
     config = pool.config
     values = []
     seq_ids = []
@@ -135,7 +122,7 @@ def volatility(
 
 
 def precarity(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
     negative_states: set[str],
     per_sequence: bool = False,
 ) -> float | pl.DataFrame:
@@ -152,7 +139,7 @@ def precarity(
         If per_sequence=False: Mean precarity.
         If per_sequence=True: DataFrame with sequence IDs and values.
     """
-    pool = _get_pool(sequence)
+    pool = SequencePool.coerce(sequence)
     config = pool.config
     values = []
     seq_ids = []
@@ -177,7 +164,7 @@ def precarity(
 
 
 def insecurity(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
     negative_states: set[str],
     per_sequence: bool = False,
 ) -> float | pl.DataFrame:
@@ -196,7 +183,7 @@ def insecurity(
         If per_sequence=False: Mean insecurity.
         If per_sequence=True: DataFrame with sequence IDs and values.
     """
-    pool = _get_pool(sequence)
+    pool = SequencePool.coerce(sequence)
     config = pool.config
     values = []
     seq_ids = []
@@ -228,7 +215,7 @@ def insecurity(
 
 
 def degradation(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
     positive_states: set[str],
     negative_states: set[str],
     per_sequence: bool = False,
@@ -249,7 +236,7 @@ def degradation(
         If per_sequence=False: Mean degradation.
         If per_sequence=True: DataFrame with sequence IDs and values.
     """
-    pool = _get_pool(sequence)
+    pool = SequencePool.coerce(sequence)
     config = pool.config
     values = []
     seq_ids = []
@@ -275,7 +262,7 @@ def degradation(
 
 
 def badness(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
     negative_states: set[str],
     per_sequence: bool = False,
 ) -> float | pl.DataFrame:
@@ -293,7 +280,7 @@ def badness(
         If per_sequence=False: Mean badness.
         If per_sequence=True: DataFrame with sequence IDs and values.
     """
-    pool = _get_pool(sequence)
+    pool = SequencePool.coerce(sequence)
     config = pool.config
     values = []
     seq_ids = []
@@ -314,7 +301,7 @@ def badness(
 
 
 def integration(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
     positive_states: set[str] | None = None,
     per_sequence: bool = False,
 ) -> float | pl.DataFrame:
@@ -336,7 +323,7 @@ def integration(
         If per_sequence=False: Mean integration.
         If per_sequence=True: DataFrame with sequence IDs and values.
     """
-    pool = _get_pool(sequence)
+    pool = SequencePool.coerce(sequence)
 
     if positive_states is None:
         all_states = sorted(pool.alphabet.states)

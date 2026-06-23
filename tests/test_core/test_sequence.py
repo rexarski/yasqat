@@ -6,10 +6,29 @@ import polars as pl
 import pytest
 
 from yasqat.core.alphabet import Alphabet
+from yasqat.core.pool import SequencePool
 from yasqat.core.sequence import (
     SequenceConfig,
     StateSequence,
 )
+
+
+class TestCoerce:
+    """Tests for StateSequence.coerce, the symmetric union-normalization seam."""
+
+    def test_state_sequence_is_returned_unchanged(
+        self, state_sequence: StateSequence
+    ) -> None:
+        """A StateSequence coerces to itself (identity, no rebuild)."""
+        assert StateSequence.coerce(state_sequence) is state_sequence
+
+    def test_pool_is_converted(self, sequence_pool: SequencePool) -> None:
+        """A SequencePool coerces to an equivalent StateSequence."""
+        seq = StateSequence.coerce(sequence_pool)
+
+        assert isinstance(seq, StateSequence)
+        assert seq.sequence_ids == sequence_pool.sequence_ids
+        assert seq.alphabet == sequence_pool.alphabet
 
 
 class TestStateSequence:
