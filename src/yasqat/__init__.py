@@ -1,7 +1,7 @@
 """
 yasqat - Yet Another Sequence Analytics Toolkit
 
-A modern Python library for sequence analysis with polars and plotnine.
+A modern Python library for sequence analysis with polars.
 """
 
 from importlib.metadata import PackageNotFoundError, version

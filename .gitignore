@@ -119,5 +119,4 @@ data/
 .ruff_cache/
 
 # Exclude from repo (local / planning only)
-CLAUDE.md
 plans/

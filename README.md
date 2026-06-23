@@ -74,7 +74,7 @@ turbulence(pool)
 
 # Plot with your library of choice — yasqat methods return polars DataFrames
 state_distribution = pool.to_state_sequence().state_per_sequence(proportion=True)
-# Hand `state_distribution` to matplotlib, altair, plotnine, etc.
+# Hand `state_distribution` to matplotlib, altair, etc.
 ```
 
 ## Development
@@ -96,6 +96,17 @@ uv run ruff format src/ tests/
 # Type check
 uv run mypy src/yasqat/
 ```
+
+### Project conventions
+
+Development guidance lives in `CLAUDE.md`. This repo follows
+[Matt Pocock's agent-skills](https://github.com/mattpocock/skills) setup:
+
+- **Issues** are tracked in-repo as markdown under `.scratch/` (single source
+  of truth) — see [`.scratch/README.md`](.scratch/README.md) for the board.
+- **Agent configuration** (issue tracker, triage labels, domain docs) lives in
+  `docs/agents/`.
+- **Architecture decisions** are recorded as ADRs in `docs/adr/`.
 
 ## License
 
