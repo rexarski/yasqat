@@ -44,3 +44,9 @@ Most likely: **delta** (structural) feeding **alpha** (propagation).
 - [ ] CHANGELOG entry under the version current at fix time.
 
 ## Comments
+
+- 2026-06-23 (architecture review, candidate A): the **delta hypothesis is now
+  moot** — `OptimalMatchingMetric` and the whole metric class layer were deleted,
+  so there is no longer a divergent class path. If the subcost error persists it
+  must live in the surviving free-function/pool path (alpha/beta/gamma) — still
+  blocked on a repro. Status stays `needs-info`.

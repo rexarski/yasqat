@@ -40,9 +40,13 @@ returns a polars `DataFrame`; users bring their own plotting tool.
 hint-only imports. Prefer `@dataclass`(`frozen=True` for value types).
 
 **Naming** — modules `snake_case.py`, one concept per file; classes `PascalCase`;
-functions `snake_case`. Metric classes subclass `SequenceMetric` (`metrics/base.py`)
-and implement `compute()` + `pairwise()`. Control public API with `__all__` in
-each `__init__.py`.
+functions `snake_case`. Control public API with `__all__` in each `__init__.py`.
+
+**Metrics** — a metric is a free function `name_distance(seq_a, seq_b, **kwargs)
+-> float` over integer-encoded arrays (use `@numba.njit` for the inner loop).
+Register it in the dispatch dict in `SequencePool.compute_distances`
+(`core/pool.py`) — that is the single seam for pairwise/matrix computation.
+`DistanceMatrix` and `build_substitution_matrix` live in `metrics/base.py`.
 
 **Dependencies** — polars for DataFrames (never pandas in core code; pyarrow only
 as an interop bridge), numpy for numeric arrays, numba `@njit` for hot inner loops

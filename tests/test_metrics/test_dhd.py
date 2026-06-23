@@ -5,7 +5,7 @@ import polars as pl
 import pytest
 
 from yasqat.core.pool import SequencePool
-from yasqat.metrics.dhd import DHDMetric, build_position_costs, dhd_distance
+from yasqat.metrics.dhd import build_position_costs, dhd_distance
 
 
 class TestBuildPositionCosts:
@@ -122,20 +122,4 @@ class TestDHDDistance:
 
         # Only position 1 differs (state 0 vs state 1), so distance equals
         # the position-dependent cost at position 1 for states (0, 1)
-        assert dist == costs[1, 0, 1]
-
-
-class TestDHDMetric:
-    """Tests for DHDMetric class."""
-
-    def test_basic_distance(self, sequence_pool: SequencePool) -> None:
-        """Test metric compute gives same result as bare function."""
-        costs = build_position_costs(sequence_pool)
-        metric = DHDMetric(position_costs=costs)
-        seq_a = np.array([0, 0, 1, 2], dtype=np.int32)
-        seq_b = np.array([0, 1, 1, 2], dtype=np.int32)
-
-        dist = metric.compute(seq_a, seq_b)
-
-        # Only position 1 differs, so distance = cost at position 1 for (0,1)
         assert dist == costs[1, 0, 1]

@@ -1,15 +1,10 @@
-"""Base classes for sequence metrics."""
+"""Distance matrix container and substitution-cost builder."""
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 import numpy as np
-
-if TYPE_CHECKING:
-    from yasqat.core.pool import SequencePool
 
 
 @dataclass
@@ -82,51 +77,6 @@ class DistanceMatrix:
                 idx += 1
 
         return cls(values=values, labels=labels)
-
-
-class SequenceMetric(ABC):
-    """Abstract base class for sequence distance metrics."""
-
-    name: str = "base"
-
-    @abstractmethod
-    def compute(self, seq_a: np.ndarray, seq_b: np.ndarray, **kwargs: float) -> float:
-        """
-        Compute distance between two encoded sequences.
-
-        Args:
-            seq_a: First sequence as integer-encoded numpy array.
-            seq_b: Second sequence as integer-encoded numpy array.
-            **kwargs: Metric-specific parameters.
-
-        Returns:
-            Distance value (0 = identical).
-        """
-
-    def compute_matrix(self, pool: SequencePool, **kwargs: float) -> DistanceMatrix:
-        """
-        Compute pairwise distance matrix for a sequence pool.
-
-        Args:
-            pool: SequencePool containing sequences.
-            **kwargs: Metric-specific parameters.
-
-        Returns:
-            DistanceMatrix with pairwise distances.
-        """
-        n = len(pool)
-        ids = pool.sequence_ids
-        values = np.zeros((n, n), dtype=np.float64)
-
-        for i in range(n):
-            for j in range(i + 1, n):
-                seq_a = pool.get_encoded_sequence(ids[i])
-                seq_b = pool.get_encoded_sequence(ids[j])
-                dist = self.compute(seq_a, seq_b, **kwargs)
-                values[i, j] = dist
-                values[j, i] = dist
-
-        return DistanceMatrix(values=values, labels=ids)
 
 
 def build_substitution_matrix(

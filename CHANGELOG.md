@@ -4,6 +4,16 @@
 
 ### Breaking changes
 
+- **Metric class layer removed.** The `SequenceMetric` ABC and the per-metric
+  classes (`HammingMetric`, `LCSMetric`, `LCPMetric`, `RLCPMetric`, `DTWMetric`,
+  `SoftDTWMetric`, `TWEDMetric`, `Chi2Metric`, `EuclideanMetric`, `DHDMetric`,
+  `OptimalMatchingMetric`) are deleted. No metric ever subclassed the ABC and its
+  `compute_matrix()` had no callers — the live path is the free `*_distance`
+  functions dispatched by `SequencePool.compute_distances(method=...)`, which
+  stays. `DistanceMatrix` and `build_substitution_matrix` remain in
+  `yasqat.metrics`. Migrate `SomeMetric(...).compute(a, b)` →
+  `some_distance(a, b, ...)`, and matrix computation →
+  `pool.compute_distances(method=...)`.
 - **`StateSequence.encode_states()` removed.** It had no callers and returned a
   flat, sequence-boundary-less array of every row's state index — a shape the
   metrics never used (they encode per-sequence via
@@ -11,6 +21,12 @@
   `StateSequence`, call `seq.alphabet.encode(seq.data[state_col].to_list())`
   directly. `SequencePool.recode_states()` is unaffected and remains the
   supported way to rename/merge states.
+
+### New features
+
+- **`"softdtw"` is now selectable in `SequencePool.compute_distances(...)`.**
+  Registering it in the dispatch closed a gap where SoftDTW had no pool-level
+  matrix path.
 
 ## 0.4.1 (2026-06-22)
 

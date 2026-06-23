@@ -147,7 +147,7 @@ class SequencePool:
 
         Args:
             method: Distance method ("om", "hamming", "lcs", "lcp", "rlcp",
-                "euclidean", "chi2", "dtw", "twed", "omloc", "omspell",
+                "euclidean", "chi2", "dtw", "softdtw", "twed", "omloc", "omspell",
                 "omstran", "nms", "nmsmst", "svrspell").
             n_jobs: Number of parallel workers. 1 = sequential (default).
                 -1 = use all available CPUs. Values > 1 use that many threads.
@@ -177,6 +177,7 @@ class SequencePool:
             omstran_distance,
             optimal_matching_distance,
             rlcp_distance,
+            softdtw_distance,
             svrspell_distance,
             twed_distance,
         )
@@ -192,6 +193,7 @@ class SequencePool:
             "euclidean": euclidean_distance,
             "chi2": chi2_distance,
             "dtw": dtw_distance,
+            "softdtw": softdtw_distance,
             "twed": twed_distance,
             "omloc": omloc_distance,
             "omspell": omspell_distance,

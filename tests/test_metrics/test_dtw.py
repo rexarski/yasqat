@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from yasqat.metrics.dtw import DTWMetric, dtw_distance
+from yasqat.metrics.dtw import dtw_distance
 
 
 class TestDTWDistance:
@@ -128,30 +128,6 @@ class TestDTWDistance:
 
         # Only last element differs
         assert dist == 1.0
-
-    def test_metric_class(self) -> None:
-        """Test DTWMetric class computes correct distance."""
-        seq_a = np.array([0, 1, 2, 3], dtype=np.int32)
-        seq_b = np.array([0, 2, 3], dtype=np.int32)
-
-        metric = DTWMetric(window=0, normalize=False)
-        dist = metric.compute(seq_a, seq_b)
-
-        # DTW aligns seq_a=[0,1,2,3] with seq_b=[0,2,3] using constant sm
-        # (sub_cost=1.0). Optimal warping path accumulates cost 1.0:
-        # (0,0)=0, (1,0)=1 or via (2,2)=0 path, final dp[4,3]=1.0
-        assert dist == 1.0
-
-    def test_metric_class_with_config(self) -> None:
-        """Test DTWMetric with configuration."""
-        seq_a = np.array([0, 1, 2], dtype=np.int32)
-        seq_b = np.array([0, 2, 3], dtype=np.int32)
-
-        metric = DTWMetric(window=2, sm="binary", normalize=True)
-        dist = metric.compute(seq_a, seq_b)
-
-        assert isinstance(dist, float)
-        assert 0 <= dist <= 1  # Normalized
 
     def test_triangle_inequality_may_not_hold(self) -> None:
         """DTW does not always satisfy triangle inequality; verify actual values."""

@@ -1,9 +1,8 @@
 """Tests for pairwise distance computation via SequencePool.compute_distances().
 
 Exercises the full pipeline: SequencePool → compute_distances(method=...) →
-DistanceMatrix for every supported metric. This covers dispatch logic,
-encoding, and the class-based metric interfaces that individual metric
-tests don't reach.
+DistanceMatrix for every supported metric. This covers the dispatch logic
+and encoding path that the individual metric-function tests don't reach.
 """
 
 from __future__ import annotations
@@ -85,6 +84,17 @@ class TestTWEDPairwise:
         dm = small_pool.compute_distances(method="twed")
         assert isinstance(dm, DistanceMatrix)
         _check_dm(dm)
+
+
+class TestSoftDTWPairwise:
+    """SoftDTW tested separately — self-distance is nonzero for gamma > 0."""
+
+    def test_softdtw_pairwise(self, small_pool: SequencePool) -> None:
+        dm = small_pool.compute_distances(method="softdtw")
+        assert isinstance(dm, DistanceMatrix)
+        assert dm.shape == (3, 3)
+        np.testing.assert_allclose(dm.values, dm.values.T, atol=1e-9)
+        assert np.all(np.isfinite(dm.values))
 
 
 class TestUnsupportedMethod:
