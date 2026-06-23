@@ -4,14 +4,11 @@ from __future__ import annotations
 
 import warnings
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import polars as pl
 
 from yasqat.core.alphabet import Alphabet
-
-if TYPE_CHECKING:
-    import numpy as np
 
 
 @dataclass
@@ -272,11 +269,6 @@ class StateSequence:
             .drop("is_transition")
             .sort([id_col, time_col])
         )
-
-    def encode_states(self) -> np.ndarray:
-        """Encode states as integer indices using the alphabet."""
-        states = self._data[self._config.state_column].to_list()
-        return self._alphabet.encode(states)
 
     def get_states_for_sequence(self, seq_id: int | str) -> list[str]:
         """Get the list of states for a specific sequence."""

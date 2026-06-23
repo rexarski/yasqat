@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.0 (unreleased)
+
+### Breaking changes
+
+- **`StateSequence.encode_states()` removed.** It had no callers and returned a
+  flat, sequence-boundary-less array of every row's state index — a shape the
+  metrics never used (they encode per-sequence via
+  `SequencePool.get_encoded_sequence()`). To integer-encode states from a
+  `StateSequence`, call `seq.alphabet.encode(seq.data[state_col].to_list())`
+  directly. `SequencePool.recode_states()` is unaffected and remains the
+  supported way to rename/merge states.
+
 ## 0.4.1 (2026-06-22)
 
 ### Bug fixes

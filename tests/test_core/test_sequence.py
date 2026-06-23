@@ -131,14 +131,6 @@ class TestStateSequence:
         # Seq 3: B, B, C, D -> B, C, D (3 transitions)
         assert len(dss) == 9
 
-    def test_encode_states(self, state_sequence: StateSequence) -> None:
-        """Test encoding states to integers."""
-        encoded = state_sequence.encode_states()
-
-        assert len(encoded) == 12
-        # Should be integers
-        assert encoded.dtype.kind == "i"
-
     def test_alphabet_inference(self, state_sequence: StateSequence) -> None:
         """Test that alphabet is correctly inferred."""
         assert len(state_sequence.alphabet) == 4
