@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.4.1 (2026-06-22)
+
+### Bug fixes
+
+- **`generate_markov_sequences` is now importable from `yasqat.synthetic`.**
+  It was documented and tested but missing from the package's public exports
+  (`__all__`), so `from yasqat.synthetic import generate_markov_sequences`
+  failed.
+
+### Documentation
+
+- Removed stale `plotnine` references from the package docstring and README
+  left over after the v0.4.0 visualization removal.
+- `CLAUDE.md` is now tracked in-repo and slimmed to development house rules
+  (the per-module API catalogue was dropped as drift-prone).
+- Added `docs/adr/` (architecture decision records); ADR-0001 records the
+  v0.4.0 sequence-model unification and visualization removal.
+
+### Internal
+
+- Adopted an in-repo issue tracker under `.scratch/` as the single source of
+  truth; migrated and closed the project's GitHub issues. Agent-skills
+  configuration lives in `docs/agents/`.
+- Bumped `astral-sh/setup-uv` from v6 to v8 in CI (Node 24).
+
 ## 0.4.0 (2026-05-19)
 
 ### Breaking changes — sequence model unification
@@ -88,7 +113,7 @@
 
 - An OM (`optimal_matching_distance`) bug with substitution matrices is
   tracked separately at
-  `docs/superpowers/specs/2026-05-11-om-subcost-investigation.md`. Pre-investigation
+  `.scratch/issues/01-om-subcost-matrix-bug.md`. Pre-investigation
   reading flags `OptimalMatchingMetric` not subclassing `SequenceMetric`
   as the most likely structural culprit. Fix awaits a sharp repro.
 

@@ -97,6 +97,17 @@ uv run ruff format src/ tests/
 uv run mypy src/yasqat/
 ```
 
+### Project conventions
+
+Development guidance lives in `CLAUDE.md`. This repo follows
+[Matt Pocock's agent-skills](https://github.com/mattpocock/skills) setup:
+
+- **Issues** are tracked in-repo as markdown under `.scratch/` (single source
+  of truth) — see [`.scratch/README.md`](.scratch/README.md) for the board.
+- **Agent configuration** (issue tracker, triage labels, domain docs) lives in
+  `docs/agents/`.
+- **Architecture decisions** are recorded as ADRs in `docs/adr/`.
+
 ## License
 
 MIT License — see [LICENSE](LICENSE) for details.
