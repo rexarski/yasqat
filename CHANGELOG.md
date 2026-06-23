@@ -23,7 +23,8 @@
 - Adopted an in-repo issue tracker under `.scratch/` as the single source of
   truth; migrated and closed the project's GitHub issues. Agent-skills
   configuration lives in `docs/agents/`.
-- Bumped `astral-sh/setup-uv` from v6 to v8 in CI (Node 24).
+- Bumped `astral-sh/setup-uv` from v6 to v8.2.0 in CI (Node 24). Pinned to a
+  concrete release because the action publishes no floating `v8` major tag.
 
 ## 0.4.0 (2026-05-19)
 
