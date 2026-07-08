@@ -21,6 +21,10 @@ there with a pointer to this tracker.
 | 08 | [Compile `pitch.md`](issues/08-pitch-doc.md) | docs | `ready-for-human` |
 | 09 | [Compile v0.3.2 terminology glossary](issues/09-v032-appendix-glossary.md) | docs | `resolved` (0.5.0) |
 | 10 | [DHD has no pool-level matrix path](issues/10-dhd-dispatch-gap.md) | enhancement | `resolved` (0.5.0) |
+| 11 | [More time-series content](issues/11-time-series-content.md) | enhancement | `needs-triage` |
+| 12 | [More subsequence mining](issues/12-more-subsequence-mining.md) | enhancement | `needs-triage` |
+| 13 | [New documentation website](issues/13-documentation-website.md) | docs | `needs-triage` |
+| 14 | [Mind map of functions](issues/14-function-mind-map.md) | docs | `needs-triage` |
 
 ## Status legend
 
