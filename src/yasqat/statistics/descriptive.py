@@ -625,6 +625,15 @@ def sequence_frequency_table(
 
     Each sequence is represented as a hyphen-separated string of states.
 
+    When to use which: this counts how often each **complete sequence**
+    occurs across the pool — "how many people share this exact
+    trajectory?" (TraMineR's ``seqtab``). To measure the internal
+    variety of each sequence — "how many distinct sub-patterns does a
+    trajectory contain?" — use :func:`subsequence_count` instead. For a
+    pool ``[A-B, A-B, A-C]``, this function reports ``A-B`` twice and
+    ``A-C`` once; ``subsequence_count`` reports the number of distinct
+    subsequences *within* each trajectory.
+
     Args:
         sequence: StateSequence or SequencePool.
         n_top: If provided, return only the top N patterns.
@@ -668,6 +677,13 @@ def subsequence_count(
 
     Uses the DP formula: dp[i] = 2 * dp[i-1] - dp[last[c]] where last[c]
     is the dp value before the previous occurrence of character c.
+
+    When to use which: this measures the internal variety of each
+    sequence — "how many distinct sub-patterns does a trajectory
+    contain?" (the phi ingredient of :func:`turbulence`). To count how
+    often each **complete sequence** occurs across the pool — "how many
+    people share this exact trajectory?" — use
+    :func:`sequence_frequency_table` instead.
 
     For long sequences (>100 states), counts can grow astronomically large
     (exponential in sequence length). Use ``use_log=True`` to return

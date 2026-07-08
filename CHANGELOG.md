@@ -62,6 +62,14 @@
   already exposed it with identical semantics); the criteria need no runtime
   coercion at all.
 
+### Documentation
+
+- `CONTEXT.md` domain glossary at the repo root: container roles (ADR-0002),
+  sequence formats, sequence anatomy, and analysis vocabulary.
+- "When to use which" cross-references in `sequence_frequency_table`
+  (complete-trajectory frequencies) vs `subsequence_count`
+  (within-trajectory variety).
+
 ### Internal
 
 - **`statistics.*` now accept the `SequenceData` protocol via one coercion
