@@ -1,6 +1,6 @@
 # DHD has no pool-level matrix path
 
-**Status:** `needs-triage`
+**Status:** `resolved` (0.5.0)
 **Type:** enhancement
 **Source:** surfaced by the architecture review (candidate A), 2026-06-23
 
@@ -21,9 +21,17 @@ it has structural preconditions that don't fit the generic
 
 ## Options
 
-- [ ] Register `"dhd"` in the dispatch and document the equal-length +
+- [x] Register `"dhd"` in the dispatch and document the equal-length +
       `position_costs` precondition (error clearly when unmet).
-- [ ] Add a dedicated `pool.compute_dhd(position_costs=...)` helper instead.
-- [ ] Leave DHD free-function-only and document it as such.
+- [ ] ~~Add a dedicated `pool.compute_dhd(position_costs=...)` helper instead.~~
+- [ ] ~~Leave DHD free-function-only and document it as such.~~
 
 ## Comments
+
+- 2026-07-07 (resolved, 0.5.0): took the dispatch option — it matches
+  TraMineR's pool-wide `seqdist(method="DHD")` and keeps
+  `compute_distances` the single matrix seam (candidate A's direction).
+  When `position_costs` is not passed, it is built from the pool via
+  `build_position_costs`, which already raises a clear ValueError on
+  unequal lengths. `**kwargs` widened `float` → `Any` (array-valued
+  params were already implied by OM's substitution matrix).

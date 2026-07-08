@@ -36,6 +36,11 @@
 - **`"softdtw"` is now selectable in `SequencePool.compute_distances(...)`.**
   Registering it in the dispatch closed a gap where SoftDTW had no pool-level
   matrix path.
+- **`"dhd"` is now selectable in `SequencePool.compute_distances(...)`.** The
+  position-dependent cost array is built from the pool via
+  `build_position_costs` when not passed explicitly (`position_costs=...`);
+  unequal-length pools raise a clear `ValueError` (DHD requires equal
+  lengths). Closes the last metric with no pool-level matrix path.
 - **`SequencePool.coerce()` and `StateSequence.coerce()` classmethods.** Each
   normalizes any sequence container (`StateSequence` or `SequencePool`) to its
   own type — identity if already that type, otherwise rebuilt from the shared

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import polars as pl
@@ -164,15 +164,19 @@ class SequencePool:
         self,
         method: str = "om",
         n_jobs: int = 1,
-        **kwargs: float,
+        **kwargs: Any,
     ) -> DistanceMatrix:
         """
         Compute pairwise distance matrix.
 
         Args:
             method: Distance method ("om", "hamming", "lcs", "lcp", "rlcp",
-                "euclidean", "chi2", "dtw", "softdtw", "twed", "omloc", "omspell",
-                "omstran", "nms", "nmsmst", "svrspell").
+                "euclidean", "chi2", "dtw", "softdtw", "twed", "dhd", "omloc",
+                "omspell", "omstran", "nms", "nmsmst", "svrspell"). "dhd"
+                requires equal-length sequences; its ``position_costs`` array
+                is built from this pool via
+                :func:`yasqat.metrics.dhd.build_position_costs` unless passed
+                explicitly.
             n_jobs: Number of parallel workers. 1 = sequential (default).
                 -1 = use all available CPUs. Values > 1 use that many threads.
                 Parallelism uses threads (not processes) since numba releases
@@ -206,6 +210,7 @@ class SequencePool:
             twed_distance,
         )
         from yasqat.metrics.base import DistanceMatrix
+        from yasqat.metrics.dhd import build_position_costs, dhd_distance
         from yasqat.metrics.dtw import dtw_distance
 
         methods: dict[str, Callable[..., float]] = {
@@ -219,6 +224,7 @@ class SequencePool:
             "dtw": dtw_distance,
             "softdtw": softdtw_distance,
             "twed": twed_distance,
+            "dhd": dhd_distance,
             "omloc": omloc_distance,
             "omspell": omspell_distance,
             "omstran": omstran_distance,
@@ -229,6 +235,10 @@ class SequencePool:
 
         if method not in methods:
             raise ValueError(f"Unknown method: {method}. Available: {list(methods)}")
+
+        if method == "dhd" and "position_costs" not in kwargs:
+            # Also validates that every sequence has the same length.
+            kwargs["position_costs"] = build_position_costs(self)
 
         metric_fn = methods[method]
         n = len(self)
