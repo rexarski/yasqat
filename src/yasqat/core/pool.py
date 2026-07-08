@@ -24,6 +24,12 @@ class SequencePool:
 
     SequencePool provides efficient operations on multiple sequences,
     including pairwise distance computation and batch statistics.
+
+    Role (see ADR-0002): ``SequencePool`` is the *canonical analysis
+    container* — every loader returns one, and metrics, clustering, and
+    statistics consume it. For format conversions (STS/SPS/DSS) use
+    :meth:`to_state_sequence` to get the ``StateSequence`` representation
+    view.
     """
 
     _data: pl.DataFrame = field(default_factory=pl.DataFrame)

@@ -57,12 +57,11 @@ pip install yasqat
 
 ```python
 from yasqat.io import load_csv
-from yasqat.core import SequencePool
 
-# Load sequences from CSV (also: load_dataframe, load_parquet).
-# File loaders return a StateSequence; coerce it to the SequencePool analysis engine.
-seq = load_csv("trajectories.csv", id_col="id", time_col="time", state_col="state")
-pool = SequencePool.coerce(seq)
+# Load sequences from CSV (also: load_dataframe, load_json, load_parquet).
+# Every loader returns a SequencePool, the analysis container. Default column
+# names are id/time/state; pass config=SequenceConfig(...) to override.
+pool = load_csv("trajectories.csv")
 
 # Compute pairwise distances and cluster
 dm = pool.compute_distances(method="om", indel=1.0, n_jobs=4)

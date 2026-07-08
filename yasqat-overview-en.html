@@ -563,13 +563,12 @@
 
   <h2>A minimal end-to-end example</h2>
   <pre><code class="language-python">from yasqat.io import load_csv
-from yasqat.core import SequencePool
 from yasqat.clustering import pam_clustering
 from yasqat.statistics import longitudinal_entropy
 
-# Loaders return a StateSequence; coerce to the analysis engine.
-seq  = load_csv("trajectories.csv", id_col="id", time_col="time", state_col="state")
-pool = SequencePool.coerce(seq)              # single coercion seam
+# Every loader returns a SequencePool — the canonical analysis container
+# (ADR-0002). Default columns are id/time/state.
+pool = load_csv("trajectories.csv")
 
 dm     = pool.compute_distances(method="om", indel=1.0, n_jobs=4)  # DistanceMatrix
 result = pam_clustering(dm, n_clusters=4)     # a trajectory typology
@@ -708,10 +707,11 @@ longitudinal_entropy(pool)                    # → a polars DataFrame, like eve
 
   <h2>Open questions on the path to 1.0</h2>
   <p>
-    The main unresolved design question is the relationship between <code>StateSequence</code> and
-    <code>SequencePool</code>. They currently share construction and overlap in role; the next step is to choose a
-    single canonical container and record the decision as an ADR. The recent <code>coerce</code> seam was built
-    precisely so that decision can be made later without churning every call site.
+    The container question is now settled: <code>SequencePool</code> is the canonical analysis container and
+    <code>StateSequence</code> the representation view, recorded as ADR-0002 — every loader returns a pool, and
+    the <code>coerce</code> seam lets both containers flow through the statistics layer without churn. Remaining
+    pre-1.0 work is narrower: widening <code>filters/</code> to the same <code>SequenceData</code> surface, and
+    routing discrepancy analysis through <code>DistanceMatrix</code> instead of raw arrays.
   </p>
 
   <div class="takeaway">

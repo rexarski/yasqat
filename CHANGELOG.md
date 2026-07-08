@@ -14,6 +14,15 @@
   `yasqat.metrics`. Migrate `SomeMetric(...).compute(a, b)` →
   `some_distance(a, b, ...)`, and matrix computation →
   `pool.compute_distances(method=...)`.
+- **File loaders now return `SequencePool`.** `load_csv`, `load_json`, and
+  `load_parquet` return a `SequencePool` (matching `load_dataframe`) instead of
+  a `StateSequence`, and route through `load_dataframe` internally — one
+  DataFrame→pool seam for validation and alphabet checks. `SequencePool` is now
+  the canonical analysis container (ADR-0002); `StateSequence` is the
+  representation view for format conversions. Migrate
+  `seq = load_csv(...)` + `StateSequence`-only calls to
+  `load_csv(...).to_state_sequence()`. The `save_*` functions accept either
+  container (typed as `SequenceData`).
 - **`StateSequence.encode_states()` removed.** It had no callers and returned a
   flat, sequence-boundary-less array of every row's state index — a shape the
   metrics never used (they encode per-sequence via

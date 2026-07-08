@@ -7,21 +7,19 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import polars as pl
 
-from yasqat.core.sequence import (
-    SequenceConfig,
-    StateSequence,
-)
+from yasqat.core.sequence import SequenceConfig
 
 if TYPE_CHECKING:
     from yasqat.core.alphabet import Alphabet
     from yasqat.core.pool import SequencePool
+    from yasqat.core.protocols import SequenceData
 
 
 def load_csv(
     path: str | Path,
     config: SequenceConfig | None = None,
     **kwargs: Any,
-) -> StateSequence:
+) -> SequencePool:
     """Load state-shaped sequence data from a CSV file.
 
     For interval-shaped input, read with polars then call
@@ -39,23 +37,21 @@ def load_csv(
             - dtypes: Column data types
 
     Returns:
-        A StateSequence object.
+        A SequencePool ready for analysis.
 
     Example:
         >>> from yasqat.io import load_csv
-        >>> seq = load_csv("data.csv")
-        >>> seq.n_sequences()
+        >>> pool = load_csv("data.csv")
+        >>> len(pool)
         100
     """
-    config = config or SequenceConfig()
-    data = pl.read_csv(path, **kwargs)
-    return StateSequence(data, config)
+    return load_dataframe(pl.read_csv(path, **kwargs), config)
 
 
 def load_json(
     path: str | Path,
     config: SequenceConfig | None = None,
-) -> StateSequence:
+) -> SequencePool:
     """Load state-shaped sequence data from a JSON file.
 
     Expects JSON in one of these formats:
@@ -67,22 +63,20 @@ def load_json(
         config: Column configuration.
 
     Returns:
-        A StateSequence object.
+        A SequencePool ready for analysis.
 
     Example:
         >>> from yasqat.io import load_json
-        >>> seq = load_json("data.json")
+        >>> pool = load_json("data.json")
     """
-    config = config or SequenceConfig()
-    data = pl.read_json(path)
-    return StateSequence(data, config)
+    return load_dataframe(pl.read_json(path), config)
 
 
 def load_parquet(
     path: str | Path,
     config: SequenceConfig | None = None,
     **kwargs: Any,
-) -> StateSequence:
+) -> SequencePool:
     """Load state-shaped sequence data from a Parquet file.
 
     Parquet is recommended for large datasets due to:
@@ -96,19 +90,17 @@ def load_parquet(
         **kwargs: Additional arguments passed to polars.read_parquet().
 
     Returns:
-        A StateSequence object.
+        A SequencePool ready for analysis.
 
     Example:
         >>> from yasqat.io import load_parquet
-        >>> seq = load_parquet("data.parquet")
+        >>> pool = load_parquet("data.parquet")
     """
-    config = config or SequenceConfig()
-    data = pl.read_parquet(path, **kwargs)
-    return StateSequence(data, config)
+    return load_dataframe(pl.read_parquet(path, **kwargs), config)
 
 
 def save_csv(
-    sequence: StateSequence,
+    sequence: SequenceData,
     path: str | Path,
     **kwargs: Any,
 ) -> None:
@@ -131,7 +123,7 @@ def save_csv(
 
 
 def save_json(
-    sequence: StateSequence,
+    sequence: SequenceData,
     path: str | Path,
 ) -> None:
     """Save sequence data to a JSON file.
@@ -151,7 +143,7 @@ CompressionCodec = Literal["lz4", "uncompressed", "snappy", "gzip", "brotli", "z
 
 
 def save_parquet(
-    sequence: StateSequence,
+    sequence: SequenceData,
     path: str | Path,
     compression: CompressionCodec = "zstd",
     **kwargs: Any,

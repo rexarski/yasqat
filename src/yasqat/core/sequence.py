@@ -52,6 +52,13 @@ class StateSequence:
     For interval-shaped input (start, end, state), use the
     :meth:`from_intervals` classmethod which samples the intervals on a
     discrete grid and returns a ``StateSequence``.
+
+    Role (see ADR-0002): ``StateSequence`` is the *representation view* —
+    format conversions (:meth:`to_sts`, :meth:`to_sps`, :meth:`to_dss`),
+    interval sampling, and per-sequence descriptives. The canonical container
+    for the analysis pipeline (distances, clustering, statistics) is
+    ``SequencePool``; convert with :meth:`SequencePool.coerce` or reach a
+    representation view from a pool via ``pool.to_state_sequence()``.
     """
 
     def __init__(
