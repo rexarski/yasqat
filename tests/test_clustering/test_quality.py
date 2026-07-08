@@ -325,3 +325,38 @@ class TestPamRangeDistanceMatrix:
         assert 2 in result
         assert 3 in result
         assert "ASW" in result[2]
+
+
+class TestAcceptsDistanceMatrix:
+    """quality functions accept a DistanceMatrix directly."""
+
+    def test_silhouette_and_quality_with_distance_matrix(self) -> None:
+        from yasqat.metrics.base import DistanceMatrix
+
+        dist = np.array(
+            [[0, 1, 5, 6], [1, 0, 5, 6], [5, 5, 0, 1], [6, 6, 1, 0]],
+            dtype=np.float64,
+        )
+        labels = np.array([0, 0, 1, 1])
+        dm = DistanceMatrix(values=dist, labels=[1, 2, 3, 4])
+
+        assert silhouette_score(dm, labels) == pytest.approx(
+            silhouette_score(dist, labels)
+        )
+        q_dm = cluster_quality(dm, labels)
+        q_arr = cluster_quality(dist, labels)
+        assert q_dm["ASW"] == pytest.approx(q_arr["ASW"])
+
+    def test_pam_range_with_distance_matrix(self) -> None:
+        from yasqat.metrics.base import DistanceMatrix
+
+        dist = np.array(
+            [[0, 1, 5, 6], [1, 0, 5, 6], [5, 5, 0, 1], [6, 6, 1, 0]],
+            dtype=np.float64,
+        )
+        dm = DistanceMatrix(values=dist)
+
+        from_dm = pam_range(dm, k_values=[2])
+        from_array = pam_range(dist, k_values=[2])
+
+        assert from_dm[2]["ASW"] == pytest.approx(from_array[2]["ASW"])

@@ -7,10 +7,10 @@ from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
+from yasqat.metrics.base import DistanceMatrix
+
 if TYPE_CHECKING:
     import polars as pl
-
-    from yasqat.metrics.base import DistanceMatrix
 
 
 LinkageMethod = Literal["ward", "complete", "average", "single"]
@@ -99,16 +99,8 @@ def hierarchical_clustering(
     )
     from scipy.spatial.distance import squareform  # type: ignore[import-untyped]
 
-    # Extract numpy array from DistanceMatrix if needed
-    if hasattr(distance_matrix, "values"):
-        dist_array = np.asarray(distance_matrix.values, dtype=np.float64)
-    else:
-        dist_array = np.asarray(distance_matrix, dtype=np.float64)
-
-    # Ensure matrix is square and symmetric
+    dist_array = DistanceMatrix.coerce(distance_matrix).values
     n = dist_array.shape[0]
-    if dist_array.shape != (n, n):
-        raise ValueError("Distance matrix must be square")
 
     # Set default sequence IDs
     if sequence_ids is None:

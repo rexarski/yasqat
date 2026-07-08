@@ -10,6 +10,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from yasqat.metrics.base import DistanceMatrix
+
 
 @dataclass
 class DissTreeNode:
@@ -144,7 +146,7 @@ def _find_best_split(
 
 
 def dissimilarity_tree(
-    dist_matrix: np.ndarray,
+    dist_matrix: DistanceMatrix | np.ndarray,
     covariates: np.ndarray,
     covariate_names: list[str] | None = None,
     max_depth: int = 5,
@@ -180,6 +182,7 @@ def dissimilarity_tree(
         >>> result.n_leaves >= 1
         True
     """
+    dist_matrix = DistanceMatrix.coerce(dist_matrix).values
     n = dist_matrix.shape[0]
     if covariate_names is None:
         covariate_names = [f"X{i}" for i in range(covariates.shape[1])]

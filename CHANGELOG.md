@@ -46,6 +46,15 @@
   own type — identity if already that type, otherwise rebuilt from the shared
   `data`/`config`/`alphabet`. These are the single seam through which
   `statistics.*` accepts either container.
+- **`DistanceMatrix.coerce()` — one seam for distance-matrix inputs.** Every
+  distance consumer (`pam_clustering`, `clara_clustering`,
+  `hierarchical_clustering`, the `clustering.quality` functions,
+  `discrepancy_analysis`, `multi_factor_discrepancy`, `dissimilarity_tree`)
+  now accepts a `DistanceMatrix` or a raw numpy array, normalized through the
+  new classmethod. Discrepancy analysis and dissimilarity trees previously
+  accepted only raw arrays, forcing `dm.values` unwrapping after
+  `compute_distances`; five inlined `hasattr(x, "values")` unwrap blocks are
+  gone. Coerced inputs get 2-D/square validation for free.
 - **`filters.*` accept either sequence container.** The criterion classes and
   `filter_sequences` type their argument as the `SequenceData` protocol, so a
   `SequencePool` (what loaders now return) works directly — no conversion to

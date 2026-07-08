@@ -10,6 +10,8 @@ import warnings
 
 import numpy as np
 
+from yasqat.metrics.base import DistanceMatrix
+
 
 def k_range(start: int, end: int) -> range:
     """Inclusive range of k values.
@@ -35,7 +37,7 @@ def k_range(start: int, end: int) -> range:
 
 
 def silhouette_scores(
-    dist_matrix: np.ndarray,
+    dist_matrix: DistanceMatrix | np.ndarray,
     labels: np.ndarray,
 ) -> np.ndarray:
     """
@@ -53,6 +55,7 @@ def silhouette_scores(
     Returns:
         Array of silhouette scores, one per point, in [-1, 1].
     """
+    dist_matrix = DistanceMatrix.coerce(dist_matrix).values
     n = len(labels)
     unique_labels = np.unique(labels)
     n_clusters = len(unique_labels)
@@ -96,7 +99,7 @@ def silhouette_scores(
 
 
 def silhouette_score(
-    dist_matrix: np.ndarray,
+    dist_matrix: DistanceMatrix | np.ndarray,
     labels: np.ndarray,
 ) -> float:
     """
@@ -114,7 +117,7 @@ def silhouette_score(
 
 
 def cluster_quality(
-    dist_matrix: np.ndarray,
+    dist_matrix: DistanceMatrix | np.ndarray,
     labels: np.ndarray,
 ) -> dict[str, float]:
     """
@@ -136,6 +139,7 @@ def cluster_quality(
     Returns:
         Dictionary with keys "ASW", "PBC", "HG", "R2".
     """
+    dist_matrix = DistanceMatrix.coerce(dist_matrix).values
     n = len(labels)
     unique_labels = np.unique(labels)
 
@@ -190,7 +194,7 @@ def cluster_quality(
 
 
 def distance_to_center(
-    dist_matrix: np.ndarray,
+    dist_matrix: DistanceMatrix | np.ndarray,
     labels: np.ndarray,
 ) -> np.ndarray:
     """
@@ -206,6 +210,7 @@ def distance_to_center(
     Returns:
         Array of mean within-cluster distances, one per point.
     """
+    dist_matrix = DistanceMatrix.coerce(dist_matrix).values
     n = len(labels)
     distances = np.zeros(n, dtype=np.float64)
 
@@ -219,7 +224,7 @@ def distance_to_center(
 
 
 def pam_range(
-    dist_matrix: np.ndarray,
+    dist_matrix: DistanceMatrix | np.ndarray,
     k_values: range | list[int] | tuple[int, int] | None = None,
     max_iter: int = 100,
     init: str = "build",
@@ -272,9 +277,7 @@ def pam_range(
             )
         k_values = k_range
 
-    # Unwrap DistanceMatrix to numpy array
-    if hasattr(dist_matrix, "values") and not isinstance(dist_matrix, np.ndarray):
-        dist_matrix = dist_matrix.values
+    dist_matrix = DistanceMatrix.coerce(dist_matrix).values
 
     n = dist_matrix.shape[0]
 

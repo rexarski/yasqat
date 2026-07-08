@@ -27,6 +27,25 @@ class DistanceMatrix:
         if self.values.shape[0] != self.values.shape[1]:
             raise ValueError("Distance matrix must be square")
 
+    @classmethod
+    def coerce(cls, matrix: DistanceMatrix | np.ndarray) -> DistanceMatrix:
+        """Normalize a raw numpy array or DistanceMatrix to a DistanceMatrix.
+
+        The single seam through which distance consumers (clustering,
+        discrepancy analysis, dissimilarity trees) accept either form:
+        identity if already a ``DistanceMatrix``, otherwise the array is
+        cast to float64 and validated (2-D, square) by construction.
+
+        Args:
+            matrix: A ``DistanceMatrix`` or square numpy array.
+
+        Returns:
+            A DistanceMatrix (labels are None when built from a raw array).
+        """
+        if isinstance(matrix, cls):
+            return matrix
+        return cls(values=np.asarray(matrix, dtype=np.float64))
+
     def __getitem__(self, key: tuple[int, int]) -> float:
         """Get distance between two sequences by index."""
         return float(self.values[key])

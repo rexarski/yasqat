@@ -8,10 +8,10 @@ from typing import TYPE_CHECKING, Any
 import numba
 import numpy as np
 
+from yasqat.metrics.base import DistanceMatrix
+
 if TYPE_CHECKING:
     import polars as pl
-
-    from yasqat.metrics.base import DistanceMatrix
 
 
 @dataclass
@@ -297,16 +297,8 @@ def pam_clustering(
         >>> result.labels
         array([0, 0, 1, 1])
     """
-    # Extract numpy array from DistanceMatrix if needed
-    if hasattr(distance_matrix, "values"):
-        dist_array = distance_matrix.values
-    else:
-        dist_array = distance_matrix
-
-    # Ensure matrix is square
+    dist_array = DistanceMatrix.coerce(distance_matrix).values
     n = dist_array.shape[0]
-    if dist_array.shape != (n, n):
-        raise ValueError("Distance matrix must be square")
 
     if n_clusters > n:
         raise ValueError(
@@ -443,10 +435,10 @@ class PAMClustering:
         if self._result is None:
             raise ValueError("Must call fit() before predict()")
 
-        # Unwrap DistanceMatrix for consistent indexing with the rest of the API.
-        if hasattr(distance_to_train, "values") and not isinstance(
-            distance_to_train, np.ndarray
-        ):
+        # Unwrap DistanceMatrix for consistent indexing with the rest of the
+        # API. Not routed through DistanceMatrix.coerce: a new-vs-train
+        # distance block is legitimately non-square.
+        if isinstance(distance_to_train, DistanceMatrix):
             distance_to_train = distance_to_train.values
 
         distance_to_train = np.atleast_2d(np.asarray(distance_to_train))

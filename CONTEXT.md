@@ -31,7 +31,8 @@ coercion seam (see CLAUDE.md house rule).
 
 **DistanceMatrix** — the output of `compute_distances`: a symmetric pairwise
 dissimilarity matrix over the pool's sequence ids, consumed by clustering
-and discrepancy analysis.
+and discrepancy analysis. Consumers accept it or a raw numpy array through
+the `DistanceMatrix.coerce` seam (mirroring `SequenceData` for containers).
 
 ## Sequence formats
 

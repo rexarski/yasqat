@@ -283,3 +283,38 @@ class TestDiscrepancyEdgeCases:
         result = discrepancy_analysis(dist, labels)
         assert result.pseudo_r2 == 0.0
         assert result.pseudo_f == 0.0
+
+
+class TestAcceptsDistanceMatrix:
+    """discrepancy functions accept a DistanceMatrix directly."""
+
+    def test_discrepancy_analysis_with_distance_matrix(self) -> None:
+        from yasqat.metrics.base import DistanceMatrix
+
+        dist = np.array(
+            [[0, 1, 5, 6], [1, 0, 5, 6], [5, 5, 0, 1], [6, 6, 1, 0]],
+            dtype=np.float64,
+        )
+        labels = np.array([0, 0, 1, 1])
+
+        from_array = discrepancy_analysis(dist, labels)
+        from_dm = discrepancy_analysis(DistanceMatrix(values=dist), labels)
+
+        assert from_dm.pseudo_r2 == pytest.approx(from_array.pseudo_r2)
+        assert from_dm.pseudo_f == pytest.approx(from_array.pseudo_f)
+
+    def test_multi_factor_with_distance_matrix(self) -> None:
+        from yasqat.metrics.base import DistanceMatrix
+
+        dist = np.array(
+            [[0, 1, 5, 6], [1, 0, 5, 6], [5, 5, 0, 1], [6, 6, 1, 0]],
+            dtype=np.float64,
+        )
+        factors = {"group": np.array([0, 0, 1, 1])}
+
+        from_array = multi_factor_discrepancy(dist, factors)
+        from_dm = multi_factor_discrepancy(DistanceMatrix(values=dist), factors)
+
+        assert from_dm["group"].pseudo_r2 == pytest.approx(
+            from_array["group"].pseudo_r2
+        )

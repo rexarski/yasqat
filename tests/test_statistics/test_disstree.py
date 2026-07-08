@@ -189,3 +189,23 @@ class TestDissTreeDepth:
                     check_leaves(node.right)
 
         check_leaves(result.root)
+
+
+class TestAcceptsDistanceMatrix:
+    """dissimilarity_tree accepts a DistanceMatrix directly."""
+
+    def test_tree_with_distance_matrix(self) -> None:
+        from yasqat.metrics.base import DistanceMatrix
+
+        rng = np.random.default_rng(42)
+        n = 20
+        dist = rng.random((n, n))
+        dist = (dist + dist.T) / 2
+        np.fill_diagonal(dist, 0)
+        covariates = rng.random((n, 2))
+
+        from_array = dissimilarity_tree(dist, covariates)
+        from_dm = dissimilarity_tree(DistanceMatrix(values=dist), covariates)
+
+        assert from_dm.n_leaves == from_array.n_leaves
+        np.testing.assert_array_equal(from_dm.labels, from_array.labels)

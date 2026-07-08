@@ -184,3 +184,27 @@ class TestBuildSubstitutionMatrix:
             np.testing.assert_array_almost_equal(
                 sm, sm.T, err_msg=f"Method '{method}' is not symmetric"
             )
+
+
+class TestDistanceMatrixCoerce:
+    """Tests for DistanceMatrix.coerce."""
+
+    def test_distance_matrix_is_returned_unchanged(self) -> None:
+        """Coercing a DistanceMatrix is the identity."""
+        dm = DistanceMatrix(values=np.zeros((2, 2)), labels=[1, 2])
+        assert DistanceMatrix.coerce(dm) is dm
+
+    def test_ndarray_is_wrapped(self) -> None:
+        """Coercing a raw array wraps it (float64, no labels)."""
+        arr = np.array([[0, 1], [1, 0]])
+        dm = DistanceMatrix.coerce(arr)
+
+        assert isinstance(dm, DistanceMatrix)
+        assert dm.values.dtype == np.float64
+        assert dm.labels is None
+        np.testing.assert_allclose(dm.values, [[0.0, 1.0], [1.0, 0.0]])
+
+    def test_non_square_array_raises(self) -> None:
+        """Coercion inherits DistanceMatrix validation."""
+        with pytest.raises(ValueError, match="square"):
+            DistanceMatrix.coerce(np.zeros((2, 3)))
