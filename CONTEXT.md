@@ -24,9 +24,10 @@ grid), per-sequence descriptives. Reached from a pool via
 `pool.to_state_sequence()`.
 
 **SequenceData** — the protocol both containers satisfy (`data`, `config`,
-`alphabet`). Public functions that accept sequences type their argument as
-`SequenceData` and normalize with `SequencePool.coerce` /
-`StateSequence.coerce` — the one coercion seam (see CLAUDE.md house rule).
+`alphabet`, `sequence_ids`). Public functions that accept sequences type their
+argument as `SequenceData`; if they need methods beyond that surface they
+normalize with `SequencePool.coerce` / `StateSequence.coerce` — the one
+coercion seam (see CLAUDE.md house rule).
 
 **DistanceMatrix** — the output of `compute_distances`: a symmetric pairwise
 dissimilarity matrix over the pool's sequence ids, consumed by clustering

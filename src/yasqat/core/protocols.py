@@ -5,10 +5,11 @@ over a shared ``Alphabet`` and ``SequenceConfig``. The ``SequenceData`` protocol
 names that shared read surface so callers (notably ``statistics.*``) can accept
 either type without an explicit ``StateSequence | SequencePool`` union.
 
-The protocol intentionally declares only ``data``/``config``/``alphabet`` — the
-attributes both types expose with identical semantics. It omits ``get_sequence``,
-whose return type differs between the two classes, so duck-typing through this
-protocol can never hit that mismatch.
+The protocol intentionally declares only
+``data``/``config``/``alphabet``/``sequence_ids`` — the attributes both types
+expose with identical semantics. It omits ``get_sequence``, whose return type
+differs between the two classes, so duck-typing through this protocol can
+never hit that mismatch.
 """
 
 from __future__ import annotations
@@ -39,4 +40,9 @@ class SequenceData(Protocol):
     @property
     def alphabet(self) -> Alphabet:
         """The state alphabet."""
+        ...
+
+    @property
+    def sequence_ids(self) -> list[int | str]:
+        """Sorted unique sequence identifiers."""
         ...

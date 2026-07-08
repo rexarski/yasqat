@@ -9,14 +9,14 @@ from typing import TYPE_CHECKING
 import polars as pl
 
 if TYPE_CHECKING:
-    from yasqat.core.sequence import StateSequence
+    from yasqat.core.protocols import SequenceData
 
 
 class SequenceCriterion(ABC):
     """Abstract base class for sequence filtering criteria."""
 
     @abstractmethod
-    def get_matching_ids(self, sequence: StateSequence) -> list[int | str]:
+    def get_matching_ids(self, sequence: SequenceData) -> list[int | str]:
         """
         Return IDs of sequences that match this criterion.
 
@@ -27,7 +27,7 @@ class SequenceCriterion(ABC):
             List of matching sequence IDs.
         """
 
-    def filter(self, sequence: StateSequence) -> pl.DataFrame:
+    def filter(self, sequence: SequenceData) -> pl.DataFrame:
         """
         Filter sequence data to only matching sequences.
 
@@ -36,10 +36,10 @@ class SequenceCriterion(ABC):
 
         Returns:
             Filtered DataFrame containing only matching sequences. To continue
-            working with a typed sequence object, wrap the result::
+            working with a typed container, wrap the result::
 
                 df = criterion.filter(seq)
-                filtered = StateSequence(df, config=seq.config, alphabet=seq.alphabet)
+                pool = SequencePool(data=df, config=seq.config, alphabet=seq.alphabet)
         """
         matching_ids = self.get_matching_ids(sequence)
         id_col = sequence.config.id_column
@@ -62,7 +62,7 @@ class LengthCriterion(SequenceCriterion):
     max_length: int | None = None
     exact_length: int | None = None
 
-    def get_matching_ids(self, sequence: StateSequence) -> list[int | str]:
+    def get_matching_ids(self, sequence: SequenceData) -> list[int | str]:
         """Return IDs of sequences with matching length."""
         id_col = sequence.config.id_column
 
@@ -103,7 +103,7 @@ class TimeCriterion(SequenceCriterion):
     end_before: int | float | None = None
     contains_time: int | float | None = None
 
-    def get_matching_ids(self, sequence: StateSequence) -> list[int | str]:
+    def get_matching_ids(self, sequence: SequenceData) -> list[int | str]:
         """Return IDs of sequences matching time criteria."""
         id_col = sequence.config.id_column
         config = sequence.config
@@ -148,7 +148,7 @@ class ContainsStateCriterion(SequenceCriterion):
     require_all: bool = False
     exclude: bool = False
 
-    def get_matching_ids(self, sequence: StateSequence) -> list[int | str]:
+    def get_matching_ids(self, sequence: SequenceData) -> list[int | str]:
         """Return IDs of sequences containing (or not containing) specified states."""
         id_col = sequence.config.id_column
         state_col = sequence.config.state_column
@@ -191,7 +191,7 @@ class StartsWithCriterion(SequenceCriterion):
 
     states: list[str]
 
-    def get_matching_ids(self, sequence: StateSequence) -> list[int | str]:
+    def get_matching_ids(self, sequence: SequenceData) -> list[int | str]:
         """Return IDs of sequences starting with the specified states."""
         id_col = sequence.config.id_column
         state_col = sequence.config.state_column
@@ -238,7 +238,7 @@ class QueryCriterion(SequenceCriterion):
 
     expression: pl.Expr
 
-    def get_matching_ids(self, sequence: StateSequence) -> list[int | str]:
+    def get_matching_ids(self, sequence: SequenceData) -> list[int | str]:
         """Return IDs of sequences where any row matches the expression."""
         id_col = sequence.config.id_column
 
@@ -250,7 +250,7 @@ class QueryCriterion(SequenceCriterion):
 
 
 def filter_sequences(
-    sequence: StateSequence,
+    sequence: SequenceData,
     criteria: SequenceCriterion | list[SequenceCriterion],
     combine: str = "and",
 ) -> pl.DataFrame:
@@ -266,10 +266,10 @@ def filter_sequences(
 
     Returns:
         Filtered DataFrame containing only matching sequences. To continue
-        working with a typed sequence object, wrap the result::
+        working with a typed container, wrap the result::
 
             df = filter_sequences(seq, criteria)
-            filtered = StateSequence(df, config=seq.config, alphabet=seq.alphabet)
+            pool = SequencePool(data=df, config=seq.config, alphabet=seq.alphabet)
 
     Example:
         >>> from yasqat.filters import filter_sequences, LengthCriterion, ContainsStateCriterion

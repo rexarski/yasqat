@@ -46,6 +46,12 @@
   own type — identity if already that type, otherwise rebuilt from the shared
   `data`/`config`/`alphabet`. These are the single seam through which
   `statistics.*` accepts either container.
+- **`filters.*` accept either sequence container.** The criterion classes and
+  `filter_sequences` type their argument as the `SequenceData` protocol, so a
+  `SequencePool` (what loaders now return) works directly — no conversion to
+  `StateSequence` needed. The protocol gained `sequence_ids` (both containers
+  already exposed it with identical semantics); the criteria need no runtime
+  coercion at all.
 
 ### Internal
 
