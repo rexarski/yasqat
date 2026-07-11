@@ -4,7 +4,8 @@
 **Type:** enhancement
 **Source:** user todo list, 2026-07-07
 **Related:** issue 02 (association-rule measures for `frequent_subsequences` —
-already `ready-for-agent`; that item is likely the first slice of this one)
+**resolved in 0.5.0**; shipped as `association_rules()`. That was the first
+slice of this issue; the remaining directions below are still open.)
 **Source file:** `src/yasqat/statistics/subsequence_mining.py`
 
 ## Description
@@ -12,8 +13,8 @@ already `ready-for-agent`; that item is likely the first slice of this one)
 Grow the mining module beyond plain frequent-subsequence discovery.
 Candidate directions, to be picked at triage:
 
-- **Association-rule measures** — confidence, lift, leverage, conviction
-  (this is issue 02; do it first or fold it in here).
+- ~~**Association-rule measures** — confidence, lift, leverage, conviction
+  (this is issue 02).~~ **Done in 0.5.0** — `association_rules()`.
 - **Closed / maximal frequent subsequences** — prune the redundant output
   that plain frequent-pattern enumeration produces.
 - **Gap and window constraints** — max-gap / max-window parameters on

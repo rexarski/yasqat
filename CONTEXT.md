@@ -98,3 +98,15 @@ covariate-split tree.
 states (positive vs negative): volatility, precarity, insecurity,
 degradation, badness, integration. They live in `statistics/normative.py`
 and require the user to say which states count as positive.
+
+**Frequent subsequence** — an ordered (not necessarily contiguous) pattern of
+states appearing in at least `min_support` of the trajectories, found by
+level-wise Apriori mining (`frequent_subsequences`). A pattern's *support* is
+the count/proportion of sequences that contain it as an ordered subsequence.
+
+**Sequential association rule** — a directional pattern `antecedent =>
+consequent` split from a frequent subsequence (prefix ⇒ suffix), scored by
+`association_rules` with **confidence** (P(consequent follows | antecedent
+present)), **lift** (confidence over the consequent's marginal support; 1 =
+independence), **leverage** (the same gap on an additive scale), and
+**conviction** (directed dependence; `inf` for an exact rule).

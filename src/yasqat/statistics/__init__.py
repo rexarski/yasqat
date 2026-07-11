@@ -29,7 +29,10 @@ from yasqat.statistics.normative import (
     proportion_positive,
     volatility,
 )
-from yasqat.statistics.subsequence_mining import frequent_subsequences
+from yasqat.statistics.subsequence_mining import (
+    association_rules,
+    frequent_subsequences,
+)
 from yasqat.statistics.transition import (
     first_occurrence_time,
     state_duration_stats,
@@ -40,6 +43,7 @@ from yasqat.statistics.transition import (
 )
 
 __all__ = [
+    "association_rules",
     "badness",
     "complexity_index",
     "degradation",

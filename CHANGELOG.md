@@ -61,6 +61,14 @@
   `StateSequence` needed. The protocol gained `sequence_ids` (both containers
   already exposed it with identical semantics); the criteria need no runtime
   coercion at all.
+- **`association_rules()` — sequential association rules from mined patterns.**
+  New function in `yasqat.statistics` that splits each frequent subsequence
+  into an ordered antecedent (prefix) and consequent (suffix) and reports the
+  standard measures — `confidence`, `lift`, `leverage`, `conviction` — as a
+  separate rules `DataFrame`. Marginal supports are read straight from the
+  frequent-set, which the Apriori property guarantees already contains every
+  prefix and suffix, so no extra data scan is needed. Closes the last open
+  item of the `frequent_subsequences` enhancement request.
 
 ### Documentation
 

@@ -12,7 +12,7 @@ there with a pointer to this tracker.
 | # | Issue | Type | Status |
 |---|-------|------|--------|
 | 01 | [OM substitution-matrix bug](issues/01-om-subcost-matrix-bug.md) | bug | `needs-info` |
-| 02 | [`frequent_subsequences()` enhancements](issues/02-frequent-subsequences-enhancements.md) | enhancement | `ready-for-agent` |
+| 02 | [`frequent_subsequences()` enhancements](issues/02-frequent-subsequences-enhancements.md) | enhancement | `resolved` (0.5.0) |
 | 03 | [Normative indicators — more methods](issues/03-normative-indicators.md) | enhancement | `needs-triage` |
 | 04 | [Revisit `compute_matrix()` reference](issues/04-compute-matrix-reference.md) | question | `needs-info` |
 | 05 | [`encode_states` / `recode_states` — keep or remove?](issues/05-encode-recode-states.md) | question | `resolved` (0.5.0) |
