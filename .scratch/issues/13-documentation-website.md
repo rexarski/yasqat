@@ -1,9 +1,9 @@
 # New documentation website
 
-**Status:** `needs-triage`
+**Status:** `resolved` (0.5.0)
 **Type:** docs / infrastructure
 **Source:** user todo list, 2026-07-07
-**Milestone:** 0.5.0 (per user intent; confirm at triage whether it blocks the release)
+**Milestone:** 0.5.0
 
 ## Description
 
@@ -30,9 +30,29 @@ Build a new one. Decisions needed at triage:
 
 ## Tasks
 
-- [ ] Triage: choose generator + hosting with the user.
-- [ ] Content outline.
-- [ ] Deploy workflow (pinned actions).
-- [ ] Update the release skill's docs-related phases to match reality.
+- [x] Triage: choose generator + hosting with the user.
+- [x] Content outline.
+- [x] Deploy workflow (pinned actions).
+- [x] Update the release skill's docs-related phases to match reality.
 
 ## Comments
+
+- 2026-07-11: **Resolved (0.5.0).** Chose **Sphinx** (not Quarto) per user —
+  `sphinx.ext.autodoc` + `napoleon` (Google-style docstrings) + `myst-parser`
+  (Markdown) with the **furo** theme. Site under `docs/`: `index`,
+  `installation`, `quickstart`, a `glossary` and `changelog` that render
+  `CONTEXT.md` / `CHANGELOG.md` in place via MyST `{include}` (single source of
+  truth — no `.qmd`-style copies that go stale), and an `api/` reference with
+  one `automodule` page per subpackage (honors each `__all__`). New `docs`
+  optional-dependency group; ghost `quartodoc` dropped from `dev`. Hosting:
+  `.github/workflows/docs.yml` builds and deploys to GitHub Pages on push to
+  `main` (actions pinned; `setup-uv@v8.2.0`). Builds locally with **zero
+  warnings**; fixed two docstring list-formatting nits surfaced by docutils.
+  **Consequence fix done:** the `yasqat-release` skill's Phase 3/7/8/12 and
+  quick-reference no longer point at `docs/changelog.qmd`, `docs/_quarto.yml`,
+  `quarto preview`, or `deploy-docs.yml`.
+- **Follow-ups (not blocking):** GitHub Pages must be enabled once in repo
+  settings (Settings → Pages → Source: GitHub Actions) before the first deploy
+  succeeds. The workflow only fires on `main`, so the site goes live when 0.5.0
+  merges. Narrative tutorials (the old Quarto site had per-topic tutorials) were
+  not ported — quickstart + API + glossary is the initial scope.

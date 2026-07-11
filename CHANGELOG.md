@@ -72,6 +72,12 @@
 
 ### Documentation
 
+- **Sphinx documentation site** (`docs/`), replacing the removed Quarto site.
+  autodoc + napoleon (Google-style docstrings) + MyST (Markdown) on the furo
+  theme; an API reference generated per subpackage from each `__all__`, and
+  glossary/changelog pages that render `CONTEXT.md` / `CHANGELOG.md` in place
+  (single source of truth). Builds and deploys to GitHub Pages on push to
+  `main` via `.github/workflows/docs.yml`; install with the new `docs` extra.
 - `CONTEXT.md` domain glossary at the repo root: container roles (ADR-0002),
   sequence formats, sequence anatomy, and analysis vocabulary.
 - "When to use which" cross-references in `sequence_frequency_table`

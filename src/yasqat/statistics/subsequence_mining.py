@@ -111,9 +111,11 @@ def frequent_subsequences(
 
     Returns:
         DataFrame with columns:
+
             - subsequence: List of states forming the pattern.
             - support: Number of sequences containing this pattern.
             - proportion: Proportion of sequences containing this pattern.
+
         Sorted by support descending.
 
     Example:

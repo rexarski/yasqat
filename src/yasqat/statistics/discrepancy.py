@@ -61,6 +61,7 @@ def discrepancy_analysis(
 
     The decomposition is:
         SS_total = SS_within + SS_between
+
     where SS is computed from squared distances divided by group sizes.
 
     Optionally runs a permutation test by shuffling labels to obtain

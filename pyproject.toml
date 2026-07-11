@@ -48,7 +48,11 @@ dev = [
     "pytest-cov>=5.0",
     "ruff>=0.9",
     "mypy>=1.14",
-    "quartodoc>=0.7",
+]
+docs = [
+    "sphinx>=8.1",
+    "furo>=2024.8.6",
+    "myst-parser>=4.0",
 ]
 
 [project.urls]
