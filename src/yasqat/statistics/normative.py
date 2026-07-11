@@ -7,6 +7,7 @@ seqinsecurity, seqidegrad, seqibad, seqintegr, seqipos.
 
 from __future__ import annotations
 
+from collections import Counter
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -33,6 +34,46 @@ def _state_signs(
         else:
             signs.append(0)
     return signs
+
+
+def individual_state_distribution(sequence: SequenceData) -> pl.DataFrame:
+    """
+    Per-sequence time spent in each state (TraMineR ``seqistatd``).
+
+    For every sequence and every state of the alphabet, reports the number of
+    time units spent in that state and its proportion of the sequence length.
+    Unvisited states are included with a count of zero so the result is
+    rectangular. Many normative indicators (e.g. :func:`proportion_positive`,
+    :func:`badness`) are aggregates of this distribution.
+
+    Args:
+        sequence: StateSequence or SequencePool.
+
+    Returns:
+        Long-format DataFrame with columns ``[id_column, state, count,
+        proportion]`` — one row per (sequence, alphabet state).
+    """
+    pool = SequencePool.coerce(sequence)
+    config = pool.config
+    alphabet_states = sorted(pool.alphabet.states)
+
+    rows = []
+    for seq_id in pool.sequence_ids:
+        states = pool.get_sequence(seq_id)
+        n = len(states)
+        counts = Counter(states)
+        for state in alphabet_states:
+            count = counts.get(state, 0)
+            rows.append(
+                {
+                    config.id_column: seq_id,
+                    "state": state,
+                    "count": count,
+                    "proportion": (count / n) if n else 0.0,
+                }
+            )
+
+    return pl.DataFrame(rows)
 
 
 def proportion_positive(
@@ -118,6 +159,66 @@ def volatility(
 
     if per_sequence:
         return pl.DataFrame({config.id_column: seq_ids, "volatility": values})
+    return float(np.mean(values))
+
+
+def objective_volatility(
+    sequence: SequenceData,
+    w: float = 0.5,
+    per_sequence: bool = False,
+) -> float | pl.DataFrame:
+    """
+    Objective sequence volatility (TraMineR ``seqivolatility``).
+
+    A label-free measure of how much a sequence moves around, blending two
+    normalized components with weight ``w``:
+
+    - ``pvisited`` — proportion of the alphabet visited, adjusted as
+      ``(distinct states visited - 1) / (alphabet size - 1)``.
+    - ``ptrans`` — proportion of possible transitions taken,
+      ``(number of state changes) / (length - 1)``.
+
+    The volatility is ``w * pvisited + (1 - w) * ptrans``. Unlike
+    :func:`volatility`, this does not depend on positive/negative labels.
+
+    Args:
+        sequence: StateSequence or SequencePool.
+        w: Weight on the state-coverage component, in ``[0, 1]``. Higher ``w``
+            emphasizes how many distinct states appear; lower ``w`` emphasizes
+            how often the state changes. Defaults to ``0.5``.
+        per_sequence: If True, return for each sequence.
+
+    Returns:
+        If per_sequence=False: Mean objective volatility.
+        If per_sequence=True: DataFrame with sequence IDs and values.
+
+    Raises:
+        ValueError: If ``w`` is outside ``[0, 1]``.
+    """
+    if not 0.0 <= w <= 1.0:
+        raise ValueError(f"w must be in [0, 1], got {w}")
+
+    pool = SequencePool.coerce(sequence)
+    config = pool.config
+    n_alphabet = len(pool.alphabet.states)
+    values = []
+    seq_ids = []
+
+    for seq_id in pool.sequence_ids:
+        states = pool.get_sequence(seq_id)
+        n = len(states)
+        if n <= 1 or n_alphabet <= 1:
+            # No transitions possible, or a degenerate alphabet.
+            values.append(0.0)
+        else:
+            pvisited = (len(set(states)) - 1) / (n_alphabet - 1)
+            transitions = sum(1 for i in range(n - 1) if states[i] != states[i + 1])
+            ptrans = transitions / (n - 1)
+            values.append(w * pvisited + (1.0 - w) * ptrans)
+        seq_ids.append(seq_id)
+
+    if per_sequence:
+        return pl.DataFrame({config.id_column: seq_ids, "objective_volatility": values})
     return float(np.mean(values))
 
 

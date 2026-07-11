@@ -1,9 +1,9 @@
 # More time-series content
 
-**Status:** `needs-triage`
+**Status:** `on-hold`
 **Type:** enhancement
 **Source:** user todo list, 2026-07-07
-**Milestone:** 0.5.0 (per user intent; confirm at triage whether it blocks the release)
+**Milestone:** deferred (parked 2026-07-11 — no longer targeting 0.5.0)
 
 ## Description
 
@@ -30,3 +30,6 @@ Expand yasqat's time-oriented analysis surface. Deliberately unscoped —
 - [ ] Cross-reference the TraMineR function(s) that anchor each chosen item.
 
 ## Comments
+
+- 2026-07-11: **On hold** (user's call). Scope stays deliberately unscoped —
+  parked until a future cycle rather than triaged now. Does not block 0.5.0.

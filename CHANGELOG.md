@@ -69,6 +69,16 @@
   frequent-set, which the Apriori property guarantees already contains every
   prefix and suffix, so no extra data scan is needed. Closes the last open
   item of the `frequent_subsequences` enhancement request.
+- **`individual_state_distribution()` — per-sequence state distribution.** New
+  function in `yasqat.statistics` (TraMineR `seqistatd`) reporting, for each
+  sequence and each alphabet state, the number of time units spent in that
+  state and its proportion of the sequence length (unvisited states included
+  with a zero count). Returns a long-format `DataFrame`.
+- **`objective_volatility()` — label-free volatility.** New function in
+  `yasqat.statistics` (TraMineR `seqivolatility`) measuring
+  `w · pvisited + (1 − w) · ptrans` — a weighted blend of alphabet coverage
+  and transition rate that, unlike the existing `volatility()`, needs no
+  positive/negative state labels.
 
 ### Documentation
 

@@ -13,7 +13,7 @@ there with a pointer to this tracker.
 |---|-------|------|--------|
 | 01 | [OM substitution-matrix bug](issues/01-om-subcost-matrix-bug.md) | bug | `needs-info` |
 | 02 | [`frequent_subsequences()` enhancements](issues/02-frequent-subsequences-enhancements.md) | enhancement | `resolved` (0.5.0) |
-| 03 | [Normative indicators — more methods](issues/03-normative-indicators.md) | enhancement | `needs-triage` |
+| 03 | [Normative indicators — more methods](issues/03-normative-indicators.md) | enhancement | `resolved` (0.5.0) |
 | 04 | [Revisit `compute_matrix()` reference](issues/04-compute-matrix-reference.md) | question | `needs-info` |
 | 05 | [`encode_states` / `recode_states` — keep or remove?](issues/05-encode-recode-states.md) | question | `resolved` (0.5.0) |
 | 06 | [StateSequence vs SequencePool roles](issues/06-statesequence-vs-pool-roles.md) | docs | `resolved` (0.5.0) |
@@ -21,10 +21,9 @@ there with a pointer to this tracker.
 | 08 | [Compile `pitch.md`](issues/08-pitch-doc.md) | docs | `ready-for-human` |
 | 09 | [Compile v0.3.2 terminology glossary](issues/09-v032-appendix-glossary.md) | docs | `resolved` (0.5.0) |
 | 10 | [DHD has no pool-level matrix path](issues/10-dhd-dispatch-gap.md) | enhancement | `resolved` (0.5.0) |
-| 11 | [More time-series content](issues/11-time-series-content.md) | enhancement | `needs-triage` |
+| 11 | [More time-series content](issues/11-time-series-content.md) | enhancement | `on-hold` |
 | 12 | [More subsequence mining](issues/12-more-subsequence-mining.md) | enhancement | `needs-triage` |
 | 13 | [New documentation website](issues/13-documentation-website.md) | docs | `resolved` (0.5.0) |
-| 14 | [Mind map of functions](issues/14-function-mind-map.md) | docs | `needs-triage` |
 
 ## Status legend
 
@@ -32,6 +31,7 @@ there with a pointer to this tracker.
 - `needs-info` — blocked, waiting on a repro or more detail
 - `ready-for-agent` — fully specified; an agent can pick it up with no extra context
 - `ready-for-human` — needs human implementation or judgment
+- `on-hold` — deferred; valid but parked until later, not part of the active cycle
 - `wontfix` — will not be actioned
 
 ## Conventions in brief
