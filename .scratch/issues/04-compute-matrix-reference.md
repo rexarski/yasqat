@@ -23,3 +23,9 @@ into #01 and mark `wontfix`/duplicate here.
 - [ ] Determine whether it is the OM dispatch bug (#01) or independent.
 
 ## Comments
+
+- 2026-06-23 (architecture review, candidate A): `SequenceMetric.compute_matrix`
+  was deleted (it had zero callers). The only matrix path now is
+  `pool.compute_distances`. If the original `compute_matrix()` edge case was about
+  the ABC path, it no longer exists; if it was about the pool path, it overlaps
+  with #01. Still needs the failing case to confirm.

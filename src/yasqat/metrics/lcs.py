@@ -127,30 +127,3 @@ def lcs_similarity(seq_a: np.ndarray, seq_b: np.ndarray) -> float:
         return 1.0
 
     return lcs_len / max_len
-
-
-class LCSMetric:
-    """Longest Common Subsequence distance metric class."""
-
-    name = "lcs"
-
-    def __init__(self, normalize: bool = False) -> None:
-        """
-        Initialize the LCS metric.
-
-        Args:
-            normalize: Whether to normalize distances.
-        """
-        self.normalize = normalize
-
-    def compute(self, seq_a: np.ndarray, seq_b: np.ndarray) -> float:
-        """Compute longest common subsequence distance between two sequences.
-
-        Args:
-            seq_a: First sequence (integer-encoded numpy array).
-            seq_b: Second sequence (integer-encoded numpy array).
-
-        Returns:
-            Distance value (0 = identical sequences).
-        """
-        return lcs_distance(seq_a, seq_b, normalize=self.normalize)

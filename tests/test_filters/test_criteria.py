@@ -5,6 +5,7 @@ from __future__ import annotations
 import polars as pl
 import pytest
 
+from yasqat.core.pool import SequencePool
 from yasqat.core.sequence import StateSequence
 from yasqat.filters.criteria import (
     ContainsStateCriterion,
@@ -309,3 +310,32 @@ class TestStartsWithCriterionVectorized:
         criterion = StartsWithCriterion(states=[])
         ids = criterion.get_matching_ids(seq)
         assert sorted(ids) == [1, 2]
+
+
+class TestFiltersAcceptPool:
+    """Filters accept either container via the SequenceData surface."""
+
+    def test_criterion_with_pool(self, test_sequence: StateSequence) -> None:
+        """get_matching_ids gives identical results for pool and sequence."""
+        pool = SequencePool.coerce(test_sequence)
+        criterion = LengthCriterion(min_length=4)
+
+        assert (
+            sorted(criterion.get_matching_ids(pool))
+            == sorted(criterion.get_matching_ids(test_sequence))
+            == [1, 3]
+        )
+
+    def test_filter_sequences_with_pool(self, test_sequence: StateSequence) -> None:
+        """filter_sequences accepts a SequencePool directly."""
+        pool = SequencePool.coerce(test_sequence)
+        df = filter_sequences(pool, ContainsStateCriterion(states=["D"]))
+
+        assert df["id"].unique().to_list() == [3]
+
+    def test_criterion_filter_with_pool(self, test_sequence: StateSequence) -> None:
+        """SequenceCriterion.filter accepts a SequencePool directly."""
+        pool = SequencePool.coerce(test_sequence)
+        df = LengthCriterion(exact_length=3).filter(pool)
+
+        assert df["id"].unique().to_list() == [2]

@@ -7,6 +7,7 @@ import polars as pl
 import pytest
 
 from yasqat.core.pool import SequencePool
+from yasqat.core.sequence import StateSequence
 from yasqat.metrics.base import DistanceMatrix
 
 
@@ -126,6 +127,73 @@ class TestSequencePool:
         with pytest.raises(ValueError, match="Unknown method"):
             sequence_pool.compute_distances(method="invalid")
 
+    def test_compute_distances_dhd_auto_position_costs(self) -> None:
+        """DHD builds position costs from the pool when not supplied.
+
+        Pool: [A,A], [A,B], [B,B].  Frequencies: t0 A=2/3 B=1/3,
+        t1 A=1/3 B=2/3.  cost(A,B,t) = 1 - (fa*fb)/0.25 = 1/9 at both
+        positions, so d(1,2)=1/9, d(1,3)=2/9, d(2,3)=1/9.
+        """
+        pool = SequencePool(
+            pl.DataFrame(
+                {
+                    "id": [1, 1, 2, 2, 3, 3],
+                    "time": [0, 1, 0, 1, 0, 1],
+                    "state": ["A", "A", "A", "B", "B", "B"],
+                }
+            )
+        )
+        dm = pool.compute_distances(method="dhd")
+
+        assert dm.values[0, 1] == pytest.approx(1 / 9)
+        assert dm.values[0, 2] == pytest.approx(2 / 9)
+        assert dm.values[1, 2] == pytest.approx(1 / 9)
+        assert np.allclose(dm.values, dm.values.T)
+        assert np.allclose(np.diag(dm.values), 0)
+
+    def test_compute_distances_dhd_explicit_position_costs(self) -> None:
+        """An explicitly supplied position_costs array is respected."""
+        pool = SequencePool(
+            pl.DataFrame(
+                {
+                    "id": [1, 1, 2, 2],
+                    "time": [0, 1, 0, 1],
+                    "state": ["A", "A", "B", "B"],
+                }
+            )
+        )
+        zero_costs = np.zeros((2, 2, 2), dtype=np.float64)
+        dm = pool.compute_distances(method="dhd", position_costs=zero_costs)
+
+        assert np.allclose(dm.values, 0.0)
+
+    def test_compute_distances_dhd_matches_free_function(
+        self, sequence_pool: SequencePool
+    ) -> None:
+        """Pool-level DHD equals the free function with pool-built costs."""
+        from yasqat.metrics.dhd import build_position_costs, dhd_distance
+
+        costs = build_position_costs(sequence_pool)
+        dm = sequence_pool.compute_distances(method="dhd")
+
+        a = sequence_pool.get_encoded_sequence(1)
+        b = sequence_pool.get_encoded_sequence(2)
+        assert dm.values[0, 1] == pytest.approx(dhd_distance(a, b, costs))
+
+    def test_compute_distances_dhd_unequal_lengths_raises(self) -> None:
+        """DHD on an unequal-length pool raises a clear ValueError."""
+        pool = SequencePool(
+            pl.DataFrame(
+                {
+                    "id": [1, 1, 1, 2, 2],
+                    "time": [0, 1, 2, 0, 1],
+                    "state": ["A", "B", "C", "A", "B"],
+                }
+            )
+        )
+        with pytest.raises(ValueError, match="same length"):
+            pool.compute_distances(method="dhd")
+
 
 class TestExtractSequencesPerformance:
     """Tests that _extract_sequences uses efficient group_by approach."""
@@ -225,3 +293,20 @@ class TestRecodeStates:
         recoded = sequence_pool.recode_states({"A": "X"})
         assert sequence_pool[1] == ["A", "A", "B", "C"]
         assert recoded[1] == ["X", "X", "B", "C"]
+
+
+class TestCoerce:
+    """Tests for SequencePool.coerce, the single union-normalization seam."""
+
+    def test_pool_is_returned_unchanged(self, sequence_pool: SequencePool) -> None:
+        """A SequencePool coerces to itself (identity, no rebuild)."""
+        assert SequencePool.coerce(sequence_pool) is sequence_pool
+
+    def test_state_sequence_is_converted(self, state_sequence: StateSequence) -> None:
+        """A StateSequence coerces to an equivalent SequencePool."""
+        pool = SequencePool.coerce(state_sequence)
+
+        assert isinstance(pool, SequencePool)
+        assert pool.sequence_ids == state_sequence.sequence_ids
+        assert pool.alphabet == state_sequence.alphabet
+        assert pool.get_sequence(1) == ["A", "A", "B", "C"]

@@ -72,30 +72,3 @@ def hamming_distance(
         distance /= len(seq_a)
 
     return distance
-
-
-class HammingMetric:
-    """Hamming distance metric class."""
-
-    name = "hamming"
-
-    def __init__(self, normalize: bool = False) -> None:
-        """
-        Initialize the Hamming metric.
-
-        Args:
-            normalize: Whether to normalize distances by sequence length.
-        """
-        self.normalize = normalize
-
-    def compute(self, seq_a: np.ndarray, seq_b: np.ndarray) -> float:
-        """Compute Hamming distance between two sequences.
-
-        Args:
-            seq_a: First sequence (integer-encoded numpy array).
-            seq_b: Second sequence (integer-encoded numpy array).
-
-        Returns:
-            Distance value (0 = identical sequences).
-        """
-        return hamming_distance(seq_a, seq_b, normalize=self.normalize)

@@ -4,15 +4,17 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import polars as pl
 
 from yasqat.core.alphabet import Alphabet
+from yasqat.core.protocols import coerce_container
 from yasqat.core.sequence import SequenceConfig, StateSequence
 
 if TYPE_CHECKING:
+    from yasqat.core.protocols import SequenceData
     from yasqat.metrics.base import DistanceMatrix
 
 
@@ -23,6 +25,12 @@ class SequencePool:
 
     SequencePool provides efficient operations on multiple sequences,
     including pairwise distance computation and batch statistics.
+
+    Role (see ADR-0002): ``SequencePool`` is the *canonical analysis
+    container* — every loader returns one, and metrics, clustering, and
+    statistics consume it. For format conversions (STS/SPS/DSS) use
+    :meth:`to_state_sequence` to get the ``StateSequence`` representation
+    view.
     """
 
     _data: pl.DataFrame = field(default_factory=pl.DataFrame)
@@ -128,6 +136,17 @@ class SequencePool:
             alphabet=self._alphabet,
         )
 
+    @classmethod
+    def coerce(cls, sequence: SequenceData) -> SequencePool:
+        """Normalize any sequence container to a ``SequencePool``.
+
+        Returns ``sequence`` unchanged if it is already a ``SequencePool``;
+        otherwise builds one from its ``data``/``config``/``alphabet``. This is
+        the single seam through which ``statistics.*`` accepts either a
+        ``StateSequence`` or a ``SequencePool``.
+        """
+        return coerce_container(cls, sequence)
+
     def sequence_lengths(self) -> pl.DataFrame:
         """Get the length of each sequence."""
         return (
@@ -140,15 +159,19 @@ class SequencePool:
         self,
         method: str = "om",
         n_jobs: int = 1,
-        **kwargs: float,
+        **kwargs: Any,
     ) -> DistanceMatrix:
         """
         Compute pairwise distance matrix.
 
         Args:
             method: Distance method ("om", "hamming", "lcs", "lcp", "rlcp",
-                "euclidean", "chi2", "dtw", "twed", "omloc", "omspell",
-                "omstran", "nms", "nmsmst", "svrspell").
+                "euclidean", "chi2", "dtw", "softdtw", "twed", "dhd", "omloc",
+                "omspell", "omstran", "nms", "nmsmst", "svrspell"). "dhd"
+                requires equal-length sequences; its ``position_costs`` array
+                is built from this pool via
+                :func:`yasqat.metrics.dhd.build_position_costs` unless passed
+                explicitly.
             n_jobs: Number of parallel workers. 1 = sequential (default).
                 -1 = use all available CPUs. Values > 1 use that many threads.
                 Parallelism uses threads (not processes) since numba releases
@@ -177,10 +200,12 @@ class SequencePool:
             omstran_distance,
             optimal_matching_distance,
             rlcp_distance,
+            softdtw_distance,
             svrspell_distance,
             twed_distance,
         )
         from yasqat.metrics.base import DistanceMatrix
+        from yasqat.metrics.dhd import build_position_costs, dhd_distance
         from yasqat.metrics.dtw import dtw_distance
 
         methods: dict[str, Callable[..., float]] = {
@@ -192,7 +217,9 @@ class SequencePool:
             "euclidean": euclidean_distance,
             "chi2": chi2_distance,
             "dtw": dtw_distance,
+            "softdtw": softdtw_distance,
             "twed": twed_distance,
+            "dhd": dhd_distance,
             "omloc": omloc_distance,
             "omspell": omspell_distance,
             "omstran": omstran_distance,
@@ -203,6 +230,10 @@ class SequencePool:
 
         if method not in methods:
             raise ValueError(f"Unknown method: {method}. Available: {list(methods)}")
+
+        if method == "dhd" and "position_costs" not in kwargs:
+            # Also validates that every sequence has the same length.
+            kwargs["position_costs"] = build_position_costs(self)
 
         metric_fn = methods[method]
         n = len(self)

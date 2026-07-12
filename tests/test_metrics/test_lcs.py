@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from yasqat.metrics.lcs import LCSMetric, lcs_distance, lcs_length, lcs_similarity
+from yasqat.metrics.lcs import lcs_distance, lcs_length, lcs_similarity
 
 
 class TestLCSDistance:
@@ -105,16 +105,3 @@ class TestLCSDistance:
         dist_ba = lcs_distance(seq_b, seq_a)
 
         assert dist_ab == dist_ba
-
-    def test_metric_class(
-        self, unequal_length_sequences: tuple[np.ndarray, np.ndarray]
-    ) -> None:
-        """Test LCSMetric class."""
-        seq_a, seq_b = unequal_length_sequences
-
-        metric = LCSMetric(normalize=False)
-        dist = metric.compute(seq_a, seq_b)
-
-        # seq_a=[0,1,2,3,4], seq_b=[0,2,4]: LCS is [0,2,4] length 3
-        # distance = 5 + 3 - 2*3 = 2.0
-        assert dist == 2.0

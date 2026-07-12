@@ -123,30 +123,3 @@ def lcp_similarity(seq_a: np.ndarray, seq_b: np.ndarray) -> float:
         return 1.0 if len(seq_a) == 0 and len(seq_b) == 0 else 0.0
 
     return lcp_len / min_len
-
-
-class LCPMetric:
-    """Longest Common Prefix distance metric class."""
-
-    name = "lcp"
-
-    def __init__(self, normalize: bool = False) -> None:
-        """
-        Initialize the LCP metric.
-
-        Args:
-            normalize: Whether to normalize distances.
-        """
-        self.normalize = normalize
-
-    def compute(self, seq_a: np.ndarray, seq_b: np.ndarray) -> float:
-        """Compute longest common prefix distance between two sequences.
-
-        Args:
-            seq_a: First sequence (integer-encoded numpy array).
-            seq_b: Second sequence (integer-encoded numpy array).
-
-        Returns:
-            Distance value (0 = identical sequences).
-        """
-        return lcp_distance(seq_a, seq_b, normalize=self.normalize)

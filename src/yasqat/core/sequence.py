@@ -9,9 +9,10 @@ from typing import TYPE_CHECKING, Any
 import polars as pl
 
 from yasqat.core.alphabet import Alphabet
+from yasqat.core.protocols import coerce_container
 
 if TYPE_CHECKING:
-    import numpy as np
+    from yasqat.core.protocols import SequenceData
 
 
 @dataclass
@@ -52,6 +53,13 @@ class StateSequence:
     For interval-shaped input (start, end, state), use the
     :meth:`from_intervals` classmethod which samples the intervals on a
     discrete grid and returns a ``StateSequence``.
+
+    Role (see ADR-0002): ``StateSequence`` is the *representation view* —
+    format conversions (:meth:`to_sts`, :meth:`to_sps`, :meth:`to_dss`),
+    interval sampling, and per-sequence descriptives. The canonical container
+    for the analysis pipeline (distances, clustering, statistics) is
+    ``SequencePool``; convert with :meth:`SequencePool.coerce` or reach a
+    representation view from a pool via ``pool.to_state_sequence()``.
     """
 
     def __init__(
@@ -273,15 +281,21 @@ class StateSequence:
             .sort([id_col, time_col])
         )
 
-    def encode_states(self) -> np.ndarray:
-        """Encode states as integer indices using the alphabet."""
-        states = self._data[self._config.state_column].to_list()
-        return self._alphabet.encode(states)
-
     def get_states_for_sequence(self, seq_id: int | str) -> list[str]:
         """Get the list of states for a specific sequence."""
         seq_data = self.get_sequence(seq_id).sort(self._config.time_column)
         return seq_data[self._config.state_column].to_list()
+
+    @classmethod
+    def coerce(cls, sequence: SequenceData) -> StateSequence:
+        """Normalize any sequence container to a ``StateSequence``.
+
+        Returns ``sequence`` unchanged if it is already a ``StateSequence``;
+        otherwise builds one from its ``data``/``config``/``alphabet``. The
+        mirror of :meth:`SequencePool.coerce`, for callers that need the
+        format-conversion surface (``to_sts``/``to_sps``/``to_dss``).
+        """
+        return coerce_container(cls, sequence)
 
     @classmethod
     def from_intervals(

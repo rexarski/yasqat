@@ -23,13 +23,18 @@ from yasqat.statistics.disstree import dissimilarity_tree
 from yasqat.statistics.normative import (
     badness,
     degradation,
+    individual_state_distribution,
     insecurity,
     integration,
+    objective_volatility,
     precarity,
     proportion_positive,
     volatility,
 )
-from yasqat.statistics.subsequence_mining import frequent_subsequences
+from yasqat.statistics.subsequence_mining import (
+    association_rules,
+    frequent_subsequences,
+)
 from yasqat.statistics.transition import (
     first_occurrence_time,
     state_duration_stats,
@@ -40,6 +45,7 @@ from yasqat.statistics.transition import (
 )
 
 __all__ = [
+    "association_rules",
     "badness",
     "complexity_index",
     "degradation",
@@ -47,6 +53,7 @@ __all__ = [
     "dissimilarity_tree",
     "first_occurrence_time",
     "frequent_subsequences",
+    "individual_state_distribution",
     "insecurity",
     "integration",
     "longitudinal_entropy",
@@ -54,6 +61,7 @@ __all__ = [
     "modal_states",
     "multi_factor_discrepancy",
     "normalized_turbulence",
+    "objective_volatility",
     "precarity",
     "proportion_positive",
     "sequence_frequency_table",

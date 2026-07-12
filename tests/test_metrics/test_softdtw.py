@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from yasqat.metrics.softdtw import SoftDTWMetric, softdtw_distance, softdtw_divergence
+from yasqat.metrics.softdtw import softdtw_distance, softdtw_divergence
 
 
 class TestSoftDTWDistance:
@@ -147,44 +147,3 @@ class TestSoftDTWDivergence:
 
         # Divergence should be positive
         assert div > 0
-
-
-class TestSoftDTWMetric:
-    """Tests for SoftDTWMetric class."""
-
-    def test_metric_class(self) -> None:
-        """Test SoftDTWMetric class."""
-        seq_a = np.array([0, 1, 2, 3], dtype=np.int32)
-        seq_b = np.array([0, 2, 3], dtype=np.int32)
-
-        metric = SoftDTWMetric(gamma=1.0)
-        dist = metric.compute(seq_a, seq_b)
-
-        # Raw SoftDTW can be negative; just check it returns a float
-        assert isinstance(dist, float)
-
-    def test_metric_with_divergence(self) -> None:
-        """Test SoftDTWMetric with divergence mode."""
-        seq_a = np.array([0, 1, 2], dtype=np.int32)
-        seq_b = np.array([0, 1, 2], dtype=np.int32)
-
-        metric = SoftDTWMetric(gamma=1.0, use_divergence=True)
-        div = metric.compute(seq_a, seq_b)
-
-        # Divergence for identical should be near 0
-        assert abs(div) < 0.01
-
-    def test_metric_with_all_options(self) -> None:
-        """Test SoftDTWMetric with all options."""
-        seq_a = np.array([0, 1, 2], dtype=np.int32)
-        seq_b = np.array([0, 2, 3], dtype=np.int32)
-
-        metric = SoftDTWMetric(
-            gamma=0.5,
-            window=2,
-            sm="binary",
-            normalize=True,
-        )
-        dist = metric.compute(seq_a, seq_b)
-
-        assert isinstance(dist, float)

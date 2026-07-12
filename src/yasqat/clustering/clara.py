@@ -8,14 +8,11 @@ keeps the solution with the lowest total cost.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 import numpy as np
 
 from yasqat.clustering.pam import _assign_clusters, _compute_cost, pam_clustering
-
-if TYPE_CHECKING:
-    from yasqat.metrics.base import DistanceMatrix
+from yasqat.metrics.base import DistanceMatrix
 
 
 @dataclass
@@ -86,15 +83,8 @@ def clara_clustering(
         >>> result.n_clusters
         3
     """
-    # Extract numpy array from DistanceMatrix if needed
-    if hasattr(distance_matrix, "values"):
-        dist_array = np.asarray(distance_matrix.values, dtype=np.float64)
-    else:
-        dist_array = np.asarray(distance_matrix, dtype=np.float64)
-
+    dist_array = DistanceMatrix.coerce(distance_matrix).values
     n = dist_array.shape[0]
-    if dist_array.shape != (n, n):
-        raise ValueError("Distance matrix must be square")
 
     if n_clusters > n:
         raise ValueError(

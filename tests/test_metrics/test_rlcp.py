@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from yasqat.metrics.rlcp import RLCPMetric, rlcp_distance, rlcp_length, rlcp_similarity
+from yasqat.metrics.rlcp import rlcp_distance, rlcp_length, rlcp_similarity
 
 
 class TestRLCPLength:
@@ -107,29 +107,3 @@ class TestRLCPSimilarity:
         seq = np.array([0, 1], dtype=np.int32)
         assert rlcp_similarity(empty, empty) == 1.0
         assert rlcp_similarity(empty, seq) == 0.0
-
-
-class TestRLCPMetric:
-    """Tests for RLCPMetric class."""
-
-    def test_basic_distance(self) -> None:
-        """Test metric compute method."""
-        metric = RLCPMetric()
-        seq_a = np.array([0, 1, 2, 3], dtype=np.int32)
-        seq_b = np.array([4, 5, 2, 3], dtype=np.int32)
-
-        dist = metric.compute(seq_a, seq_b)
-
-        assert dist == 4.0
-
-    def test_with_normalize(self) -> None:
-        """Test metric with normalization computes correct value."""
-        metric = RLCPMetric(normalize=True)
-        seq_a = np.array([0, 1, 2, 3], dtype=np.int32)
-        seq_b = np.array([4, 5, 2, 3], dtype=np.int32)
-
-        dist = metric.compute(seq_a, seq_b)
-
-        # RLCP length = 2 (suffix [2,3]), unnormalized = 4+4-2*2 = 4
-        # normalized = 4 / (4+4) = 0.5
-        assert dist == 0.5

@@ -11,6 +11,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from yasqat.metrics.base import DistanceMatrix
+
 
 @dataclass
 class DiscrepancyResult:
@@ -46,7 +48,7 @@ class DiscrepancyResult:
 
 
 def discrepancy_analysis(
-    dist_matrix: np.ndarray,
+    dist_matrix: DistanceMatrix | np.ndarray,
     labels: np.ndarray,
     n_permutations: int = 0,
     random_state: int | np.random.Generator | None = None,
@@ -59,6 +61,7 @@ def discrepancy_analysis(
 
     The decomposition is:
         SS_total = SS_within + SS_between
+
     where SS is computed from squared distances divided by group sizes.
 
     Optionally runs a permutation test by shuffling labels to obtain
@@ -92,6 +95,7 @@ def discrepancy_analysis(
         >>> result.pseudo_r2 > 0.5
         True
     """
+    dist_matrix = DistanceMatrix.coerce(dist_matrix).values
     n = len(labels)
     if n < 2:
         return DiscrepancyResult(
@@ -189,7 +193,7 @@ def _compute_ss(
 
 
 def multi_factor_discrepancy(
-    dist_matrix: np.ndarray,
+    dist_matrix: DistanceMatrix | np.ndarray,
     factors: dict[str, np.ndarray],
     n_permutations: int = 0,
     random_state: int | np.random.Generator | None = None,

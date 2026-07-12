@@ -1,15 +1,10 @@
-"""Base classes for sequence metrics."""
+"""Distance matrix container and substitution-cost builder."""
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 import numpy as np
-
-if TYPE_CHECKING:
-    from yasqat.core.pool import SequencePool
 
 
 @dataclass
@@ -31,6 +26,25 @@ class DistanceMatrix:
             raise ValueError("Distance matrix must be 2-dimensional")
         if self.values.shape[0] != self.values.shape[1]:
             raise ValueError("Distance matrix must be square")
+
+    @classmethod
+    def coerce(cls, matrix: DistanceMatrix | np.ndarray) -> DistanceMatrix:
+        """Normalize a raw numpy array or DistanceMatrix to a DistanceMatrix.
+
+        The single seam through which distance consumers (clustering,
+        discrepancy analysis, dissimilarity trees) accept either form:
+        identity if already a ``DistanceMatrix``, otherwise the array is
+        cast to float64 and validated (2-D, square) by construction.
+
+        Args:
+            matrix: A ``DistanceMatrix`` or square numpy array.
+
+        Returns:
+            A DistanceMatrix (labels are None when built from a raw array).
+        """
+        if isinstance(matrix, cls):
+            return matrix
+        return cls(values=np.asarray(matrix, dtype=np.float64))
 
     def __getitem__(self, key: tuple[int, int]) -> float:
         """Get distance between two sequences by index."""
@@ -82,51 +96,6 @@ class DistanceMatrix:
                 idx += 1
 
         return cls(values=values, labels=labels)
-
-
-class SequenceMetric(ABC):
-    """Abstract base class for sequence distance metrics."""
-
-    name: str = "base"
-
-    @abstractmethod
-    def compute(self, seq_a: np.ndarray, seq_b: np.ndarray, **kwargs: float) -> float:
-        """
-        Compute distance between two encoded sequences.
-
-        Args:
-            seq_a: First sequence as integer-encoded numpy array.
-            seq_b: Second sequence as integer-encoded numpy array.
-            **kwargs: Metric-specific parameters.
-
-        Returns:
-            Distance value (0 = identical).
-        """
-
-    def compute_matrix(self, pool: SequencePool, **kwargs: float) -> DistanceMatrix:
-        """
-        Compute pairwise distance matrix for a sequence pool.
-
-        Args:
-            pool: SequencePool containing sequences.
-            **kwargs: Metric-specific parameters.
-
-        Returns:
-            DistanceMatrix with pairwise distances.
-        """
-        n = len(pool)
-        ids = pool.sequence_ids
-        values = np.zeros((n, n), dtype=np.float64)
-
-        for i in range(n):
-            for j in range(i + 1, n):
-                seq_a = pool.get_encoded_sequence(ids[i])
-                seq_b = pool.get_encoded_sequence(ids[j])
-                dist = self.compute(seq_a, seq_b, **kwargs)
-                values[i, j] = dist
-                values[j, i] = dist
-
-        return DistanceMatrix(values=values, labels=ids)
 
 
 def build_substitution_matrix(

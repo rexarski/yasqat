@@ -7,6 +7,7 @@ import tempfile
 import polars as pl
 import pytest
 
+from yasqat.core.pool import SequencePool
 from yasqat.core.sequence import (
     SequenceConfig,
     StateSequence,
@@ -42,11 +43,11 @@ class TestCSVLoader:
         with tempfile.NamedTemporaryFile(suffix=".csv", delete=False, mode="w") as f:
             state_sequence_data.write_csv(f.name)
 
-            seq = load_csv(f.name)
+            pool = load_csv(f.name)
 
-            assert isinstance(seq, StateSequence)
-            assert seq.n_sequences() == 2
-            assert len(seq.alphabet) == 3
+            assert isinstance(pool, SequencePool)
+            assert len(pool) == 2
+            assert len(pool.alphabet) == 3
 
     def test_save_and_load_csv(self, state_sequence_data: pl.DataFrame) -> None:
         """Test round-trip save and load preserves actual data values."""
@@ -56,12 +57,23 @@ class TestCSVLoader:
             save_csv(seq, f.name)
             loaded = load_csv(f.name)
 
-            assert loaded.n_sequences() == seq.n_sequences()
+            assert len(loaded) == seq.n_sequences()
             assert len(loaded.data) == len(seq.data)
             # Verify actual data values survive the round-trip
-            assert loaded.get_states_for_sequence(1) == seq.get_states_for_sequence(1)
-            assert loaded.get_states_for_sequence(2) == seq.get_states_for_sequence(2)
+            assert loaded[1] == seq.get_states_for_sequence(1)
+            assert loaded[2] == seq.get_states_for_sequence(2)
             assert set(loaded.alphabet.states) == set(seq.alphabet.states)
+
+    def test_save_csv_from_pool(self, state_sequence_data: pl.DataFrame) -> None:
+        """save_csv accepts either container via the SequenceData surface."""
+        pool = load_dataframe(state_sequence_data)
+
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False, mode="w") as f:
+            save_csv(pool, f.name)
+            loaded = load_csv(f.name)
+
+            assert loaded[1] == pool[1]
+            assert loaded[2] == pool[2]
 
     def test_load_nonexistent_file(self) -> None:
         """Loading from a path that does not exist should raise an error."""
@@ -94,10 +106,10 @@ class TestJSONLoader:
         with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as f:
             state_sequence_data.write_json(f.name)
 
-            seq = load_json(f.name)
+            pool = load_json(f.name)
 
-            assert isinstance(seq, StateSequence)
-            assert seq.n_sequences() == 2
+            assert isinstance(pool, SequencePool)
+            assert len(pool) == 2
 
     def test_save_and_load_json(self, state_sequence_data: pl.DataFrame) -> None:
         """Test round-trip save and load preserves actual data values."""
@@ -107,9 +119,9 @@ class TestJSONLoader:
             save_json(seq, f.name)
             loaded = load_json(f.name)
 
-            assert loaded.n_sequences() == seq.n_sequences()
-            assert loaded.get_states_for_sequence(1) == seq.get_states_for_sequence(1)
-            assert loaded.get_states_for_sequence(2) == seq.get_states_for_sequence(2)
+            assert len(loaded) == seq.n_sequences()
+            assert loaded[1] == seq.get_states_for_sequence(1)
+            assert loaded[2] == seq.get_states_for_sequence(2)
             assert set(loaded.alphabet.states) == set(seq.alphabet.states)
 
 
@@ -123,10 +135,10 @@ class TestParquetLoader:
         with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as f:
             state_sequence_data.write_parquet(f.name)
 
-            seq = load_parquet(f.name)
+            pool = load_parquet(f.name)
 
-            assert isinstance(seq, StateSequence)
-            assert seq.n_sequences() == 2
+            assert isinstance(pool, SequencePool)
+            assert len(pool) == 2
 
     def test_save_and_load_parquet(self, state_sequence_data: pl.DataFrame) -> None:
         """Test round-trip save and load preserves actual data values."""
@@ -136,9 +148,9 @@ class TestParquetLoader:
             save_parquet(seq, f.name)
             loaded = load_parquet(f.name)
 
-            assert loaded.n_sequences() == seq.n_sequences()
-            assert loaded.get_states_for_sequence(1) == seq.get_states_for_sequence(1)
-            assert loaded.get_states_for_sequence(2) == seq.get_states_for_sequence(2)
+            assert len(loaded) == seq.n_sequences()
+            assert loaded[1] == seq.get_states_for_sequence(1)
+            assert loaded[2] == seq.get_states_for_sequence(2)
             assert set(loaded.alphabet.states) == set(seq.alphabet.states)
 
     def test_parquet_compression(self, state_sequence_data: pl.DataFrame) -> None:
@@ -150,7 +162,7 @@ class TestParquetLoader:
                 save_parquet(seq, f.name, compression=compression)
                 loaded = load_parquet(f.name)
 
-                assert loaded.n_sequences() == seq.n_sequences()
+                assert len(loaded) == seq.n_sequences()
 
 
 class TestLoadDataFrame:

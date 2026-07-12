@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from yasqat.metrics.hamming import HammingMetric, hamming_distance
+from yasqat.metrics.hamming import hamming_distance
 
 
 class TestHammingDistance:
@@ -72,15 +72,3 @@ class TestHammingDistance:
         dist_ba = hamming_distance(seq_b, seq_a)
 
         assert dist_ab == dist_ba
-
-    def test_metric_class(
-        self, equal_length_sequences: tuple[np.ndarray, np.ndarray]
-    ) -> None:
-        """Test HammingMetric class."""
-        seq_a, seq_b = equal_length_sequences
-
-        metric = HammingMetric(normalize=False)
-        dist = metric.compute(seq_a, seq_b)
-
-        # seq_a=[0,1,2,3], seq_b=[0,2,2,3]: 1 mismatch at position 1
-        assert dist == 1.0

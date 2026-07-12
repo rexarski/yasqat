@@ -1,5 +1,123 @@
 # Changelog
 
+## 0.5.0 (2026-07-11)
+
+### Breaking changes
+
+- **Metric class layer removed.** The `SequenceMetric` ABC and the per-metric
+  classes (`HammingMetric`, `LCSMetric`, `LCPMetric`, `RLCPMetric`, `DTWMetric`,
+  `SoftDTWMetric`, `TWEDMetric`, `Chi2Metric`, `EuclideanMetric`, `DHDMetric`,
+  `OptimalMatchingMetric`) are deleted. No metric ever subclassed the ABC and its
+  `compute_matrix()` had no callers — the live path is the free `*_distance`
+  functions dispatched by `SequencePool.compute_distances(method=...)`, which
+  stays. `DistanceMatrix` and `build_substitution_matrix` remain in
+  `yasqat.metrics`. Migrate `SomeMetric(...).compute(a, b)` →
+  `some_distance(a, b, ...)`, and matrix computation →
+  `pool.compute_distances(method=...)`.
+- **File loaders now return `SequencePool`.** `load_csv`, `load_json`, and
+  `load_parquet` return a `SequencePool` (matching `load_dataframe`) instead of
+  a `StateSequence`, and route through `load_dataframe` internally — one
+  DataFrame→pool seam for validation and alphabet checks. `SequencePool` is now
+  the canonical analysis container (ADR-0002); `StateSequence` is the
+  representation view for format conversions. Migrate
+  `seq = load_csv(...)` + `StateSequence`-only calls to
+  `load_csv(...).to_state_sequence()`. The `save_*` functions accept either
+  container (typed as `SequenceData`).
+- **`StateSequence.encode_states()` removed.** It had no callers and returned a
+  flat, sequence-boundary-less array of every row's state index — a shape the
+  metrics never used (they encode per-sequence via
+  `SequencePool.get_encoded_sequence()`). To integer-encode states from a
+  `StateSequence`, call `seq.alphabet.encode(seq.data[state_col].to_list())`
+  directly. `SequencePool.recode_states()` is unaffected and remains the
+  supported way to rename/merge states.
+
+### New features
+
+- **`"softdtw"` is now selectable in `SequencePool.compute_distances(...)`.**
+  Registering it in the dispatch closed a gap where SoftDTW had no pool-level
+  matrix path.
+- **`"dhd"` is now selectable in `SequencePool.compute_distances(...)`.** The
+  position-dependent cost array is built from the pool via
+  `build_position_costs` when not passed explicitly (`position_costs=...`);
+  unequal-length pools raise a clear `ValueError` (DHD requires equal
+  lengths). Closes the last metric with no pool-level matrix path.
+- **`SequencePool.coerce()` and `StateSequence.coerce()` classmethods.** Each
+  normalizes any sequence container (`StateSequence` or `SequencePool`) to its
+  own type — identity if already that type, otherwise rebuilt from the shared
+  `data`/`config`/`alphabet`. These are the single seam through which
+  `statistics.*` accepts either container.
+- **`DistanceMatrix.coerce()` — one seam for distance-matrix inputs.** Every
+  distance consumer (`pam_clustering`, `clara_clustering`,
+  `hierarchical_clustering`, the `clustering.quality` functions,
+  `discrepancy_analysis`, `multi_factor_discrepancy`, `dissimilarity_tree`)
+  now accepts a `DistanceMatrix` or a raw numpy array, normalized through the
+  new classmethod. Discrepancy analysis and dissimilarity trees previously
+  accepted only raw arrays, forcing `dm.values` unwrapping after
+  `compute_distances`; five inlined `hasattr(x, "values")` unwrap blocks are
+  gone. Coerced inputs get 2-D/square validation for free.
+- **`filters.*` accept either sequence container.** The criterion classes and
+  `filter_sequences` type their argument as the `SequenceData` protocol, so a
+  `SequencePool` (what loaders now return) works directly — no conversion to
+  `StateSequence` needed. The protocol gained `sequence_ids` (both containers
+  already exposed it with identical semantics); the criteria need no runtime
+  coercion at all.
+- **`association_rules()` — sequential association rules from mined patterns.**
+  New function in `yasqat.statistics` that splits each frequent subsequence
+  into an ordered antecedent (prefix) and consequent (suffix) and reports the
+  standard measures — `confidence`, `lift`, `leverage`, `conviction` — as a
+  separate rules `DataFrame`. Marginal supports are read straight from the
+  frequent-set, which the Apriori property guarantees already contains every
+  prefix and suffix, so no extra data scan is needed. Closes the last open
+  item of the `frequent_subsequences` enhancement request.
+- **`individual_state_distribution()` — per-sequence state distribution.** New
+  function in `yasqat.statistics` (TraMineR `seqistatd`) reporting, for each
+  sequence and each alphabet state, the number of time units spent in that
+  state and its proportion of the sequence length (unvisited states included
+  with a zero count). Returns a long-format `DataFrame`.
+- **`objective_volatility()` — label-free volatility.** New function in
+  `yasqat.statistics` (TraMineR `seqivolatility`) measuring
+  `w · pvisited + (1 − w) · ptrans` — a weighted blend of alphabet coverage
+  and transition rate that, unlike the existing `volatility()`, needs no
+  positive/negative state labels.
+
+### Documentation
+
+- **Sphinx documentation site** (`docs/`), replacing the removed Quarto site.
+  autodoc + napoleon (Google-style docstrings) + MyST (Markdown) on the furo
+  theme; an API reference generated per subpackage from each `__all__`, and
+  glossary/changelog pages that render `CONTEXT.md` / `CHANGELOG.md` in place
+  (single source of truth). Builds and deploys to GitHub Pages on push to
+  `main` via `.github/workflows/docs.yml`; install with the new `docs` extra.
+- `CONTEXT.md` domain glossary at the repo root: container roles (ADR-0002),
+  sequence formats, sequence anatomy, and analysis vocabulary.
+- "When to use which" cross-references in `sequence_frequency_table`
+  (complete-trajectory frequencies) vs `subsequence_count`
+  (within-trajectory variety).
+
+### Internal
+
+- **`statistics.*` now accept the `SequenceData` protocol via one coercion
+  seam.** The 31 functions across `descriptive`, `normative`, `transition`, and
+  `subsequence_mining` previously each inlined an `isinstance` coercion (16 in
+  `descriptive` alone) or routed through a private `_get_pool`. They now type
+  their argument as `core.protocols.SequenceData` and normalize via
+  `SequencePool.coerce` / `StateSequence.coerce`. Behaviour is unchanged; the
+  duplicated coercion and several dead identical-arm `isinstance` branches are
+  gone. (Progresses the `StateSequence`/`SequencePool` role cleanup; the
+  canonical-type decision is deferred.)
+- **`statistics.*` per-sequence functions share one reduce seam.** The 17
+  functions in `descriptive`/`normative` that mapped a scalar over each
+  sequence and returned either a per-sequence `DataFrame` or an aggregate each
+  re-implemented the same loop + return-shape contract. They now delegate to a
+  private `reduce_per_sequence(sequence, fn, name, per_sequence, aggregate)`
+  helper; each function keeps only its per-sequence scalar. Behaviour and
+  signatures are unchanged (net −226 lines). The `float | DataFrame` contract
+  and the mean/sum collapse now live in one place.
+- **The twin `coerce` classmethods share one rebuild rule.**
+  `StateSequence.coerce` and `SequencePool.coerce` had byte-identical bodies;
+  both now delegate to `core.protocols.coerce_container`, so the
+  `SequenceData` field set is spelled out once.
+
 ## 0.4.1 (2026-06-22)
 
 ### Bug fixes

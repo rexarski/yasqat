@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "yasqat"
-version = "0.4.1"
+version = "0.5.0"
 description = "Yet Another Sequence Analytics Toolkit - A modern Python library for sequence analysis with polars"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -48,7 +48,11 @@ dev = [
     "pytest-cov>=5.0",
     "ruff>=0.9",
     "mypy>=1.14",
-    "quartodoc>=0.7",
+]
+docs = [
+    "sphinx>=8.1",
+    "furo>=2024.8.6",
+    "myst-parser>=4.0",
 ]
 
 [project.urls]

@@ -7,13 +7,15 @@ from typing import TYPE_CHECKING
 import numpy as np
 import polars as pl
 
+from yasqat.core.pool import SequencePool
+from yasqat.core.sequence import StateSequence
+
 if TYPE_CHECKING:
-    from yasqat.core.pool import SequencePool
-    from yasqat.core.sequence import StateSequence
+    from yasqat.core.protocols import SequenceData
 
 
 def transition_rate_matrix(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
     as_counts: bool = False,
     exclude_self: bool = False,
 ) -> np.ndarray:
@@ -37,17 +39,7 @@ def transition_rate_matrix(
         >>> trate = transition_rate_matrix(pool)
         >>> # trate[i, j] = P(transition from state i to state j)
     """
-    from yasqat.core.pool import SequencePool
-    from yasqat.core.sequence import StateSequence
-
-    if isinstance(sequence, StateSequence):
-        pool = SequencePool(
-            data=sequence.data,
-            config=sequence.config,
-            alphabet=sequence.alphabet,
-        )
-    else:
-        pool = sequence
+    pool = SequencePool.coerce(sequence)
 
     alphabet = pool.alphabet
     n_states = len(alphabet)
@@ -77,7 +69,7 @@ def transition_rate_matrix(
 
 
 def transition_rates(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
     exclude_self: bool = False,
 ) -> pl.DataFrame:
     """
@@ -89,17 +81,7 @@ def transition_rates(
     Returns:
         DataFrame with columns: from_state, to_state, count, rate.
     """
-    from yasqat.core.pool import SequencePool
-    from yasqat.core.sequence import StateSequence
-
-    if isinstance(sequence, StateSequence):
-        pool = SequencePool(
-            data=sequence.data,
-            config=sequence.config,
-            alphabet=sequence.alphabet,
-        )
-    else:
-        pool = sequence
+    pool = SequencePool.coerce(sequence)
 
     alphabet = pool.alphabet
     counts = transition_rate_matrix(pool, as_counts=True, exclude_self=exclude_self)
@@ -124,7 +106,7 @@ def transition_rates(
 
 
 def first_occurrence_time(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
     state: str,
 ) -> pl.DataFrame:
     """
@@ -138,14 +120,8 @@ def first_occurrence_time(
         DataFrame with sequence IDs and first occurrence times.
         Sequences that never reach the state have null values.
     """
-    from yasqat.core.sequence import StateSequence
-
-    if isinstance(sequence, StateSequence):
-        data = sequence.data
-        config = sequence.config
-    else:
-        data = sequence.data
-        config = sequence.config
+    data = sequence.data
+    config = sequence.config
 
     return (
         data.filter(pl.col(config.state_column) == state)
@@ -156,7 +132,7 @@ def first_occurrence_time(
 
 
 def state_spell_stats(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
 ) -> pl.DataFrame:
     """
     Calculate spell-length statistics for each state.
@@ -174,12 +150,7 @@ def state_spell_stats(
         median_spell_length, min_spell_length, max_spell_length,
         std_spell_length, n_spells.
     """
-    from yasqat.core.sequence import StateSequence
-
-    if isinstance(sequence, StateSequence):
-        state_seq = sequence
-    else:
-        state_seq = sequence.to_state_sequence()
+    state_seq = StateSequence.coerce(sequence)
 
     sps = state_seq.to_sps()
     config = state_seq.config
@@ -201,7 +172,7 @@ def state_spell_stats(
 
 
 def state_duration_stats(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
 ) -> pl.DataFrame:
     """Deprecated: use state_spell_stats instead."""
     import warnings
@@ -215,7 +186,7 @@ def state_duration_stats(
 
 
 def substitution_cost_matrix(
-    sequence: StateSequence | SequencePool,
+    sequence: SequenceData,
     method: str = "trate",
 ) -> np.ndarray:
     """
@@ -230,17 +201,7 @@ def substitution_cost_matrix(
     Returns:
         Square numpy array of substitution costs.
     """
-    from yasqat.core.pool import SequencePool
-    from yasqat.core.sequence import StateSequence
-
-    if isinstance(sequence, StateSequence):
-        pool = SequencePool(
-            data=sequence.data,
-            config=sequence.config,
-            alphabet=sequence.alphabet,
-        )
-    else:
-        pool = sequence
+    pool = SequencePool.coerce(sequence)
 
     n_states = len(pool.alphabet)
 

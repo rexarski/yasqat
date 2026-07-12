@@ -1,6 +1,6 @@
 """Distance metrics for sequence comparison."""
 
-from yasqat.metrics.base import DistanceMatrix, SequenceMetric
+from yasqat.metrics.base import DistanceMatrix
 from yasqat.metrics.chi2 import chi2_distance
 from yasqat.metrics.dhd import dhd_distance
 from yasqat.metrics.dtw import dtw_distance
@@ -14,18 +14,13 @@ from yasqat.metrics.om_variants import (
     omspell_distance,
     omstran_distance,
 )
-from yasqat.metrics.optimal_matching import (
-    OptimalMatchingMetric,
-    optimal_matching_distance,
-)
+from yasqat.metrics.optimal_matching import optimal_matching_distance
 from yasqat.metrics.rlcp import rlcp_distance, rlcp_length, rlcp_similarity
 from yasqat.metrics.softdtw import softdtw_distance
 from yasqat.metrics.twed import twed_distance
 
 __all__ = [
     "DistanceMatrix",
-    "OptimalMatchingMetric",
-    "SequenceMetric",
     "chi2_distance",
     "dhd_distance",
     "dtw_distance",
