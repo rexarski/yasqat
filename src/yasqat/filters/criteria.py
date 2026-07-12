@@ -210,13 +210,16 @@ class StartsWithCriterion(SequenceCriterion):
         # Filter to only the first n_prefix positions per sequence
         prefix_data = data.filter(pl.col("_pos") <= n_prefix)
 
-        # Group by id, collect the prefix states as a list
+        # Join each sequence's prefix states into a single delimited string and
+        # compare strings. Comparing List-dtype columns with ``==`` panics on
+        # polars >= 1.4x ("ordering for List dtype is not supported"), so we
+        # never build a List column here. A shorter-than-target prefix yields a
+        # different string and is correctly excluded.
+        sep = "\x1f"  # unit separator — not expected in state labels
         prefixes = prefix_data.group_by(id_col, maintain_order=True).agg(
-            pl.col(state_col).alias("_prefix")
+            pl.col(state_col).str.join(sep).alias("_prefix")
         )
-
-        # Filter: prefix list must equal the target states
-        target = self.states
+        target = sep.join(self.states)
         matching = prefixes.filter(pl.col("_prefix") == target)
 
         return matching[id_col].to_list()
