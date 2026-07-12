@@ -34,11 +34,14 @@ Inspired by [TraMineR](http://traminer.unige.ch/) (R) and
 - **Descriptive statistics** — entropy, transition rates, complexity,
   turbulence, spell counts, visited states, modal states (with time
   granularity), sequence frequencies, log-probabilities, subsequence
-  counts (with state filtering and log-transform)
-- **Normative indicators** — volatility, precarity, insecurity, degradation,
-  badness, integration (per-state), proportion positive
+  counts (with state filtering and log-transform), per-sequence state
+  distributions
+- **Normative indicators** — volatility, objective (label-free) volatility,
+  precarity, insecurity, degradation, badness, integration (per-state),
+  proportion positive
 - **Subsequence mining** — frequent subsequence discovery with support
-  thresholds and minimum length, returned as polars DataFrames
+  thresholds and minimum length, plus sequential association rules
+  (confidence, lift, leverage, conviction), returned as polars DataFrames
 - **Plot-library agnostic** — every method returns a polars `DataFrame`,
   so users can plot with their tool of choice (matplotlib, altair,
   observable, …). `Alphabet.colors` is exposed for consistent palette use.
