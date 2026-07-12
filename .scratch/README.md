@@ -24,6 +24,8 @@ there with a pointer to this tracker.
 | 11 | [More time-series content](issues/11-time-series-content.md) | enhancement | `on-hold` |
 | 12 | [More subsequence mining](issues/12-more-subsequence-mining.md) | enhancement | `needs-triage` |
 | 13 | [New documentation website](issues/13-documentation-website.md) | docs | `resolved` (0.5.0) |
+| 15 | [Split distance engine out of SequencePool](issues/15-distance-engine-prepare-seam.md) | enhancement | `needs-triage` |
+| 16 | [Lift quality functions out of clustering/](issues/16-clustering-quality-placement.md) | enhancement | `needs-triage` |
 
 ## Status legend
 
