@@ -105,6 +105,18 @@
   duplicated coercion and several dead identical-arm `isinstance` branches are
   gone. (Progresses the `StateSequence`/`SequencePool` role cleanup; the
   canonical-type decision is deferred.)
+- **`statistics.*` per-sequence functions share one reduce seam.** The 17
+  functions in `descriptive`/`normative` that mapped a scalar over each
+  sequence and returned either a per-sequence `DataFrame` or an aggregate each
+  re-implemented the same loop + return-shape contract. They now delegate to a
+  private `reduce_per_sequence(sequence, fn, name, per_sequence, aggregate)`
+  helper; each function keeps only its per-sequence scalar. Behaviour and
+  signatures are unchanged (net −226 lines). The `float | DataFrame` contract
+  and the mean/sum collapse now live in one place.
+- **The twin `coerce` classmethods share one rebuild rule.**
+  `StateSequence.coerce` and `SequencePool.coerce` had byte-identical bodies;
+  both now delegate to `core.protocols.coerce_container`, so the
+  `SequenceData` field set is spelled out once.
 
 ## 0.4.1 (2026-06-22)
 

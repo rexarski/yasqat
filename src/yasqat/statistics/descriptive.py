@@ -2,15 +2,22 @@
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import polars as pl
 
 from yasqat.core.pool import SequencePool
+from yasqat.statistics._reduce import reduce_per_sequence
 
 if TYPE_CHECKING:
     from yasqat.core.protocols import SequenceData
+
+
+def _n_transitions(states: list[str]) -> int:
+    """Number of adjacent state changes in one sequence."""
+    return sum(1 for i in range(len(states) - 1) if states[i] != states[i + 1])
 
 
 def longitudinal_entropy(
@@ -92,29 +99,11 @@ def transition_count(
         If per_sequence=False: Total number of transitions.
         If per_sequence=True: DataFrame with sequence IDs and counts.
     """
-    pool = SequencePool.coerce(sequence)
-
-    config = pool.config
-    counts = []
-    seq_ids = []
-
-    for seq_id in pool.sequence_ids:
-        states = pool.get_sequence(seq_id)
-        n_transitions = sum(
-            1 for i in range(len(states) - 1) if states[i] != states[i + 1]
-        )
-        counts.append(n_transitions)
-        seq_ids.append(seq_id)
-
-    if per_sequence:
-        return pl.DataFrame(
-            {
-                config.id_column: seq_ids,
-                "n_transitions": counts,
-            }
-        )
-
-    return sum(counts)
+    result = reduce_per_sequence(
+        sequence, _n_transitions, "n_transitions", per_sequence, aggregate="sum"
+    )
+    # The summed counts are an int at runtime; the reduce types them float.
+    return cast("int | pl.DataFrame", result)
 
 
 def sequence_length(
@@ -132,26 +121,7 @@ def sequence_length(
         If per_sequence=False: Mean sequence length.
         If per_sequence=True: DataFrame with sequence IDs and lengths.
     """
-    pool = SequencePool.coerce(sequence)
-
-    config = pool.config
-    lengths = []
-    seq_ids = []
-
-    for seq_id in pool.sequence_ids:
-        states = pool.get_sequence(seq_id)
-        lengths.append(len(states))
-        seq_ids.append(seq_id)
-
-    if per_sequence:
-        return pl.DataFrame(
-            {
-                config.id_column: seq_ids,
-                "length": lengths,
-            }
-        )
-
-    return float(np.mean(lengths))
+    return reduce_per_sequence(sequence, len, "length", per_sequence)
 
 
 def complexity_index(
@@ -173,37 +143,14 @@ def complexity_index(
         If per_sequence=False: Mean complexity across sequences.
         If per_sequence=True: DataFrame with sequence IDs and complexity.
     """
-    pool = SequencePool.coerce(sequence)
 
-    config = pool.config
-    complexities = []
-    seq_ids = []
-
-    for seq_id in pool.sequence_ids:
-        states = pool.get_sequence(seq_id)
+    def _complexity(states: list[str]) -> float:
         n = len(states)
-
         if n <= 1:
-            complexities.append(0.0)
-            seq_ids.append(seq_id)
-            continue
+            return 0.0
+        return float(np.sqrt(_n_transitions(states) * len(set(states))) / n)
 
-        n_transitions = sum(1 for i in range(n - 1) if states[i] != states[i + 1])
-        n_distinct = len(set(states))
-
-        complexity = np.sqrt(n_transitions * n_distinct) / n
-        complexities.append(complexity)
-        seq_ids.append(seq_id)
-
-    if per_sequence:
-        return pl.DataFrame(
-            {
-                config.id_column: seq_ids,
-                "complexity": complexities,
-            }
-        )
-
-    return float(np.mean(complexities))
+    return reduce_per_sequence(sequence, _complexity, "complexity", per_sequence)
 
 
 def turbulence(
@@ -380,32 +327,11 @@ def spell_count(
         If per_sequence=False: Mean spell count across sequences.
         If per_sequence=True: DataFrame with sequence IDs and spell counts.
     """
-    pool = SequencePool.coerce(sequence)
 
-    config = pool.config
-    counts = []
-    seq_ids = []
+    def _spells(states: list[str]) -> int:
+        return 0 if len(states) == 0 else 1 + _n_transitions(states)
 
-    for seq_id in pool.sequence_ids:
-        states = pool.get_sequence(seq_id)
-        if len(states) == 0:
-            n_spells = 0
-        else:
-            n_spells = 1 + sum(
-                1 for i in range(len(states) - 1) if states[i] != states[i + 1]
-            )
-        counts.append(n_spells)
-        seq_ids.append(seq_id)
-
-    if per_sequence:
-        return pl.DataFrame(
-            {
-                config.id_column: seq_ids,
-                "n_spells": counts,
-            }
-        )
-
-    return float(np.mean(counts))
+    return reduce_per_sequence(sequence, _spells, "n_spells", per_sequence)
 
 
 def visited_states(
@@ -423,26 +349,11 @@ def visited_states(
         If per_sequence=False: Mean number of visited states.
         If per_sequence=True: DataFrame with sequence IDs and counts.
     """
-    pool = SequencePool.coerce(sequence)
 
-    config = pool.config
-    counts = []
-    seq_ids = []
+    def _visited(states: list[str]) -> int:
+        return len(set(states))
 
-    for seq_id in pool.sequence_ids:
-        states = pool.get_sequence(seq_id)
-        counts.append(len(set(states)))
-        seq_ids.append(seq_id)
-
-    if per_sequence:
-        return pl.DataFrame(
-            {
-                config.id_column: seq_ids,
-                "n_visited": counts,
-            }
-        )
-
-    return float(np.mean(counts))
+    return reduce_per_sequence(sequence, _visited, "n_visited", per_sequence)
 
 
 def visited_proportion(
@@ -463,28 +374,12 @@ def visited_proportion(
         If per_sequence=True: DataFrame with sequence IDs and proportions.
     """
     pool = SequencePool.coerce(sequence)
-
-    config = pool.config
     n_states = len(pool.alphabet)
-    proportions = []
-    seq_ids = []
 
-    for seq_id in pool.sequence_ids:
-        states = pool.get_sequence(seq_id)
-        n_visited = len(set(states))
-        prop = n_visited / n_states if n_states > 0 else 0.0
-        proportions.append(prop)
-        seq_ids.append(seq_id)
+    def _proportion(states: list[str]) -> float:
+        return len(set(states)) / n_states if n_states > 0 else 0.0
 
-    if per_sequence:
-        return pl.DataFrame(
-            {
-                config.id_column: seq_ids,
-                "visited_proportion": proportions,
-            }
-        )
-
-    return float(np.mean(proportions))
+    return reduce_per_sequence(pool, _proportion, "visited_proportion", per_sequence)
 
 
 def transition_proportion(
@@ -504,31 +399,14 @@ def transition_proportion(
         If per_sequence=False: Mean transition proportion.
         If per_sequence=True: DataFrame with sequence IDs and proportions.
     """
-    pool = SequencePool.coerce(sequence)
 
-    config = pool.config
-    proportions = []
-    seq_ids = []
-
-    for seq_id in pool.sequence_ids:
-        states = pool.get_sequence(seq_id)
+    def _proportion(states: list[str]) -> float:
         n = len(states)
-        if n <= 1:
-            proportions.append(0.0)
-        else:
-            n_trans = sum(1 for i in range(n - 1) if states[i] != states[i + 1])
-            proportions.append(n_trans / (n - 1))
-        seq_ids.append(seq_id)
+        return 0.0 if n <= 1 else _n_transitions(states) / (n - 1)
 
-    if per_sequence:
-        return pl.DataFrame(
-            {
-                config.id_column: seq_ids,
-                "transition_proportion": proportions,
-            }
-        )
-
-    return float(np.mean(proportions))
+    return reduce_per_sequence(
+        sequence, _proportion, "transition_proportion", per_sequence
+    )
 
 
 def modal_states(
@@ -700,27 +578,15 @@ def subsequence_count(
         If per_sequence=False: Mean distinct subsequence count (or log2 mean).
         If per_sequence=True: DataFrame with sequence IDs and counts.
     """
-    import math
+    allowed = set(states_filter) if states_filter is not None else None
 
-    pool = SequencePool.coerce(sequence)
-
-    config = pool.config
-    counts: list[int | float] = []
-    seq_ids: list[int | str] = []
-
-    for seq_id in pool.sequence_ids:
-        states = pool.get_sequence(seq_id)
-
-        # Filter to only the requested states if given
-        if states_filter is not None:
-            allowed = set(states_filter)
+    def _count(states: list[str]) -> int | float:
+        if allowed is not None:
             states = [s for s in states if s in allowed]
 
         n = len(states)
         if n == 0:
-            counts.append(0)
-            seq_ids.append(seq_id)
-            continue
+            return 0
 
         if use_log:
             # Use log2 arithmetic to avoid overflow
@@ -735,33 +601,22 @@ def subsequence_count(
                     if diff > -50:
                         log_dp[i] = log_dp[i - 1] + math.log2(2.0 - 2.0**diff)
                 last[c] = i
-            counts.append(log_dp[n])
-        else:
-            # Standard DP — Python big ints handle overflow
-            dp = [0] * (n + 1)
-            dp[0] = 1
-            last_seen: dict[str, int] = {}
-            for i in range(1, n + 1):
-                dp[i] = 2 * dp[i - 1]
-                c = states[i - 1]
-                if c in last_seen:
-                    dp[i] -= dp[last_seen[c] - 1]
-                last_seen[c] = i
-            counts.append(dp[n] - 1)
+            return log_dp[n]
 
-        seq_ids.append(seq_id)
+        # Standard DP — Python big ints handle overflow
+        dp = [0] * (n + 1)
+        dp[0] = 1
+        last_seen: dict[str, int] = {}
+        for i in range(1, n + 1):
+            dp[i] = 2 * dp[i - 1]
+            c = states[i - 1]
+            if c in last_seen:
+                dp[i] -= dp[last_seen[c] - 1]
+            last_seen[c] = i
+        return dp[n] - 1
 
     col_name = "log2_n_subsequences" if use_log else "n_subsequences"
-
-    if per_sequence:
-        return pl.DataFrame(
-            {
-                config.id_column: seq_ids,
-                col_name: counts,
-            }
-        )
-
-    return float(np.mean(counts))
+    return reduce_per_sequence(sequence, _count, col_name, per_sequence)
 
 
 def normalized_turbulence(
@@ -837,40 +692,18 @@ def sequence_log_probability(
     from yasqat.statistics.transition import transition_rate_matrix
 
     pool = SequencePool.coerce(sequence)
+    state_to_idx = {s: i for i, s in enumerate(pool.alphabet.states)}
 
-    config = pool.config
-    alphabet = pool.alphabet
-    state_to_idx = {s: i for i, s in enumerate(alphabet.states)}
-
-    # Get transition rate matrix from the pool
+    # Transition rate matrix estimated from the whole pool
     trate = transition_rate_matrix(pool, as_counts=False)
 
-    log_probs = []
-    seq_ids = []
-
-    for seq_id in pool.sequence_ids:
-        states = pool.get_sequence(seq_id)
+    def _log_prob(states: list[str]) -> float:
         log_prob = 0.0
-
         for t in range(len(states) - 1):
-            i = state_to_idx[states[t]]
-            j = state_to_idx[states[t + 1]]
-            p = trate[i, j]
-            if p > 0:
-                log_prob += np.log(p)
-            else:
-                log_prob = float("-inf")
-                break
+            p = trate[state_to_idx[states[t]], state_to_idx[states[t + 1]]]
+            if p <= 0:
+                return float("-inf")
+            log_prob += np.log(p)
+        return log_prob
 
-        log_probs.append(log_prob)
-        seq_ids.append(seq_id)
-
-    if per_sequence:
-        return pl.DataFrame(
-            {
-                config.id_column: seq_ids,
-                "log_probability": log_probs,
-            }
-        )
-
-    return float(np.mean(log_probs))
+    return reduce_per_sequence(pool, _log_prob, "log_probability", per_sequence)

@@ -10,6 +10,7 @@ import numpy as np
 import polars as pl
 
 from yasqat.core.alphabet import Alphabet
+from yasqat.core.protocols import coerce_container
 from yasqat.core.sequence import SequenceConfig, StateSequence
 
 if TYPE_CHECKING:
@@ -144,13 +145,7 @@ class SequencePool:
         the single seam through which ``statistics.*`` accepts either a
         ``StateSequence`` or a ``SequencePool``.
         """
-        if isinstance(sequence, cls):
-            return sequence
-        return cls(
-            data=sequence.data,
-            config=sequence.config,
-            alphabet=sequence.alphabet,
-        )
+        return coerce_container(cls, sequence)
 
     def sequence_lengths(self) -> pl.DataFrame:
         """Get the length of each sequence."""

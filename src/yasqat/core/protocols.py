@@ -14,13 +14,14 @@ never hit that mismatch.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, TypeVar, runtime_checkable
 
 if TYPE_CHECKING:
     import polars as pl
 
     from yasqat.core.alphabet import Alphabet
-    from yasqat.core.sequence import SequenceConfig
+    from yasqat.core.pool import SequencePool
+    from yasqat.core.sequence import SequenceConfig, StateSequence
 
 
 @runtime_checkable
@@ -46,3 +47,23 @@ class SequenceData(Protocol):
     def sequence_ids(self) -> list[int | str]:
         """Sorted unique sequence identifiers."""
         ...
+
+
+_Container = TypeVar("_Container", "StateSequence", "SequencePool")
+
+
+def coerce_container(cls: type[_Container], sequence: SequenceData) -> _Container:
+    """Normalize a sequence container to ``cls`` — the one rebuild rule.
+
+    Returns ``sequence`` unchanged if it is already a ``cls``; otherwise
+    rebuilds one from the ``SequenceData`` surface. Backs both
+    :meth:`StateSequence.coerce` and :meth:`SequencePool.coerce` so the
+    protocol's field set is spelled out exactly once.
+    """
+    if isinstance(sequence, cls):
+        return sequence
+    return cls(
+        data=sequence.data,
+        config=sequence.config,
+        alphabet=sequence.alphabet,
+    )

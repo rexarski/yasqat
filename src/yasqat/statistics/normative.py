@@ -10,10 +10,10 @@ from __future__ import annotations
 from collections import Counter
 from typing import TYPE_CHECKING
 
-import numpy as np
 import polars as pl
 
 from yasqat.core.pool import SequencePool
+from yasqat.statistics._reduce import reduce_per_sequence
 
 if TYPE_CHECKING:
     from yasqat.core.protocols import SequenceData
@@ -93,26 +93,16 @@ def proportion_positive(
         If per_sequence=False: Mean proportion positive.
         If per_sequence=True: DataFrame with sequence IDs and proportions.
     """
-    pool = SequencePool.coerce(sequence)
-    config = pool.config
-    proportions = []
-    seq_ids = []
 
-    for seq_id in pool.sequence_ids:
-        states = pool.get_sequence(seq_id)
+    def _proportion(states: list[str]) -> float:
         n = len(states)
         if n == 0:
-            proportions.append(0.0)
-        else:
-            n_pos = sum(1 for s in states if s in positive_states)
-            proportions.append(n_pos / n)
-        seq_ids.append(seq_id)
+            return 0.0
+        return sum(1 for s in states if s in positive_states) / n
 
-    if per_sequence:
-        return pl.DataFrame(
-            {config.id_column: seq_ids, "proportion_positive": proportions}
-        )
-    return float(np.mean(proportions))
+    return reduce_per_sequence(
+        sequence, _proportion, "proportion_positive", per_sequence
+    )
 
 
 def volatility(
@@ -137,29 +127,20 @@ def volatility(
         If per_sequence=False: Mean volatility.
         If per_sequence=True: DataFrame with sequence IDs and values.
     """
-    pool = SequencePool.coerce(sequence)
-    config = pool.config
-    values = []
-    seq_ids = []
 
-    for seq_id in pool.sequence_ids:
-        states = pool.get_sequence(seq_id)
+    def _volatility(states: list[str]) -> float:
         signs = _state_signs(states, positive_states, negative_states)
         n = len(signs)
         if n <= 1:
-            values.append(0.0)
-        else:
-            changes = sum(
-                1
-                for i in range(n - 1)
-                if signs[i] != 0 and signs[i + 1] != 0 and signs[i] != signs[i + 1]
-            )
-            values.append(changes / (n - 1))
-        seq_ids.append(seq_id)
+            return 0.0
+        changes = sum(
+            1
+            for i in range(n - 1)
+            if signs[i] != 0 and signs[i + 1] != 0 and signs[i] != signs[i + 1]
+        )
+        return changes / (n - 1)
 
-    if per_sequence:
-        return pl.DataFrame({config.id_column: seq_ids, "volatility": values})
-    return float(np.mean(values))
+    return reduce_per_sequence(sequence, _volatility, "volatility", per_sequence)
 
 
 def objective_volatility(
@@ -199,27 +180,19 @@ def objective_volatility(
         raise ValueError(f"w must be in [0, 1], got {w}")
 
     pool = SequencePool.coerce(sequence)
-    config = pool.config
     n_alphabet = len(pool.alphabet.states)
-    values = []
-    seq_ids = []
 
-    for seq_id in pool.sequence_ids:
-        states = pool.get_sequence(seq_id)
+    def _volatility(states: list[str]) -> float:
         n = len(states)
         if n <= 1 or n_alphabet <= 1:
             # No transitions possible, or a degenerate alphabet.
-            values.append(0.0)
-        else:
-            pvisited = (len(set(states)) - 1) / (n_alphabet - 1)
-            transitions = sum(1 for i in range(n - 1) if states[i] != states[i + 1])
-            ptrans = transitions / (n - 1)
-            values.append(w * pvisited + (1.0 - w) * ptrans)
-        seq_ids.append(seq_id)
+            return 0.0
+        pvisited = (len(set(states)) - 1) / (n_alphabet - 1)
+        transitions = sum(1 for i in range(n - 1) if states[i] != states[i + 1])
+        ptrans = transitions / (n - 1)
+        return w * pvisited + (1.0 - w) * ptrans
 
-    if per_sequence:
-        return pl.DataFrame({config.id_column: seq_ids, "objective_volatility": values})
-    return float(np.mean(values))
+    return reduce_per_sequence(pool, _volatility, "objective_volatility", per_sequence)
 
 
 def precarity(
@@ -240,28 +213,19 @@ def precarity(
         If per_sequence=False: Mean precarity.
         If per_sequence=True: DataFrame with sequence IDs and values.
     """
-    pool = SequencePool.coerce(sequence)
-    config = pool.config
-    values = []
-    seq_ids = []
 
-    for seq_id in pool.sequence_ids:
-        states = pool.get_sequence(seq_id)
+    def _precarity(states: list[str]) -> float:
         n = len(states)
         if n == 0:
-            values.append(0.0)
-        else:
-            # Linearly increasing weights: 1, 2, ..., n
-            total_weight = n * (n + 1) / 2
-            weighted_neg = sum(
-                (i + 1) for i, s in enumerate(states) if s in negative_states
-            )
-            values.append(weighted_neg / total_weight)
-        seq_ids.append(seq_id)
+            return 0.0
+        # Linearly increasing weights: 1, 2, ..., n
+        total_weight = n * (n + 1) / 2
+        weighted_neg = sum(
+            (i + 1) for i, s in enumerate(states) if s in negative_states
+        )
+        return weighted_neg / total_weight
 
-    if per_sequence:
-        return pl.DataFrame({config.id_column: seq_ids, "precarity": values})
-    return float(np.mean(values))
+    return reduce_per_sequence(sequence, _precarity, "precarity", per_sequence)
 
 
 def insecurity(
@@ -284,35 +248,27 @@ def insecurity(
         If per_sequence=False: Mean insecurity.
         If per_sequence=True: DataFrame with sequence IDs and values.
     """
-    pool = SequencePool.coerce(sequence)
-    config = pool.config
-    values = []
-    seq_ids = []
 
-    for seq_id in pool.sequence_ids:
-        states = pool.get_sequence(seq_id)
+    def _insecurity(states: list[str]) -> float:
         n = len(states)
         if n <= 1:
-            values.append(1.0 if n == 1 and states[0] in negative_states else 0.0)
-        else:
-            # Suffix sum of negative states
-            neg_suffix = [0] * (n + 1)
-            for i in range(n - 1, -1, -1):
-                neg_suffix[i] = neg_suffix[i + 1] + (
-                    1 if states[i] in negative_states else 0
-                )
+            return 1.0 if n == 1 and states[0] in negative_states else 0.0
 
-            # Average insecurity at each position
-            total = 0.0
-            for i in range(n):
-                remaining = n - i
-                total += neg_suffix[i] / remaining
-            values.append(total / n)
-        seq_ids.append(seq_id)
+        # Suffix sum of negative states
+        neg_suffix = [0] * (n + 1)
+        for i in range(n - 1, -1, -1):
+            neg_suffix[i] = neg_suffix[i + 1] + (
+                1 if states[i] in negative_states else 0
+            )
 
-    if per_sequence:
-        return pl.DataFrame({config.id_column: seq_ids, "insecurity": values})
-    return float(np.mean(values))
+        # Average insecurity at each position
+        total = 0.0
+        for i in range(n):
+            remaining = n - i
+            total += neg_suffix[i] / remaining
+        return total / n
+
+    return reduce_per_sequence(sequence, _insecurity, "insecurity", per_sequence)
 
 
 def degradation(
@@ -337,29 +293,19 @@ def degradation(
         If per_sequence=False: Mean degradation.
         If per_sequence=True: DataFrame with sequence IDs and values.
     """
-    pool = SequencePool.coerce(sequence)
-    config = pool.config
-    values = []
-    seq_ids = []
 
-    for seq_id in pool.sequence_ids:
-        states = pool.get_sequence(seq_id)
+    def _degradation(states: list[str]) -> float:
         signs = _state_signs(states, positive_states, negative_states)
         n = len(signs)
-
         if n <= 1:
-            values.append(0.0)
-        else:
-            # Count transitions from positive to negative
-            neg_transitions = sum(
-                1 for i in range(n - 1) if signs[i] == 1 and signs[i + 1] == -1
-            )
-            values.append(neg_transitions / (n - 1))
-        seq_ids.append(seq_id)
+            return 0.0
+        # Count transitions from positive to negative
+        neg_transitions = sum(
+            1 for i in range(n - 1) if signs[i] == 1 and signs[i + 1] == -1
+        )
+        return neg_transitions / (n - 1)
 
-    if per_sequence:
-        return pl.DataFrame({config.id_column: seq_ids, "degradation": values})
-    return float(np.mean(values))
+    return reduce_per_sequence(sequence, _degradation, "degradation", per_sequence)
 
 
 def badness(
@@ -381,24 +327,14 @@ def badness(
         If per_sequence=False: Mean badness.
         If per_sequence=True: DataFrame with sequence IDs and values.
     """
-    pool = SequencePool.coerce(sequence)
-    config = pool.config
-    values = []
-    seq_ids = []
 
-    for seq_id in pool.sequence_ids:
-        states = pool.get_sequence(seq_id)
+    def _badness(states: list[str]) -> float:
         n = len(states)
         if n == 0:
-            values.append(0.0)
-        else:
-            n_neg = sum(1 for s in states if s in negative_states)
-            values.append(n_neg / n)
-        seq_ids.append(seq_id)
+            return 0.0
+        return sum(1 for s in states if s in negative_states) / n
 
-    if per_sequence:
-        return pl.DataFrame({config.id_column: seq_ids, "badness": values})
-    return float(np.mean(values))
+    return reduce_per_sequence(sequence, _badness, "badness", per_sequence)
 
 
 def integration(
@@ -433,26 +369,20 @@ def integration(
             val = integration(sequence, positive_states={state}, per_sequence=False)
             rows.append({"state": state, "integration": val})
         return pl.DataFrame(rows)
-    config = pool.config
-    values = []
-    seq_ids = []
 
-    for seq_id in pool.sequence_ids:
-        states = pool.get_sequence(seq_id)
+    positive = positive_states
+
+    def _integration(states: list[str]) -> float:
         n = len(states)
         if n == 0:
-            values.append(0.0)
-        else:
-            # Cumulative proportion positive at each step
-            cum_pos = 0
-            total = 0.0
-            for i, s in enumerate(states):
-                if s in positive_states:
-                    cum_pos += 1
-                total += cum_pos / (i + 1)
-            values.append(total / n)
-        seq_ids.append(seq_id)
+            return 0.0
+        # Cumulative proportion positive at each step
+        cum_pos = 0
+        total = 0.0
+        for i, s in enumerate(states):
+            if s in positive:
+                cum_pos += 1
+            total += cum_pos / (i + 1)
+        return total / n
 
-    if per_sequence:
-        return pl.DataFrame({config.id_column: seq_ids, "integration": values})
-    return float(np.mean(values))
+    return reduce_per_sequence(pool, _integration, "integration", per_sequence)

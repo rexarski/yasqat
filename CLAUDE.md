@@ -62,7 +62,20 @@ public API boundaries and trust internal calls; never `assert` in library code.
 normalize at the top of the body with `SequencePool.coerce(sequence)` (or
 `StateSequence.coerce(sequence)` when you need the format-conversion methods).
 Don't reintroduce `StateSequence | SequencePool` unions or inline
-`isinstance`/`_get_pool` coercion — `coerce` is the one seam.
+`isinstance`/`_get_pool` coercion — `coerce` is the one seam. (Both `coerce`
+classmethods delegate to `core.protocols.coerce_container` — the single
+rebuild rule; don't re-inline the `isinstance`/rebuild there either.)
+
+**Per-sequence statistics** — a stat that maps a scalar over each sequence and
+returns *either* a per-sequence `DataFrame` or an aggregate belongs on the
+`statistics._reduce.reduce_per_sequence(sequence, fn, name, per_sequence,
+aggregate=...)` seam. Write only the per-sequence scalar `fn(states) -> float`
+(closing over any config it needs) and let the reduce own coerce, the loop, the
+id-column, and the mean/sum collapse. Don't re-inline the
+`for seq_id in pool.sequence_ids: ...; if per_sequence: return DataFrame; return
+mean` skeleton. Genuinely vectorized (whole-pool polars) stats — e.g.
+`longitudinal_entropy`, `turbulence` — stay as they are; the seam is for the
+Python-loop shape.
 
 **Testing** — pytest with `--strict-markers`; test paths mirror source
 (`tests/test_metrics/test_hamming.py` ↔ `src/yasqat/metrics/hamming.py`); classes

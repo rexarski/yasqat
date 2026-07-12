@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 import polars as pl
 
 from yasqat.core.alphabet import Alphabet
+from yasqat.core.protocols import coerce_container
 
 if TYPE_CHECKING:
     from yasqat.core.protocols import SequenceData
@@ -294,13 +295,7 @@ class StateSequence:
         mirror of :meth:`SequencePool.coerce`, for callers that need the
         format-conversion surface (``to_sts``/``to_sps``/``to_dss``).
         """
-        if isinstance(sequence, cls):
-            return sequence
-        return cls(
-            data=sequence.data,
-            config=sequence.config,
-            alphabet=sequence.alphabet,
-        )
+        return coerce_container(cls, sequence)
 
     @classmethod
     def from_intervals(
