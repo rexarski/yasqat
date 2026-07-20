@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,40 +9,40 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;600&family=Noto+Sans+SC:wght@200;300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
   :root{
-    /* ============ 主题色(默认: 🔵 克莱因蓝 IKB) ============
-       切换主题: 从 references/themes-swiss.md 复制对应的 :root 块
-       整体替换标有"主题色"注释的所有变量,其他散落的 var() 引用无需逐处改 */
-    --paper:#fafaf8;          /* 主底色: 高级灰白 */
+    /* ============ Theme color (default: 🔵 Klein Blue IKB) ============
+       Switch theme: copy the matching :root block from references/themes-swiss.md.
+       Replace every variable tagged "theme color" as a group; other scattered var() references need no change. */
+    --paper:#fafaf8;          /* Main background: refined off-white */
     --paper-rgb:250,250,248;
-    --ink:#0a0a0a;            /* 文字主色: 近黑 */
+    --ink:#0a0a0a;            /* Primary text color: near-black */
     --ink-rgb:10,10,10;
-    --grey-1:#f0f0ee;         /* 浅灰底 */
-    --grey-2:#d4d4d2;         /* 中灰(分割线) */
-    --grey-3:#737373;         /* 暗灰(辅助文字) */
-    --accent:#002FA7;         /* 高亮色: 克莱因蓝 IKB */
-    --accent-rgb:0,47,167;
-    --accent-on:#ffffff;      /* accent 上的反色文字 */
-    --accent-bright:#5B7BFF;  /* 暗底高亮: IKB 提亮版 */
+    --grey-1:#f0f0ee;         /* Light grey background */
+    --grey-2:#d4d4d2;         /* Mid grey (dividers) */
+    --grey-3:#737373;         /* Dark grey (helper text) */
+    --accent:#0F3D70;         /* Accent color: Navy Federal navy */
+    --accent-rgb:15,61,112;
+    --accent-on:#ffffff;      /* Inverted text on accent */
+    --accent-bright:#5B8FD6;  /* Accent on dark background: brightened navy */
 
-    /* ============ Carbon 文本角色 token (role-based,代替 opacity) ============
-       亮底:  primary 主文 / secondary 次文 / helper 辅助 / placeholder 占位
-       暗底:  inverse 自动反向 */
+    /* ============ Carbon text role tokens (role-based, replaces opacity) ============
+       Light background: primary / secondary / helper / placeholder
+       Dark background: inverse (auto-inverted) */
     --text-primary:#0a0a0a;        /* = ink, 100% */
     --text-secondary:#525252;      /* gray 70 */
     --text-helper:#737373;         /* gray 60 */
     --text-placeholder:#a3a3a3;    /* gray 40 */
-    --text-on-color:#ffffff;       /* accent/dark 反色 */
-    --border-subtle:#e0e0e0;       /* gray 20, 极细分隔 */
-    --border-strong:#a3a3a3;       /* gray 40, 强分隔 */
+    --text-on-color:#ffffff;       /* Inverted text on accent/dark */
+    --border-subtle:#e0e0e0;       /* gray 20, very fine divider */
+    --border-strong:#a3a3a3;       /* gray 40, strong divider */
 
-    /* ============ 字体(跨主题固定) ============ */
+    /* ============ Fonts (fixed across themes) ============ */
     --sans:"Inter","Helvetica Neue","Helvetica","Arial","Segoe UI Variable","Segoe UI",system-ui,-apple-system,sans-serif;
-    --sans-zh:"PingFang SC","Hiragino Sans GB","Source Han Sans SC","Noto Sans SC","Microsoft YaHei UI","Microsoft YaHei","微软雅黑",sans-serif;
+    --sans-zh:"PingFang SC","Hiragino Sans GB","Source Han Sans SC","Noto Sans SC","Microsoft YaHei UI","Microsoft YaHei",sans-serif;
     --mono:"JetBrains Mono","IBM Plex Mono","SF Mono","Cascadia Code","Consolas","Courier New",ui-monospace,monospace;
 
-    /* ============ Carbon 2x Grid 间距模数 (基础 8px) ============
-       参考: https://carbondesignsystem.com/elements/2x-grid/overview/
-       任何 padding/gap/margin 优先用这套 token,确保 8px 基线对齐 */
+    /* ============ Carbon 2x Grid spacing scale (8px base) ============
+       Reference: https://carbondesignsystem.com/elements/2x-grid/overview/
+       Prefer these tokens for any padding/gap/margin to keep the 8px baseline aligned. */
     --sp-3:8px;     /* 02 token */
     --sp-4:12px;    /* 03 */
     --sp-5:16px;    /* 04 */
@@ -57,7 +57,7 @@
 
     /* ============ Carbon Motion tokens ============
        https://carbondesignsystem.com/guidelines/motion/overview/
-       两套体系:productive (功能) 短 + 锐 / expressive (叙事) 长 + 软 */
+       Two systems: productive (functional) short + sharp / expressive (narrative) long + soft */
     --ease-prod:cubic-bezier(.2,0,.38,.9);          /* productive standard */
     --ease-exp:cubic-bezier(.4,.14,.3,1);            /* expressive standard */
     --ease-entry-prod:cubic-bezier(0,0,.38,.9);     /* productive entrance */
@@ -69,7 +69,7 @@
     --dur-slow-1:.4s;    /* 400ms */
     --dur-slow-2:.7s;    /* 700ms */
 
-    /* 底部分页组件安全区: 主内容最低处不要进入这条区域 */
+    /* Bottom pagination safe zone: keep main content clear of this band */
     --nav-safe-bottom:8vh;
   }
   *{box-sizing:border-box;margin:0;padding:0}
@@ -81,13 +81,13 @@
     -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility
   }
 
-  /* ============ WebGL 网格背景 ============ */
+  /* ============ WebGL grid background ============ */
   canvas.bg{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;display:block;opacity:.55;mix-blend-mode:multiply;pointer-events:none}
   body.dark-bg canvas.bg{mix-blend-mode:screen;opacity:.42}
   body.low-power canvas.bg,
   body.low-power canvas.ascii-bg{display:none!important}
 
-  /* ============ Deck 容器 + 翻页 ============ */
+  /* ============ Deck container + pagination ============ */
   #deck{position:fixed;inset:0;width:10000vw;height:100vh;display:flex;flex-wrap:nowrap;transition:transform .9s cubic-bezier(.77,0,.175,1);z-index:10;will-change:transform}
   .slide{
     width:100vw;height:100vh;flex:0 0 100vw;
@@ -103,18 +103,18 @@
   .slide.accent{background:var(--accent);color:var(--accent-on)}
   .slide.accent .accent-block{background:var(--accent-on);color:var(--accent)}
 
-  /* Hero 页透出网格背景多一点 */
+  /* Hero slide lets more of the grid background show through */
   .slide.hero{background:transparent}
   .slide.hero.grey{background:rgba(var(--paper-rgb),.86);backdrop-filter:blur(1px)}
   .slide.hero.dark{background:rgba(var(--ink-rgb),.92);color:var(--paper)}
 
-  /* ============ 装饰: 极细分隔线 + 点阵矩阵 ============ */
+  /* ============ Decoration: hairline dividers + dot matrix ============ */
   .rule{width:100%;height:1px;background:currentColor;opacity:.18;margin:0}
   .rule.thick{height:2px;opacity:.85}
   .rule.accent{background:var(--accent);opacity:1;height:2px}
   .rule.v{width:1px;height:100%;margin:0}
 
-  /* 点阵矩阵 (dot matrix) - 用 radial-gradient */
+  /* Dot matrix - built with radial-gradient */
   .dots{
     background-image:radial-gradient(currentColor 1px, transparent 1px);
     background-size:12px 12px;
@@ -132,7 +132,7 @@
     opacity:.22;
   }
 
-  /* ============ Chrome (顶部 meta) + Foot (底部) ============ */
+  /* ============ Chrome (top meta) + Foot (bottom) ============ */
   .chrome{
     display:flex;justify-content:space-between;align-items:flex-start;
     font-family:var(--mono);
@@ -154,7 +154,7 @@
   }
   .foot .nb{font-family:var(--sans);font-weight:600;letter-spacing:.04em}
 
-  /* ============ Tag / Kicker / Meta 标签 ============ */
+  /* ============ Tag / Kicker / Meta labels ============ */
   .kicker{
     font-family:var(--mono);
     font-size:14px;letter-spacing:.24em;text-transform:uppercase;
@@ -176,7 +176,7 @@
   .tag.solid{background:currentColor;color:var(--paper);border-color:transparent}
   .tag.accent{background:var(--accent);color:var(--accent-on);border-color:transparent;opacity:1}
 
-  /* ============ 标题层级 (无衬线 · 极轻字重 · 极致字号对比) ============ */
+  /* ============ Heading hierarchy (sans-serif, extra-light weight, extreme size contrast) ============ */
   .h-hero{
     font-family:var(--sans),var(--sans-zh);
     font-weight:200;
@@ -221,7 +221,7 @@
     opacity:.7;
   }
 
-  /* ============ 正文 / 引语 / 元数据 ============ */
+  /* ============ Body / quote / metadata ============ */
   .lead{
     font-family:var(--sans),var(--sans-zh);
     font-weight:400;
@@ -263,7 +263,7 @@
     background:currentColor;opacity:.5;vertical-align:middle
   }
 
-  /* ============ KPI Hero (视觉英雄数据) ============ */
+  /* ============ KPI Hero (hero-scale data) ============ */
   .kpi-hero{
     font-family:var(--sans);
     font-weight:800;
@@ -299,7 +299,7 @@
     font-feature-settings:"tnum"
   }
 
-  /* ============ Stat Card (数据卡片 · 极简) ============ */
+  /* ============ Stat Card (minimal data card) ============ */
   .stat-card{
     display:flex;flex-direction:column;
     gap:.6vh;align-items:flex-start;
@@ -344,7 +344,7 @@
   .grid-3 .stat-card .stat-nb{font-size:6.4vw}
   .grid-6 .stat-card .stat-nb{font-size:4vw}
 
-  /* ============ Accent Block (高亮色块包裹内容) ============ */
+  /* ============ Accent Block (accent-color wrapper) ============ */
   .accent-block{
     background:var(--accent);color:var(--accent-on);
     padding:2.4vh 2vw;
@@ -361,7 +361,7 @@
     padding:2.4vh 2vw
   }
 
-  /* 高亮文字 (mark 风格) */
+  /* Highlighted text (mark style) */
   .mark{
     background:var(--accent);color:var(--accent-on);
     padding:0 .2em;
@@ -418,7 +418,7 @@
     opacity:.7;
   }
 
-  /* ============ 网格系统 (模块化网格) ============ */
+  /* ============ Grid system (modular grid) ============ */
   .frame{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
   .frame.grid-2-7-5,
   .frame.grid-2-6-6,
@@ -430,7 +430,7 @@
   .frame.grid-4,
   .frame.grid-3{display:grid}
 
-  /* 12 列模块化网格 (瑞士风核心) */
+  /* 12-column modular grid (Swiss style core) */
   .grid-12{
     display:grid;
     grid-template-columns:repeat(12,1fr);
@@ -447,7 +447,7 @@
   .span-9{grid-column:span 9}
   .span-12{grid-column:span 12}
 
-  /* 经典分栏 */
+  /* Classic split */
   .grid-2-7-5{display:grid;grid-template-columns:7fr 5fr;gap:3vw 4vh;align-items:start}
   .grid-2-6-6{display:grid;grid-template-columns:1fr 1fr;gap:3vw 4vh;align-items:start}
   .grid-2-8-4{display:grid;grid-template-columns:8fr 4fr;gap:3vw 4vh;align-items:start}
@@ -457,7 +457,7 @@
   .grid-4{display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(2,1fr);gap:3vh 3vw;flex:1;align-content:center}
   .grid-6{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:3vh 2.4vw;flex:1;align-content:center}
 
-  /* 工具类 */
+  /* Utility classes */
   .col{display:flex;flex-direction:column;gap:2vh}
   .row{display:flex;align-items:center;gap:2vw}
   .fill{flex:1}
@@ -468,14 +468,14 @@
   .va-center{align-self:center}
   .nowrap{white-space:nowrap}
 
-  /* 非对称定位 */
+  /* Asymmetric positioning */
   .pos-absolute{position:absolute}
   .bottom-left{position:absolute;left:5vw;bottom:8vh;max-width:50vw}
   .bottom-right{position:absolute;right:5vw;bottom:8vh;max-width:50vw;text-align:right}
   .top-right{position:absolute;right:5vw;top:5.5vh;text-align:right}
   .top-left{position:absolute;left:5vw;top:5.5vh}
 
-  /* ============ Callout (引用框 · 极简) ============ */
+  /* ============ Callout (quote box, minimal) ============ */
   .callout{
     padding:2vh 2vw;
     border-left:3px solid var(--accent);
@@ -499,13 +499,13 @@
   .ico-md{width:1.6vw;height:1.6vw;stroke-width:1.6;display:inline-block;vertical-align:-.4em}
   .ico-sm{width:1vw;height:1vw;stroke-width:1.8;display:inline-block;vertical-align:-.15em;opacity:.7}
 
-  /* ============ 几何小图标 (装饰) ============ */
+  /* ============ Small geometric icons (decoration) ============ */
   .geo-dot{width:.7vw;height:.7vw;border-radius:50%;background:var(--accent);display:inline-block;vertical-align:middle}
   .geo-square{width:.7vw;height:.7vw;background:var(--accent);display:inline-block;vertical-align:middle}
   .geo-line{width:2vw;height:2px;background:var(--accent);display:inline-block;vertical-align:middle}
   .geo-circle-o{width:.9vw;height:.9vw;border:2px solid currentColor;border-radius:50%;display:inline-block;vertical-align:middle}
 
-  /* ============ 图片 frame-img ============ */
+  /* ============ Image frame (frame-img) ============ */
   .frame-img{overflow:hidden;position:relative;background:var(--paper);box-sizing:border-box;width:100%}
   .slide.dark .frame-img{background:rgba(255,255,255,.06)}
   .frame-img > img{width:100%;height:100%;object-fit:cover;object-position:center center;display:block}
@@ -528,7 +528,7 @@
   .frame-img.swiss-lined{border-top:2px solid var(--accent)}
   .frame-img.swiss-keyline{border:0}
 
-  /* P22 Image Hero: 下半屏内容区必须和图片拉开距离,不要贴在图下沿 */
+  /* Image Hero: keep the lower content area clear of the image - don't hug the bottom edge */
   .image-hero-body{
     display:grid;grid-template-columns:6fr 6fr;gap:3vw;
     padding:6.6vh 5vw 4.4vh;flex:1;align-content:start
@@ -546,7 +546,7 @@
   figure.frame-img,figure.tile{margin:0;display:flex;flex-direction:column;min-width:0}
   figure.tile > .frame-img{flex:0 0 auto}
 
-  /* 瑞士风图文混排: 只用直角、发丝线、单一 accent；图像容器不加圆角/阴影 */
+  /* Swiss-style text+image layout: right angles, hairlines, single accent only; no rounded corners/shadows on image containers */
   .swiss-img-split{display:grid;grid-template-columns:5fr 7fr;gap:3vw;align-items:start;flex:1;min-height:0}
   .swiss-img-split.reverse{grid-template-columns:7fr 5fr}
   .swiss-img-split.align-bottom{align-items:end}
@@ -576,7 +576,7 @@
     font-weight:600;letter-spacing:0;text-transform:none;color:var(--text-primary)
   }
 
-  /* ============ Bar Chart (扁平几何图表) ============ */
+  /* ============ Bar Chart (flat geometric chart) ============ */
   .bar-chart{display:flex;flex-direction:column;gap:1.4vh}
   .bar-row{display:grid;grid-template-columns:8em 1fr 4em;gap:1.4vw;align-items:center}
   .bar-row .bar-label{font-family:var(--mono);font-size:max(14px,.84vw);letter-spacing:.14em;text-transform:uppercase;opacity:.7}
@@ -585,8 +585,8 @@
   .bar-row .bar-fill.ink{background:currentColor}
   .bar-row .bar-value{font-family:var(--sans);font-weight:700;font-size:max(16px,1.05vw);text-align:right;font-feature-settings:"tnum"}
 
-  /* ============ 导航 ============ */
-  /* 底部分页导航: 仅保留方块本身,无背景无描边 */
+  /* ============ Navigation ============ */
+  /* Bottom pagination nav: dots only, no background or outline */
   #nav{position:fixed;left:50%;bottom:2vh;transform:translateX(-50%);z-index:30;display:flex;gap:10px;padding:0;background:transparent;border:0}
   #nav .dot{width:6px;height:6px;background:rgba(0,0,0,.28);cursor:pointer;transition:all .25s ease;border:0;padding:0;border-radius:0}
   #nav .dot:hover{background:rgba(0,0,0,.55)}
@@ -599,18 +599,18 @@
   body.low-power #hint{color:var(--accent);opacity:.72}
   body.dark-bg.low-power #hint{color:var(--paper);opacity:.72}
 
-  /* ESC 索引页: 动画元素强制可见 (覆盖 motion-ready 的 opacity:0) */
+  /* ESC index view: force animated elements visible (overrides motion-ready's opacity:0) */
   #overview [data-anim]{opacity:1!important;transform:none!important}
   #overview .slide *{animation:none!important;transition:none!important}
 
-  /* 统一卡片样式 token: card-fill (默认灰底 · 中性) + card-ink (反转高对比) + card-accent (单一焦点) */
+  /* Shared card style tokens: card-fill (default grey, neutral) + card-ink (inverted, high contrast) + card-accent (single focal point) */
   .card-fill{background:#f5f5f4;border:0;color:var(--text-primary)}
   .card-ink{background:var(--ink);border:0;color:var(--paper)}
   .card-ink .t-meta,.card-ink .t-cat{color:rgba(255,255,255,.6)}
   .card-accent{background:var(--accent);border:0;color:var(--accent-on)}
   .card-accent .t-meta,.card-accent .t-cat{color:var(--accent-on)}
 
-  /* ============ 动效 (与原模板一致) ============ */
+  /* ============ Motion (matches original template) ============ */
   [data-anim]{opacity:1}
   body.motion-ready [data-anim]{opacity:0}
   body.motion-ready [data-anim="left"]{transform:translateX(-24px)}
@@ -625,11 +625,11 @@
   body.low-power [data-anim]{opacity:1!important;transform:none!important}
 
   /* ============================================================
-     ↓↓↓ V2 EXTENSIONS · Canvas Mode + 参考图新类
-     验证效果后沉淀回 template-swiss.html
+     V2 EXTENSIONS: Canvas Mode + new classes for reference images
+     fold back into template-swiss.html once validated
      ============================================================ */
 
-  /* Windows 适配:雅黑没有 ExtraLight 200,中文大字号字重补偿 */
+  /* Windows fallback: YaHei has no ExtraLight 200; compensate weight for large CJK text */
   body.is-win .name-mega,
   body.is-win .num-mega,
   body.is-win .kpi-thin,
@@ -638,7 +638,7 @@
   }
   body.is-win [style*="font-weight:200"]{font-weight:300 !important}
 
-  /* 全屏铺满模式 · 关闭 WebGL · 卡片即页面 */
+  /* Full-bleed mode: disables WebGL, card is the page */
   body.canvas-mode{background:var(--paper)}
   body.canvas-mode canvas.bg{display:none !important}
   body.canvas-mode .slide{background:var(--paper);padding:0;align-items:stretch;justify-content:stretch}
@@ -659,10 +659,10 @@
   .slide.grey .canvas-card{background:var(--grey-1);color:var(--ink)}
   .slide.split .canvas-card{padding:0;flex-direction:row}
 
-  /* ============ ASCII 点阵呼吸场 · IKB 封面/封底专用 ============
-     用法:在 .canvas-card(或 split .half.b-accent)内首位插入 <canvas class="ascii-bg" aria-hidden="true">.
-     动画由本文件底部的 ASCII IIFE 自动启动,所有 canvas.ascii-bg 都会被扫到.
-     其他内容靠 .canvas-card > *:not(.ascii-bg){z-index:1} 自动浮在上层. */
+  /* ============ ASCII dot breathing field - IKB cover/closing only ============
+     Usage: insert <canvas class="ascii-bg" aria-hidden="true"> as the first child of .canvas-card (or split .half.b-accent).
+     The animation auto-starts via the ASCII IIFE at the bottom of this file, which scans for every canvas.ascii-bg.
+     Everything else floats above it via .canvas-card > *:not(.ascii-bg){z-index:1} */
   canvas.ascii-bg{
     position:absolute;inset:0;width:100%;height:100%;
     pointer-events:none;z-index:0;
@@ -673,7 +673,7 @@
   .slide.accent .canvas-card .t-meta{color:rgba(255,255,255,.7)}
   .split-half > .half.b-accent .chrome-min{color:rgba(255,255,255,.62)}
 
-  /* 编号目录页 · 超大数字 + 国家名风格 — 越大越细 */
+  /* Numbered index page: oversized numerals + country-name style - bigger means thinner */
   .num-mega{
     font-family:var(--sans);font-weight:200;
     font-size:9vw;line-height:1;letter-spacing:-.04em;
@@ -686,7 +686,7 @@
   }
   .name-mega.muted{color:var(--grey-3)}
 
-  /* 细体超大 KPI — 字号越大权重越低 */
+  /* Extra-light oversized KPI - larger size, lighter weight */
   .kpi-thin{
     font-family:var(--sans);font-weight:200;
     font-size:14vw;line-height:.92;letter-spacing:-.045em;
@@ -701,8 +701,8 @@
   }
   .kpi-thin-sm .unit{font-size:.3em;font-weight:300;opacity:.55;margin-left:.12em;vertical-align:.45em}
 
-  /* 4 列细线 KPI 行 — 顶部一根 hairline,内部不再加竖线 */
-  /* 4 列 KPI: 用纵向分割线建立网格感 (Carbon 2x grid 模数) */
+  /* 4-column hairline KPI row - one top hairline, no internal vertical rules */
+  /* 4-column KPI: vertical dividers establish the grid (Carbon 2x grid scale) */
   .kpi-row-4{
     display:grid;grid-template-columns:repeat(4,1fr);
     gap:0;padding-top:2.4vh;
@@ -718,12 +718,12 @@
   .kpi-cell .nb .unit{font-size:.32em;font-weight:300;opacity:.6;margin-left:.1em;vertical-align:.4em}
   .kpi-cell .note{font-family:var(--sans),var(--sans-zh);font-size:max(16px,.92vw);line-height:1.5;opacity:.7;margin-top:1.2vh}
 
-  /* 时间线轴 — 通用 axis token, 横纵共享
-     axis 列 = 24px 固定宽,dot 直径 8px,绝对居中在 axis 列中线 (12px)
-     虚线绝对定位 left:12px,与 dot 中心严格对齐 */
+  /* Timeline axis - shared axis token, horizontal and vertical:
+     axis column = fixed 24px, dot diameter 8px, centered on the axis column's midline (12px)
+     dashed line absolutely positioned at left:12px, aligned exactly with dot center */
   .timeline-v{
-    --tl-axis-w:24px;        /* axis 列固定宽度 */
-    --tl-dot:8px;            /* 圆点直径 */
+    --tl-axis-w:24px;        /* fixed axis column width */
+    --tl-dot:8px;            /* dot diameter */
     position:relative;margin-top:var(--sp-7)
   }
   .timeline-v::before{
@@ -743,7 +743,7 @@
     align-items:center;
     padding:var(--sp-7) 0
   }
-  /* 进度点: 纯色实心圆,无背景无描边,精确居中在 axis 列中线 */
+  /* Progress dot: solid fill, no background/outline, centered exactly on the axis midline */
   .tl-node .dot{
     width:var(--tl-dot);height:var(--tl-dot);
     border-radius:50%;
@@ -777,7 +777,7 @@
     min-width:0
   }
 
-  /* 横向时间线 (.timeline-h) — 与 .timeline-v 共享 axis token, 视觉语言一致 */
+  /* Horizontal timeline (.timeline-h) - shares axis tokens with .timeline-v for a consistent visual language */
   .timeline-h{
     --tl-axis-w:8px;
     --tl-dot:8px;
@@ -800,7 +800,7 @@
   .timeline-h .th-node{
     position:relative;display:flex;justify-content:center
   }
-  /* 横向 dot: 8px 纯色实心,无描边无阴影 (与 P2 保持一致) */
+  /* Horizontal dot: 8px solid fill, no outline/shadow (consistent with the vertical version) */
   .timeline-h .th-node .dot{
     width:var(--tl-dot);height:var(--tl-dot);
     border-radius:50%;
@@ -830,7 +830,7 @@
     color:var(--text-secondary);font-weight:400;line-height:1.4
   }
 
-  /* 几何图示 (参考图 5) — SVG-friendly 容器 */
+  /* Geometric diagram (reference image 5) - SVG-friendly container */
   .geo-icon{width:5vw;height:5vw;display:block;margin-bottom:2.2vh;color:var(--ink);flex-shrink:0}
   .slide.dark .geo-icon{color:var(--paper)}
   .geo-icon svg{width:100%;height:100%;overflow:visible}
@@ -838,7 +838,7 @@
   .geo-icon .stroke-accent{fill:none;stroke:var(--accent);stroke-width:1.4}
   .geo-icon .fill-accent{fill:var(--accent)}
 
-  /* 卡片网格 (参考图 1 卡片漂浮) — 在 canvas-card 内部再分卡 */
+  /* Card grid (reference image 1, floating cards) - sub-cards inside canvas-card */
   .sub-grid-3-2{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:1.4vh 1.4vw;flex:1;align-content:stretch;margin-top:3vh}
   .sub-card{
     background:var(--grey-1);
@@ -860,7 +860,7 @@
   .sub-card .lucide{width:2.4vw;height:2.4vw;stroke-width:1.4;color:currentColor;margin-bottom:1.6vh;flex-shrink:0}
   .sub-card.accent .lucide{color:var(--accent-on)}
 
-  /* 三层架构纯色块拼图 (参考图 4 + 6) — 横排等高色块 */
+  /* Three-tier architecture solid-block layout (reference images 4 + 6) - equal-height row blocks */
   .stack-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1.6vw;flex:1;margin-top:6vh;align-items:stretch}
   .stack-block{
     display:flex;flex-direction:column;
@@ -880,7 +880,7 @@
   .stack-block .lucide{width:2.6vw;height:2.6vw;stroke-width:1.4;margin-bottom:1.6vh;flex-shrink:0}
   .stack-block .layer-tag{font-family:var(--mono);font-size:max(14px,.74vw);letter-spacing:.16em;text-transform:uppercase;opacity:.7;margin-top:1.6vh;border-top:1px solid currentColor;padding-top:1vh}
 
-  /* 不等高柱状 KPI 塔 (参考图 6) */
+  /* Uneven-height bar-style KPI towers (reference image 6) */
   .bar-towers{
     display:grid;grid-template-columns:repeat(4,1fr);
     gap:1.2vw;flex:1;align-items:end;margin-top:auto
@@ -906,7 +906,7 @@
   .bar-tower .body-block.h-2{min-height:30vh}
   .bar-tower .body-block.h-3{min-height:38vh}
   .bar-tower .body-block.h-4{min-height:46vh}
-  /* 默认所有 KPI 塔统一为浅描边卡 — 不抢戏;只有 .b-accent 突出为 IKB */
+  /* All KPI towers default to a light-outline card - understated; only .b-accent stands out as IKB */
   .bar-tower .body-block{background:var(--paper);color:var(--ink);border:1px solid var(--grey-2)}
   .bar-tower .body-block.b-accent{background:var(--accent);color:var(--accent-on);border-color:var(--accent)}
   .bar-tower .lbl{font-family:var(--mono);font-size:max(14px,.82vw);letter-spacing:.16em;text-transform:uppercase;opacity:.65;margin-bottom:1vh}
@@ -918,8 +918,8 @@
   .bar-tower .lucide{width:1.6vw;height:1.6vw;stroke-width:1.4}
 
   /* ============ Carbon Productive Type Tokens ============
-     用于 PPT 中的"productive 时刻": 列表、表格行、说明文、章节标签
-     固定 px 字号,密集紧凑;与 vw-based 的 Expressive 巨字形成双极对比 */
+     Used for "productive moments" in the deck: lists, table rows, captions, section labels.
+     Fixed px sizes, dense - a deliberate contrast against the vw-based Expressive oversized type. */
 
   /* category label / eyebrow / section tag — small, bold, uppercase */
   .t-cat{
@@ -963,7 +963,7 @@
     letter-spacing:-.005em
   }
 
-  /* body emphasis — 强调正文 */
+  /* body emphasis */
   .t-body-emp{
     font-family:var(--sans),var(--sans-zh);
     font-size:18px;font-weight:600;       /* SemiBold per Carbon */
@@ -987,14 +987,14 @@
   .split-half .half.b-ink .t-body-sm{color:rgba(255,255,255,.78)}
   .split-half .half.b-ink .t-body,.split-half .half.b-ink .t-body-emp,.split-half .half.b-ink .t-h-prod{color:var(--paper)}
 
-  /* 斜杠点阵装饰 (参考图 6 左下) */
+  /* Diagonal dot decoration (reference image 6, bottom-left) */
   .hatch{
     background-image:repeating-linear-gradient(135deg,currentColor 0 1px,transparent 1px 8px);
     opacity:.55
   }
 
-  /* ========== V3: 高级点阵装饰 — 圆点 / × 号 / 圆圈 ========== */
-  /* 实心圆点矩阵 — 用于大面积装饰 */
+  /* ========== V3: refined dot decorations - dots / x marks / circles ========== */
+  /* Solid dot matrix - for large decorative areas */
   .dot-mat{
     --d:14px;
     background-image:radial-gradient(currentColor 1.4px,transparent 1.6px);
@@ -1006,7 +1006,7 @@
   .dot-mat.xl{--d:34px}
   .dot-mat.dense{--d:9px;opacity:.62}
 
-  /* 描边圆圈矩阵 — 工业感 */
+  /* Outlined circle matrix - industrial feel */
   .ring-mat{
     --d:18px;
     background-image:
@@ -1016,7 +1016,7 @@
   }
   .ring-mat.lg{--d:28px}
 
-  /* × 号矩阵 — SVG mask 实现真正的 × 网格平铺 */
+  /* x mark matrix - true x grid tiling via SVG mask */
   .cross-mat{
     --d:22px;
     background-color:currentColor;
@@ -1029,8 +1029,8 @@
   }
   .cross-mat.lg{--d:32px}
 
-  /* ========== V3: 几何水平柱状图 ========== */
-  /* 横向柱图: 标签列 + 柱体列 + 数值列 — 严格瑞士网格 */
+  /* ========== V3: geometric horizontal bar chart ========== */
+  /* Horizontal bar chart: label column + bar column + value column - strict Swiss grid */
   .h-bar-chart{
     display:grid;
     grid-template-columns:11em minmax(0,1fr) 8em;
@@ -1070,7 +1070,7 @@
     margin-left:.15em;letter-spacing:.04em
   }
 
-  /* 垂直柱图: 用于 KPI 对比页(章节 P8) */
+  /* Vertical bar chart: for KPI comparison slides */
   .v-bar-chart{
     display:grid;
     grid-template-columns:repeat(var(--cols,4),1fr);
@@ -1100,7 +1100,7 @@
     text-align:center;flex:0 0 auto
   }
 
-  /* 对仗对比双栏 (章节 P9) */
+  /* Symmetrical two-column comparison */
   .duo-compare{
     display:grid;grid-template-columns:1fr 1px 1fr;
     gap:0 3.4vw;
@@ -1145,7 +1145,7 @@
   }
   .duo-compare .col.accent .col-list li::before{background:var(--accent);opacity:1}
 
-  /* 半屏 statement (参考图 7) */
+  /* Half-screen statement (reference image 7) */
   .split-half{display:grid;grid-template-columns:1fr 1fr;gap:0;flex:1;align-items:stretch}
   .split-half > .half{padding:5vh 3.4vw;display:flex;flex-direction:column;min-width:0}
   .split-half > .half.r-border{border-left:1px solid rgba(127,127,127,.22)}
@@ -1153,7 +1153,7 @@
   .split-half > .half.b-accent{background:var(--accent);color:var(--accent-on)}
   .split-half > .half.b-ink{background:var(--ink);color:var(--paper)}
 
-  /* 极简页眉 — t-meta 风格 (Carbon productive label-01) */
+  /* Minimal page header - t-meta style (Carbon productive label-01) */
   .canvas-card .chrome-min{
     display:flex;justify-content:space-between;align-items:flex-start;
     font-family:var(--mono);font-size:14px;font-weight:500;
@@ -1168,7 +1168,7 @@
   }
   .slide.dark .canvas-card .chrome-min,.split-half .half.b-ink .canvas-card .chrome-min{color:rgba(255,255,255,.62)}
 
-  /* 响应式降级 */
+  /* Responsive fallback */
   @media (max-width:900px){
     .h-hero{font-size:16vw}
     .h-hero-zh{font-size:13vw}
@@ -1184,7 +1184,7 @@
 </head>
 <body class="canvas-mode">
 <script>
-  // Windows 平台标记 — 雅黑没有 ExtraLight,需要字重补偿
+  // Windows platform flag - YaHei has no ExtraLight, needs weight compensation
   if(/Win/i.test(navigator.platform || navigator.userAgentData?.platform || '')){
     document.body.classList.add('is-win');
   }
@@ -1195,7 +1195,7 @@
     window.__lowPowerMode = stored === '1' || (stored === null && reduced);
     function updateHint(){
       const hint = document.getElementById('hint');
-      if(hint) hint.textContent = `← → 翻页 · B ${window.__lowPowerMode ? '动态' : '静态'} · ESC 索引`;
+      if(hint) hint.textContent = `← → navigate · B ${window.__lowPowerMode ? 'motion' : 'static'} · ESC index`;
     }
     window.__setLowPowerMode = function(on, opts={}){
       window.__lowPowerMode = !!on;
@@ -1214,49 +1214,49 @@
 </script>
 
 <canvas id="bg-grid" class="bg"></canvas>
-<div id="hint">← → 翻页 · B 静态 · ESC 索引</div>
+<div id="hint">← → navigate · B static · ESC index</div>
 
 <div id="deck">
 
 <!-- ============================================================
-     SLIDES 插入区 · 在此处填充所有 <section class="slide ..."> 页面
-     页面骨架参考 references/layouts-swiss.md
-     主题色配置参考 references/themes-swiss.md
+     SLIDES insertion point: paste all <section class="slide ..."> pages here
+     Page skeletons: references/layouts-swiss.md
+     Theme color config: references/themes-swiss.md
      ============================================================ -->
-<!-- SLIDES_HERE · 在此处粘贴 <section class="slide ..."> 页面块
-     - 页面骨架直接从 references/layouts-swiss.md 拷贝
-     - data-animate="..." 必须命中下方 RECIPES 字典里的已有 recipe 名之一(P23/P24 可复用 grid-reveal)
-     - 主题色配置参考 references/themes-swiss.md (默认 IKB 克莱因蓝) -->
+<!-- SLIDES_HERE: paste all <section class="slide ..."> page blocks here
+     - copy page skeletons directly from references/layouts-swiss.md
+     - data-animate="..." must match a recipe name already in the RECIPES dict below (P23/P24 can reuse grid-reveal)
+     - theme color config: references/themes-swiss.md (default: IKB Klein Blue) -->
 
-<!-- ============ 示例:第 1 页 · Hero Cover · IKB 满屏 + ASCII 呼吸场(默认推荐) ============
-     ⚠️ P0 对齐法则(每页都要过):
-     1. .canvas-card 已自带 padding:5.6vh 5vw 4.4vh,所有页面内容直接放在 canvas-card 子元素里,
-        子元素**不要再加水平 padding**,否则会比 chrome-min 内缩一圈、左右不对齐.
-     2. .slide.split .canvas-card{padding:0} 已被 CSS 覆盖,
-        split 模式下两个 .half 自己控制 padding(常用 5.6vh 3.6vw 4.4vh),与本规则不冲突.
-     3. 大字号一律用双约束 font-size:min(Xvw, Yvh),Y ≥ X * 1.6 才不会在 16:9 屏被高度截断.
-     4. kicker 必须在大标题"上方",不是左侧——禁止 grid-template-columns:auto 1fr 把它们压成左右.
+<!-- ============ Example: page 1 - Hero Cover - full-bleed IKB + ASCII breathing field (default, recommended) ============
+     P0 alignment rules (check on every page):
+     1. .canvas-card already has padding:5.6vh 5vw 4.4vh; put page content directly inside canvas-card's children,
+        don't add horizontal padding again on children - otherwise it will indent further than chrome-min and misalign left/right.
+     2. .slide.split .canvas-card{padding:0} is overridden by CSS;
+        in split mode each .half controls its own padding (commonly 5.6vh 3.6vw 4.4vh) - no conflict with the rule above.
+     3. Large type always uses the double constraint font-size:min(Xvw, Yvh); Y must be >= X * 1.6 or it clips on a 16:9 screen.
+     4. the kicker must sit "above" the headline, not beside it - never use grid-template-columns:auto 1fr to force them side by side.
 
-     封面/封底设计语言(默认 IKB 满屏 + ASCII 呼吸场):
-     - section 用 .slide.accent (满屏 IKB,不是 light 白底)
-     - canvas-card 内首位插入 <canvas class="ascii-bg" aria-hidden="true">,本文件底部 IIFE 自动启动
-     - 主标题反白 weight 200,强调字用斜体而非 var(--accent)(底已是蓝,蓝压蓝看不见)
-     - 不要再放编号大字"01"——chrome-min 已经标 01/NN -->
-<!-- ============ 01 · Cover · IKB + ASCII ============ -->
+     Cover/closing design language (default: full-bleed IKB + ASCII breathing field):
+     - use .slide.accent (full-bleed IKB, not the light background)
+     - insert <canvas class="ascii-bg" aria-hidden="true"> as the first child of canvas-card; the IIFE at the bottom of this file auto-starts it
+     - headline in reversed white, weight 200; use italics for emphasis rather than var(--accent) (background is already blue - blue on blue disappears)
+     - do not add a large "01" page number - chrome-min already shows 01/NN -->
+<!-- ============ 01 · Cover · accent + ASCII ============ -->
 <section class="slide accent" data-layout="SWISS-COVER-ASCII" data-animate="hero">
   <div class="canvas-card">
     <canvas class="ascii-bg" aria-hidden="true"></canvas>
     <div class="chrome-min">
       <div class="l">yasqat · Sequence Analytics</div>
-      <div class="r">SS · 26.07.12 · 01 / 09</div>
+      <div class="r">SS · 26.07.20 · 01 / 10</div>
     </div>
     <div style="flex:1;padding:0;display:grid;grid-template-rows:auto 1fr auto;gap:2.6vh">
-      <div data-anim="kicker" class="t-meta" style="color:rgba(255,255,255,.78);letter-spacing:.22em">POLARS-NATIVE SEQUENCE ANALYSIS · RELEASE V0.5.0</div>
-      <h1 data-anim="title" style="align-self:center;font-family:var(--sans);font-weight:200;font-size:min(11.6vw,19vh);line-height:.94;letter-spacing:-.025em;color:#fff">Trajectories,<br/><span style="font-style:italic;font-weight:300">measured</span>.</h1>
+      <div data-anim="kicker" class="t-meta" style="color:rgba(255,255,255,.78);letter-spacing:.22em">CATEGORICAL SEQUENCE ANALYSIS · POLARS · V0.5.0</div>
+      <h1 data-anim="title" style="align-self:center;font-family:var(--sans);font-weight:200;font-size:min(11.6vw,19vh);line-height:.94;letter-spacing:-.025em;color:#fff">yasqat<br/><span style="font-style:italic;font-weight:300">v0.5.0</span></h1>
       <div data-anim="bottom" style="display:grid;grid-template-rows:auto auto;gap:1.6vh;border-top:1px solid rgba(255,255,255,.22);padding-top:2vh">
-        <div data-anim="lead" class="lead" style="max-width:56ch;color:rgba(255,255,255,.86);font-weight:300">yasqat — Yet Another Sequence Analytics Toolkit. TraMineR-class categorical sequence analysis, native to Python and polars. Version 0.5.0, live on PyPI.</div>
+        <div data-anim="lead" class="lead" style="max-width:60ch;color:rgba(255,255,255,.86);font-weight:300">Yet Another Sequence Analytics Toolkit — a small polars-based library for categorical sequence analysis. This deck: what it is, how it differs from TraMineR and TanaT, and how it fits a Spark data platform.</div>
         <div style="display:flex;justify-content:space-between;align-items:end">
-          <div class="t-meta" style="color:rgba(255,255,255,.6)">rexarski · 2026-07 · github.com/rexarski/yasqat</div>
+          <div class="t-meta" style="color:rgba(255,255,255,.6)">2026-07 · github.com/rexarski/yasqat</div>
           <div class="t-meta" style="color:rgba(255,255,255,.6)">→ swipe / arrow keys</div>
         </div>
       </div>
@@ -1264,245 +1264,278 @@
   </div>
 </section>
 
-<!-- ============ 02 · S03 Split Statement · the domain ============ -->
+<!-- ============ 02 · S03 Split Statement · the data shape ============ -->
 <section class="slide split" data-layout="S03" data-animate="statement">
   <div class="canvas-card">
     <div class="split-half">
       <div class="half" style="justify-content:space-between">
-        <div class="chrome-min"><div class="l">The Domain</div><div class="r">02 / 09</div></div>
-        <h1 data-anim="stmt" style="font-family:var(--sans);font-weight:200;font-size:min(7.4vw,13vh);line-height:1.02;letter-spacing:-.035em;color:var(--text-primary)">Careers.<br/>Diagnoses.<br/><span style="color:var(--accent)">Journeys.</span></h1>
-        <div class="t-meta" style="color:var(--text-helper)">— every one of them a sequence</div>
+        <div class="chrome-min"><div class="l">The Data Shape</div><div class="r">02 / 10</div></div>
+        <h1 data-anim="stmt" style="font-family:var(--mono);font-weight:300;font-size:min(6.6vw,11.6vh);line-height:1.12;letter-spacing:-.02em;color:var(--text-primary)">id<br/>time<br/><span style="color:var(--accent)">state</span></h1>
+        <div class="t-meta" style="color:var(--text-helper)">— one row per observation · long format</div>
       </div>
       <div class="half b-grey" style="justify-content:space-between">
-        <div class="chrome-min"><div class="l">Why It Matters</div><div class="r">&nbsp;</div></div>
-        <div data-anim="body" style="display:flex;flex-direction:column;gap:2.6vh;max-width:44ch">
-          <p style="font-family:var(--sans);font-size:max(18px,1.2vw);line-height:1.6;font-weight:300;color:var(--text-primary)">A career is a sequence of employment states. A patient history is a sequence of diagnoses. A customer lifecycle is a sequence of tiers.</p>
-          <p style="font-family:var(--sans);font-size:max(16px,1vw);line-height:1.6;font-weight:400;color:var(--text-secondary)">Categorical sequence analysis measures, compares and clusters whole trajectories — a method family proven over three decades in the social sciences, and increasingly demanded wherever longitudinal data drives decisions.</p>
-          <p style="font-family:var(--sans);font-size:max(16px,1vw);line-height:1.6;font-weight:400;color:var(--text-secondary)">The catch: its reference implementation lives in R.</p>
+        <div class="chrome-min"><div class="l">What It Answers</div><div class="r">&nbsp;</div></div>
+        <div data-anim="body" style="display:flex;flex-direction:column;gap:2.6vh;max-width:46ch">
+          <p style="font-family:var(--sans);font-size:max(18px,1.2vw);line-height:1.6;font-weight:300;color:var(--text-primary)">A sequence is one unit's ordered categorical states over time — a member's monthly account status, a patient's care stages, an employee's roles.</p>
+          <p style="font-family:var(--sans);font-size:max(16px,1vw);line-height:1.6;font-weight:400;color:var(--text-secondary)">yasqat takes these in long format — the shape event tables already have — and answers three questions: how similar are two sequences, what types exist in a population, and how do states flow over time.</p>
+          <p style="font-family:var(--sans);font-size:max(16px,1vw);line-height:1.6;font-weight:400;color:var(--text-secondary)">That is the whole scope. No event calculus, no plotting — those stay in your existing stack.</p>
         </div>
-        <div class="t-meta" style="color:var(--text-helper);text-align:right">STATE · SPELL · TRANSITION</div>
+        <div class="t-meta" style="color:var(--text-helper);text-align:right">SIMILARITY · TYPOLOGY · DYNAMICS</div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ============ 03 · S08 Duo Compare · TraMineR vs yasqat ============ -->
-<section class="slide light" data-layout="S08" data-animate="duo-mirror">
+<!-- ============ 03 · S05 Three Layers · TraMineR / TanaT / yasqat ============ -->
+<section class="slide light" data-layout="S05" data-animate="stack-build">
   <div class="canvas-card">
-    <div class="chrome-min"><div class="l">State of the Field</div><div class="r">03 / 09</div></div>
+    <div class="chrome-min"><div class="l">The Landscape</div><div class="r">03 / 10</div></div>
     <div data-anim="line" style="display:flex;flex-direction:column;gap:1.4vh">
-      <div class="t-cat">One method · two ecosystems</div>
-      <h2 style="font-family:var(--sans);font-weight:200;font-size:min(6.2vw,11vh);line-height:.96;letter-spacing:-.035em;color:var(--text-primary)">The rigor lived in R.<br/>The data moved to Python.</h2>
+      <div class="t-cat">Same field · three tools</div>
+      <h2 style="font-family:var(--sans);font-weight:200;font-size:min(6.2vw,11vh);line-height:.96;letter-spacing:-.035em;color:var(--text-primary)">Where yasqat sits.</h2>
     </div>
-    <div class="duo-compare">
-      <div class="col">
-        <div class="col-tag"><span class="num">R</span> since 2008</div>
-        <div class="col-ttl">TraMineR</div>
-        <p class="col-desc">The academic standard for state-sequence analysis: optimal matching, substitution costs, cluster typologies. Rigorous, battle-tested — and locked to the R ecosystem.</p>
-        <ul class="col-list">
-          <li>Reference for correctness, 17 years of literature</li>
-          <li>Out of reach for Python data platforms</li>
-        </ul>
+    <div class="stack-row">
+      <div class="stack-block b-grey">
+        <div class="layer-nb">01 · R · SINCE 2008</div>
+        <div class="layer-ttl">TraMineR</div>
+        <div class="layer-desc">The field's reference implementation — the full method family, wide-format (STS) matrices, plotting included. yasqat treats it as the correctness oracle: expected values in our tests are pinned to TraMineR's output.</div>
+        <div class="layer-tag">the oracle</div>
       </div>
-      <span class="vrule"></span>
-      <div class="col accent">
-        <div class="col-tag"><span class="num">PY</span> today</div>
-        <div class="col-ttl">yasqat</div>
-        <p class="col-desc">The same rigor, rebuilt for the polars era. TraMineR is the correctness oracle — expected values are matched, not approximated — on a modern, typed, compiled core.</p>
-        <ul class="col-list">
-          <li>Drop-in for Python / polars data stacks</li>
-          <li>No more ad-hoc distance loops and pandas glue</li>
-        </ul>
+      <div class="stack-block b-grey">
+        <div class="layer-nb">02 · PYTHON · INRIA</div>
+        <div class="layer-ttl">TanaT</div>
+        <div class="layer-desc">Temporal sequence analysis focused on patient care pathways, with a broader temporal model — events, intervals and states in multi-sequence trajectories — and built-in visualisations. Our reference for Python API conventions.</div>
+        <div class="layer-tag">the neighbor</div>
+      </div>
+      <div class="stack-block b-accent">
+        <div class="layer-nb">03 · PYTHON · POLARS</div>
+        <div class="layer-ttl">yasqat</div>
+        <div class="layer-desc">Deliberately narrower: categorical state sequences only, long-format-first, no plotting layer. Built to sit inside an existing data platform rather than beside it — DataFrames in, DataFrames out.</div>
+        <div class="layer-tag">this talk</div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ============ 04 · S11 Horizontal Timeline · the pipeline ============ -->
+<!-- ============ 04 · S20 Stacked Ledger · four deliberate differences ============ -->
+<section class="slide light" data-layout="S20" data-animate="stacked-ledger">
+  <div class="canvas-card">
+    <div class="chrome-min"><div class="l">Differences</div><div class="r">04 / 10</div></div>
+    <div data-anim="line" style="display:flex;flex-direction:column;gap:1.4vh;margin-bottom:2vh">
+      <div class="t-cat">vs. TraMineR and TanaT — in practice</div>
+      <h2 style="font-family:var(--sans);font-weight:200;font-size:min(5.6vw,9.8vh);line-height:.96;letter-spacing:-.035em;color:var(--text-primary)">Four deliberate differences.</h2>
+    </div>
+    <div data-anim="ledger" style="flex:1;display:flex;flex-direction:column;justify-content:space-evenly">
+      <div class="ledger-row" style="display:grid;grid-template-columns:minmax(17vw,auto) 1fr auto;gap:3vw;align-items:center;border-bottom:1px solid var(--border-subtle);padding:1.2vh 0">
+        <div class="ledger-num" style="font-family:var(--mono);font-weight:300;font-size:min(3.8vw,6vh);line-height:.95;letter-spacing:-.02em;color:var(--text-primary)">long</div>
+        <div class="ledger-label" style="font-family:var(--sans);font-size:max(16px,1.05vw);line-height:1.45;font-weight:400;color:var(--text-secondary)">Canonical input is one row per (id, time, state) — the shape event tables already have.<br/>TraMineR's wide STS matrix is a view you can derive, not a prerequisite you must build.</div>
+        <i class="ledger-icon" data-lucide="list" style="width:2vw;height:2vw;color:var(--grey-3)"></i>
+      </div>
+      <div class="ledger-row" style="display:grid;grid-template-columns:minmax(17vw,auto) 1fr auto;gap:3vw;align-items:center;border-bottom:1px solid var(--border-subtle);padding:1.2vh 0">
+        <div class="ledger-num" style="font-family:var(--mono);font-weight:300;font-size:min(3.8vw,6vh);line-height:.95;letter-spacing:-.02em;color:var(--text-primary)">compiled</div>
+        <div class="ledger-label" style="font-family:var(--sans);font-size:max(16px,1.05vw);line-height:1.45;font-weight:400;color:var(--text-secondary)">polars frames end to end; the O(n²) pairwise distance kernels are numba-compiled<br/>over integer-encoded arrays. No pandas in the core.</div>
+        <i class="ledger-icon" data-lucide="zap" style="width:2vw;height:2vw;color:var(--grey-3)"></i>
+      </div>
+      <div class="ledger-row" style="display:grid;grid-template-columns:minmax(17vw,auto) 1fr auto;gap:3vw;align-items:center;border-bottom:1px solid var(--border-subtle);padding:1.2vh 0">
+        <div class="ledger-num" style="font-family:var(--mono);font-weight:300;font-size:min(3.8vw,6vh);line-height:.95;letter-spacing:-.02em;color:var(--text-primary)">pinned</div>
+        <div class="ledger-label" style="font-family:var(--sans);font-size:max(16px,1.05vw);line-height:1.45;font-weight:400;color:var(--text-secondary)">Test expectations are TraMineR's numbers, not re-derived approximations.<br/>When in doubt, match R.</div>
+        <i class="ledger-icon" data-lucide="check-check" style="width:2vw;height:2vw;color:var(--grey-3)"></i>
+      </div>
+      <div class="ledger-row" style="display:grid;grid-template-columns:minmax(17vw,auto) 1fr auto;gap:3vw;align-items:center;border-bottom:2px solid var(--accent);padding:1.2vh 0">
+        <div class="ledger-num" style="font-family:var(--mono);font-weight:300;font-size:min(3.8vw,6vh);line-height:.95;letter-spacing:-.02em;color:var(--accent)">tables</div>
+        <div class="ledger-label" style="font-family:var(--sans);font-size:max(16px,1.05vw);line-height:1.45;font-weight:400;color:var(--text-secondary)">Cluster labels (id · cluster · is_medoid), indicators, rules — results are polars DataFrames<br/>that join straight back onto the tables they came from.</div>
+        <i class="ledger-icon" data-lucide="table" style="width:2vw;height:2vw;color:var(--accent)"></i>
+      </div>
+    </div>
+    <div class="t-meta" style="color:var(--text-helper);margin-top:1.6vh">The fifth difference is scope itself: state sequences only — events and intervals stay in TanaT's territory.</div>
+  </div>
+</section>
+
+<!-- ============ 05 · S11 Horizontal Timeline · Spark round trip ============ -->
 <section class="slide light" data-layout="S11" data-animate="timeline-walk">
   <div class="canvas-card">
-    <div class="chrome-min"><div class="l">Architecture</div><div class="r">04 / 09</div></div>
+    <div class="chrome-min"><div class="l">Spark Interop</div><div class="r">05 / 10</div></div>
     <div data-anim="line" style="display:flex;flex-direction:column;gap:1.4vh">
-      <div class="t-cat">io → core → metrics → clustering · statistics</div>
-      <h2 style="font-family:var(--sans);font-weight:200;font-size:min(6.6vw,11.6vh);line-height:.96;letter-spacing:-.035em;color:var(--text-primary)">One pipeline, five stops.</h2>
+      <div class="t-cat">io · the platform seam</div>
+      <h2 style="font-family:var(--sans);font-weight:200;font-size:min(6.6vw,11.6vh);line-height:.96;letter-spacing:-.035em;color:var(--text-primary)">From a Spark table, and back.</h2>
     </div>
     <div class="timeline-h" data-anim="up">
       <div class="tl-row">
         <div class="th-node up">
           <span class="dot"></span>
-          <span class="label"><span class="yr">01 · IO</span><span class="name">Load</span><span class="desc">CSV · Parquet · JSON · DataFrame</span></span>
+          <span class="label"><span class="yr">01 · SPARK</span><span class="name">Event table</span><span class="desc">user_id · ts · state — long format already</span></span>
         </div>
         <div class="th-node down">
           <span class="dot"></span>
-          <span class="label"><span class="yr">02 · CORE</span><span class="name">SequencePool</span><span class="desc">one canonical container, shared alphabet</span></span>
+          <span class="label"><span class="yr">02 · EXPORT</span><span class="name">Parquet / Arrow</span><span class="desc">df.write.parquet(…) or an in-memory Arrow hand-off</span></span>
         </div>
         <div class="th-node up">
           <span class="dot"></span>
-          <span class="label"><span class="yr">03 · METRICS</span><span class="name">Distances</span><span class="desc">17 metrics behind one dispatch</span></span>
+          <span class="label"><span class="yr">03 · POLARS</span><span class="name">read_parquet</span><span class="desc">object storage &amp; Hive partitions supported</span></span>
         </div>
         <div class="th-node down">
           <span class="dot"></span>
-          <span class="label"><span class="yr">04 · INSIGHT</span><span class="name">Cluster · Explain</span><span class="desc">typologies, quality, discrepancy</span></span>
+          <span class="label"><span class="yr">04 · YASQAT</span><span class="name">load_dataframe</span><span class="desc">SequenceConfig maps columns; Alphabet validates states</span></span>
         </div>
         <div class="th-node up accent">
           <span class="dot"></span>
-          <span class="label"><span class="yr">05 · OUT</span><span class="name">polars DataFrame</span><span class="desc">bring your own plots &amp; models</span></span>
+          <span class="label"><span class="yr">05 · BACK</span><span class="name">write_parquet</span><span class="desc">labels &amp; indicators return as lake tables</span></span>
         </div>
       </div>
     </div>
-    <div class="t-meta" style="color:var(--text-helper)">Every public method returns a DataFrame — no plotting lock-in, no framework tax.</div>
+    <div class="t-meta" style="color:var(--text-helper)">No JVM in the loop — the exchange formats are parquet and Arrow, which both sides already speak.</div>
   </div>
 </section>
 
-<!-- ============ 05 · S19 Four Cards · capability map ============ -->
+<!-- ============ 06 · S03 Split Statement · round trip in code ============ -->
+<section class="slide split" data-layout="S03" data-animate="statement">
+  <div class="canvas-card">
+    <div class="split-half">
+      <div class="half" style="justify-content:space-between">
+        <div class="chrome-min"><div class="l">In Code</div><div class="r">06 / 10</div></div>
+        <h1 data-anim="stmt" style="font-family:var(--sans);font-weight:200;font-size:min(7.4vw,13vh);line-height:1.02;letter-spacing:-.035em;color:var(--text-primary)">Lake in,<br/>lake<br/><span style="color:var(--accent)">out</span>.</h1>
+        <div class="t-meta" style="color:var(--text-helper)">— parquet · arrow · parquet</div>
+      </div>
+      <div class="half b-grey" style="justify-content:space-between">
+        <div class="chrome-min"><div class="l">Round Trip</div><div class="r">&nbsp;</div></div>
+        <div data-anim="body" style="display:flex;flex-direction:column;gap:2.4vh;justify-content:center">
+          <pre style="font-family:var(--mono);font-size:max(14px,.88vw);line-height:1.75;font-weight:400;color:var(--text-primary);white-space:pre;overflow-x:auto;margin:0"><code><span style="color:var(--grey-3)"># Spark side — export the long-format event table</span>
+events.write.parquet("s3://lake/trajectories/")
+
+<span style="color:var(--grey-3)"># Python side — load, map columns, analyse</span>
+df = pl.read_parquet("s3://lake/trajectories/")
+pool = load_dataframe(df, config=SequenceConfig(
+    id_column="user_id", time_column="ts", state_column="event"))
+
+dm = pool.compute_distances(method=<span style="color:var(--accent)">"om"</span>)
+labels = pam_clustering(dm, n_clusters=5).to_dataframe()
+
+labels.write_parquet("s3://lake/trajectory_clusters/")</code></pre>
+          <p style="font-family:var(--sans);font-size:max(16px,.94vw);line-height:1.6;font-weight:400;color:var(--text-secondary);max-width:52ch"><em>SequenceConfig</em> maps your column names; pass an explicit <em>Alphabet</em> and unexpected states fail at load time instead of becoming silent categories.</p>
+        </div>
+        <div class="t-meta" style="color:var(--text-helper);text-align:right">SEQUENCECONFIG · ALPHABET-VALIDATED</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 07 · S19 Four Cards · after the clusters ============ -->
 <section class="slide light" data-layout="S19" data-animate="four-cards">
   <div class="canvas-card">
-    <div class="chrome-min"><div class="l">Capabilities</div><div class="r">05 / 09</div></div>
+    <div class="chrome-min"><div class="l">After the Clusters</div><div class="r">07 / 10</div></div>
     <div data-anim="line" style="display:flex;flex-direction:column;gap:2vh">
       <div style="width:80px;height:2px;background:var(--accent)"></div>
       <div style="display:flex;flex-direction:column;gap:1.4vh">
-        <div class="t-cat">What ships in the box</div>
-        <h2 style="font-family:var(--sans);font-weight:200;font-size:min(6.2vw,11vh);line-height:.96;letter-spacing:-.035em;color:var(--text-primary)">Four rooms, one house.</h2>
+        <div class="t-cat">A typology is not a one-off study</div>
+        <h2 style="font-family:var(--sans);font-weight:200;font-size:min(6.2vw,11vh);line-height:.96;letter-spacing:-.035em;color:var(--text-primary)">Choose, test, operate, rehearse.</h2>
       </div>
     </div>
     <div data-anim="up" style="flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:2.4vw;margin-top:5vh;align-items:start">
       <div style="display:flex;flex-direction:column;gap:1.6vh;border-top:1px solid var(--border-subtle);padding-top:2vh">
-        <div class="t-cat" style="color:var(--grey-3)">— 01 / METRICS</div>
-        <h3 style="font-family:var(--sans);font-weight:400;font-size:max(18px,1.7vw);line-height:1.15;letter-spacing:-.015em;color:var(--text-primary)">Measure similarity</h3>
-        <p style="font-family:var(--sans);font-size:max(16px,.94vw);line-height:1.55;font-weight:400;color:var(--text-secondary)">17 pairwise distances — Optimal Matching and its family, Hamming, LCS, DTW, TWED — each a tested answer to “how alike are two trajectories?”</p>
+        <div class="t-cat" style="color:var(--grey-3)">— 01 / CHOOSE</div>
+        <h3 style="font-family:var(--sans);font-weight:400;font-size:max(18px,1.7vw);line-height:1.15;letter-spacing:-.015em;color:var(--text-primary)">Pick k with evidence</h3>
+        <p style="font-family:var(--sans);font-size:max(16px,.94vw);line-height:1.55;font-weight:400;color:var(--text-secondary)"><em>pam_range</em> sweeps candidate cluster counts and reports silhouette and quality indices for each — the number of types is chosen, not assumed.</p>
       </div>
       <div style="display:flex;flex-direction:column;gap:1.6vh;border-top:1px solid var(--border-subtle);padding-top:2vh">
-        <div class="t-cat" style="color:var(--grey-3)">— 02 / CLUSTERING</div>
-        <h3 style="font-family:var(--sans);font-weight:400;font-size:max(18px,1.7vw);line-height:1.15;letter-spacing:-.015em;color:var(--text-primary)">Find the types</h3>
-        <p style="font-family:var(--sans);font-size:max(16px,.94vw);line-height:1.55;font-weight:400;color:var(--text-secondary)">PAM, CLARA and hierarchical typologies, with silhouette and quality indices to defend every segmentation in front of stakeholders.</p>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:1.6vh;border-top:1px solid var(--border-subtle);padding-top:2vh">
-        <div class="t-cat" style="color:var(--grey-3)">— 03 / STATISTICS</div>
-        <h3 style="font-family:var(--sans);font-weight:400;font-size:max(18px,1.7vw);line-height:1.15;letter-spacing:-.015em;color:var(--text-primary)">Describe &amp; explain</h3>
-        <p style="font-family:var(--sans);font-size:max(16px,.94vw);line-height:1.55;font-weight:400;color:var(--text-secondary)">Entropy, turbulence, complexity; normative indicators like precarity and volatility; discrepancy analysis to test what drives group differences.</p>
+        <div class="t-cat" style="color:var(--grey-3)">— 02 / TEST</div>
+        <h3 style="font-family:var(--sans);font-weight:400;font-size:max(18px,1.7vw);line-height:1.15;letter-spacing:-.015em;color:var(--text-primary)">Permutation-tested</h3>
+        <p style="font-family:var(--sans);font-size:max(16px,.94vw);line-height:1.55;font-weight:400;color:var(--text-secondary)"><em>discrepancy_analysis</em> computes pseudo-R² and pseudo-F with a permutation p-value — does tenure, region or cohort actually explain trajectory differences?</p>
       </div>
       <div style="display:flex;flex-direction:column;gap:1.6vh;border-top:1px solid var(--accent);padding-top:2vh">
-        <div class="t-cat" style="color:var(--accent)">— 04 / MINING</div>
-        <h3 style="font-family:var(--sans);font-weight:400;font-size:max(18px,1.7vw);line-height:1.15;letter-spacing:-.015em;color:var(--accent)">Surface the patterns</h3>
-        <p style="font-family:var(--sans);font-size:max(16px,.94vw);line-height:1.55;font-weight:400;color:var(--text-secondary)">Frequent subsequences and sequential association rules: which patterns precede which outcomes, scored by confidence, lift and conviction.</p>
+        <div class="t-cat" style="color:var(--accent)">— 03 / OPERATE</div>
+        <h3 style="font-family:var(--sans);font-weight:400;font-size:max(18px,1.7vw);line-height:1.15;letter-spacing:-.015em;color:var(--accent)">Fit once, score later</h3>
+        <p style="font-family:var(--sans);font-size:max(16px,.94vw);line-height:1.55;font-weight:400;color:var(--text-secondary)">PAM's <em>predict()</em> assigns new sequences to the nearest medoid from their distances to the training set — the typology becomes a scoring step, not a one-off analysis.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:1.6vh;border-top:1px solid var(--border-subtle);padding-top:2vh">
+        <div class="t-cat" style="color:var(--grey-3)">— 04 / REHEARSE</div>
+        <h3 style="font-family:var(--sans);font-weight:400;font-size:max(18px,1.7vw);line-height:1.15;letter-spacing:-.015em;color:var(--text-primary)">Synthetic first</h3>
+        <p style="font-family:var(--sans);font-size:max(16px,.94vw);line-height:1.55;font-weight:400;color:var(--text-secondary)"><em>generate_financial_journeys</em> produces synthetic banking journeys — onboarding, product adoption, risk events — so the pipeline is built and demoed before production data is touched.</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ============ 06 · S20 Stacked KPI Ledger · by the numbers ============ -->
-<section class="slide light" data-layout="S20" data-animate="stacked-ledger">
-  <div class="canvas-card">
-    <div class="chrome-min"><div class="l">By the Numbers</div><div class="r">06 / 09</div></div>
-    <div data-anim="line" style="display:flex;flex-direction:column;gap:1.4vh;margin-bottom:2vh">
-      <div class="t-cat">Small core · sharp edges</div>
-      <h2 style="font-family:var(--sans);font-weight:200;font-size:min(5.6vw,9.8vh);line-height:.96;letter-spacing:-.035em;color:var(--text-primary)">The whole toolkit, in four figures.</h2>
-    </div>
-    <div data-anim="ledger" style="flex:1;display:flex;flex-direction:column;justify-content:space-evenly">
-      <div class="ledger-row" style="display:grid;grid-template-columns:minmax(18vw,auto) 1fr auto;gap:3vw;align-items:center;border-bottom:1px solid var(--border-subtle);padding:1.2vh 0">
-        <div class="ledger-num" style="font-family:var(--sans);font-weight:200;font-size:min(8.6vw,12vh);line-height:.95;letter-spacing:-.04em;color:var(--text-primary);font-feature-settings:'tnum'">17</div>
-        <div class="ledger-label" style="font-family:var(--sans);font-size:max(16px,1.05vw);line-height:1.45;font-weight:400;color:var(--text-secondary)">distance metrics — Optimal Matching to soft-DTW,<br/>all behind one dispatch seam</div>
-        <i class="ledger-icon" data-lucide="ruler" style="width:2vw;height:2vw;color:var(--grey-3)"></i>
-      </div>
-      <div class="ledger-row" style="display:grid;grid-template-columns:minmax(18vw,auto) 1fr auto;gap:3vw;align-items:center;border-bottom:1px solid var(--border-subtle);padding:1.2vh 0">
-        <div class="ledger-num" style="font-family:var(--sans);font-weight:200;font-size:min(8.6vw,12vh);line-height:.95;letter-spacing:-.04em;color:var(--text-primary);font-feature-settings:'tnum'">90</div>
-        <div class="ledger-label" style="font-family:var(--sans);font-size:max(16px,1.05vw);line-height:1.45;font-weight:400;color:var(--text-secondary)">public functions across seven subpackages —<br/>io, core, metrics, statistics, clustering, filters, synthetic</div>
-        <i class="ledger-icon" data-lucide="layers" style="width:2vw;height:2vw;color:var(--grey-3)"></i>
-      </div>
-      <div class="ledger-row" style="display:grid;grid-template-columns:minmax(18vw,auto) 1fr auto;gap:3vw;align-items:center;border-bottom:1px solid var(--border-subtle);padding:1.2vh 0">
-        <div class="ledger-num" style="font-family:var(--sans);font-weight:200;font-size:min(8.6vw,12vh);line-height:.95;letter-spacing:-.04em;color:var(--text-primary);font-feature-settings:'tnum'">599</div>
-        <div class="ledger-label" style="font-family:var(--sans);font-size:max(16px,1.05vw);line-height:1.45;font-weight:400;color:var(--text-secondary)">tests — every expected value pinned,<br/>never “assert result &gt; 0”</div>
-        <i class="ledger-icon" data-lucide="check-check" style="width:2vw;height:2vw;color:var(--grey-3)"></i>
-      </div>
-      <div class="ledger-row" style="display:grid;grid-template-columns:minmax(18vw,auto) 1fr auto;gap:3vw;align-items:center;border-bottom:2px solid var(--accent);padding:1.2vh 0">
-        <div class="ledger-num" style="font-family:var(--sans);font-weight:200;font-size:min(8.6vw,12vh);line-height:.95;letter-spacing:-.04em;color:var(--accent);font-feature-settings:'tnum'">0</div>
-        <div class="ledger-label" style="font-family:var(--sans);font-size:max(16px,1.05vw);line-height:1.45;font-weight:400;color:var(--text-secondary)">pandas in the core — polars end to end,<br/>numba-compiled inner loops for the O(n²) work</div>
-        <i class="ledger-icon" data-lucide="zap" style="width:2vw;height:2vw;color:var(--accent)"></i>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============ 07 · S05 Three Layers · v0.5.0 release ============ -->
+<!-- ============ 08 · S05 Three Layers · v0.5.0 ============ -->
 <section class="slide light" data-layout="S05" data-animate="stack-build">
   <div class="canvas-card">
-    <div class="chrome-min"><div class="l">Release</div><div class="r">07 / 09</div></div>
+    <div class="chrome-min"><div class="l">Release</div><div class="r">08 / 10</div></div>
     <div data-anim="line" style="display:flex;flex-direction:column;gap:1.4vh">
       <div class="t-cat">Shipped 2026-07-12</div>
-      <h2 style="font-family:var(--sans);font-weight:200;font-size:min(6.2vw,11vh);line-height:.96;letter-spacing:-.035em;color:var(--text-primary)">v0.5.0 — what just landed.</h2>
+      <h2 style="font-family:var(--sans);font-weight:200;font-size:min(6.2vw,11vh);line-height:.96;letter-spacing:-.035em;color:var(--text-primary)">v0.5.0 — what changed.</h2>
     </div>
     <div class="stack-row">
       <div class="stack-block b-grey">
-        <div class="layer-nb">01 · ARCHITECTURE</div>
-        <div class="layer-ttl">One canonical container</div>
-        <div class="layer-desc">Every loader returns a <em>SequencePool</em>; every function accepts either container through a single coercion seam. Less glue for users, one seam to test.</div>
-        <div class="layer-tag">ADR-0002</div>
+        <div class="layer-nb">01 · SUBTRACTION</div>
+        <div class="layer-ttl">Dead weight removed</div>
+        <div class="layer-desc">An unused per-metric class layer — an abstract base and eleven subclasses — deleted; a dead encoding path removed. All distance work now flows through <em>compute_distances</em>: one obvious path per task.</div>
+        <div class="layer-tag">less surface</div>
       </div>
       <div class="stack-block b-grey">
-        <div class="layer-nb">02 · ANALYTICS</div>
-        <div class="layer-ttl">New instruments</div>
-        <div class="layer-desc">Sequential association rules with confidence &amp; lift; per-sequence state distributions; label-free objective volatility — each anchored to its TraMineR reference.</div>
-        <div class="layer-tag">3 new functions</div>
+        <div class="layer-nb">02 · UNIFICATION</div>
+        <div class="layer-ttl">One protocol, one skeleton</div>
+        <div class="layer-desc">Statistics and filters unified on the <em>SequenceData</em> protocol and the coerce seam (~30 duplicated coercion blocks deleted); seventeen per-sequence stats collapsed onto the reduce seam.</div>
+        <div class="layer-tag">ADR-0002</div>
       </div>
       <div class="stack-block b-accent">
-        <div class="layer-nb">03 · DELIVERY</div>
-        <div class="layer-ttl">Docs &amp; PyPI, live</div>
-        <div class="layer-desc">Sphinx API reference, glossary and changelog on GitHub Pages; the release itself gated by CI — tests, types, lint — before a wheel ever reaches PyPI.</div>
+        <div class="layer-nb">03 · INSTRUMENTS</div>
+        <div class="layer-ttl">New, oracle-anchored</div>
+        <div class="layer-desc">Sequential association rules (confidence · lift · leverage · conviction), per-sequence state distributions, label-free objective volatility — docs live at rexarski.github.io/yasqat.</div>
         <div class="layer-tag">pip install yasqat</div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ============ 08 · S18 Why Now · built to be trusted ============ -->
-<section class="slide light" data-layout="S18" data-animate="why-now">
+<!-- ============ 09 · S08 Duo Compare · does / doesn't ============ -->
+<section class="slide light" data-layout="S08" data-animate="duo-mirror">
   <div class="canvas-card">
-    <div class="chrome-min"><div class="l">Why Trust It</div><div class="r">08 / 09</div></div>
+    <div class="chrome-min"><div class="l">Scope</div><div class="r">09 / 10</div></div>
     <div data-anim="line" style="display:flex;flex-direction:column;gap:1.4vh">
-      <div class="t-cat">Engineering posture</div>
-      <h2 style="font-family:var(--sans);font-weight:200;font-size:min(6.2vw,11vh);line-height:.96;letter-spacing:-.035em;color:var(--text-primary)">Built to be trusted.</h2>
+      <div class="t-cat">In the box · out of the box</div>
+      <h2 style="font-family:var(--sans);font-weight:200;font-size:min(6.2vw,11vh);line-height:.96;letter-spacing:-.035em;color:var(--text-primary)">What it does — and doesn't.</h2>
     </div>
-    <div data-anim="up" style="flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:3vw;margin-top:5vh">
-      <div style="display:flex;flex-direction:column;gap:1.6vh">
-        <div class="t-cat" style="color:var(--grey-3)">CORRECTNESS</div>
-        <h3 style="font-family:var(--sans);font-weight:400;font-size:max(18px,1.6vw);line-height:1.2;color:var(--text-primary)">Pinned against the oracle</h3>
-        <p style="font-family:var(--sans);font-size:max(16px,.94vw);line-height:1.55;font-weight:400;color:var(--text-secondary)">TraMineR is the reference implementation. Expected values are pinned in tests — when in doubt, match R.</p>
-        <div style="margin-top:auto;font-family:var(--sans);font-weight:200;font-size:min(8.4vw,14vh);line-height:.9;letter-spacing:-.04em;color:var(--text-primary);font-feature-settings:'tnum'">599</div>
+    <div class="duo-compare">
+      <div class="col">
+        <div class="col-tag"><span class="num">IN</span> shipping today</div>
+        <div class="col-ttl">Does</div>
+        <p class="col-desc">Distances: the Optimal Matching family, Hamming, LCS/LCP, DTW, TWED. Clustering: PAM, CLARA, hierarchical, with quality indices. Statistics: descriptive and normative indicators, discrepancy analysis, subsequence mining and association rules. Synthetic generators for prototyping.</p>
+        <ul class="col-list">
+          <li>Expected values pinned against TraMineR</li>
+          <li>Every result a polars DataFrame</li>
+        </ul>
       </div>
-      <div style="display:flex;flex-direction:column;gap:1.6vh">
-        <div class="t-cat" style="color:var(--grey-3)">PERFORMANCE</div>
-        <h3 style="font-family:var(--sans);font-weight:400;font-size:max(18px,1.6vw);line-height:1.2;color:var(--text-primary)">Polars + numba, no glue</h3>
-        <p style="font-family:var(--sans);font-size:max(16px,.94vw);line-height:1.55;font-weight:400;color:var(--text-secondary)">Vectorized frames end to end; compiled inner loops where the O(n²) distance work actually happens. Zero pandas in the core.</p>
-        <div style="margin-top:auto;font-family:var(--sans);font-weight:200;font-size:min(8.4vw,14vh);line-height:.9;letter-spacing:-.04em;color:var(--text-primary);font-feature-settings:'tnum'">0</div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:1.6vh">
-        <div class="t-cat" style="color:var(--accent)">READINESS</div>
-        <h3 style="font-family:var(--sans);font-weight:400;font-size:max(18px,1.6vw);line-height:1.2;color:var(--accent)">Install it today</h3>
-        <p style="font-family:var(--sans);font-size:max(16px,.94vw);line-height:1.55;font-weight:400;color:var(--text-secondary)">Strict typing, CI-gated releases, a living documentation site, MIT license. Architecture decisions recorded, backlog in the open.</p>
-        <div style="margin-top:auto;font-family:var(--sans);font-weight:200;font-size:min(8.4vw,14vh);line-height:.9;letter-spacing:-.04em;color:var(--accent);font-feature-settings:'tnum'">0.5.0</div>
+      <span class="vrule"></span>
+      <div class="col accent">
+        <div class="col-tag"><span class="num">OUT</span> by design, or not yet</div>
+        <div class="col-ttl">Doesn't</div>
+        <p class="col-desc">No plotting — results are tables; bring matplotlib, altair or your BI layer. No event or interval calculus — categorical states only. And it is pre-1.0: breaking changes still land in minor versions, documented in the changelog.</p>
+        <ul class="col-list">
+          <li>Backlog in the open — richer subsequence mining, distance-engine internals</li>
+          <li>1.0 = a committed stable interface</li>
+        </ul>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ============ 09 · Closing · split IKB + takeaways ============ -->
+<!-- ============ 10 · Closing · split accent + takeaways ============ -->
 <section class="slide split" data-layout="SWISS-CLOSING-ASCII" data-animate="split-statement">
   <div class="canvas-card">
     <div class="split-half">
       <div class="half b-accent" style="padding:5.6vh 3.6vw 4.4vh;justify-content:space-between;position:relative;overflow:hidden">
         <canvas class="ascii-bg" aria-hidden="true"></canvas>
         <div class="chrome-min" style="margin-bottom:0;position:relative;z-index:1">
-          <div class="l">09 / 09</div>
+          <div class="l">10 / 10</div>
           <div class="r">CLOSING</div>
         </div>
         <div data-anim="manifesto" style="display:flex;flex-direction:column;gap:2vh;position:relative;z-index:1">
-          <div class="t-meta" style="color:rgba(255,255,255,.78);letter-spacing:.22em;margin-bottom:1.6vh">MANIFESTO</div>
+          <div class="t-meta" style="color:rgba(255,255,255,.78);letter-spacing:.22em;margin-bottom:1.6vh">GETTING STARTED</div>
           <h2 style="font-family:var(--sans);font-size:min(8vw,14vh);line-height:.94;letter-spacing:-.025em;font-weight:200;color:#fff">pip install<br/><span style="font-style:italic;font-weight:300">yasqat</span>.</h2>
-          <div style="font-family:var(--sans);font-size:max(14px,1vw);line-height:1.6;color:rgba(255,255,255,.82);font-weight:400;max-width:38ch;margin-top:1.4vh">Three decades of sequence-method rigor, one import away from your data stack.</div>
+          <div style="font-family:var(--sans);font-size:max(14px,1vw);line-height:1.6;color:rgba(255,255,255,.82);font-weight:400;max-width:38ch;margin-top:1.4vh">Python ≥ 3.11 · MIT · docs at rexarski.github.io/yasqat</div>
         </div>
         <div data-anim="signature" style="display:flex;justify-content:space-between;align-items:end;border-top:1px solid rgba(255,255,255,.22);padding-top:2vh;position:relative;z-index:1">
-          <div class="t-meta" style="color:rgba(255,255,255,.62)">rexarski · yasqat v0.5.0</div>
-          <div class="t-meta" style="color:rgba(255,255,255,.62)">26.07.12</div>
+          <div class="t-meta" style="color:rgba(255,255,255,.62)">yasqat v0.5.0</div>
+          <div class="t-meta" style="color:rgba(255,255,255,.62)">26.07.20</div>
         </div>
       </div>
       <div class="half" style="padding:5.6vh 3.6vw 4.4vh;justify-content:space-between">
@@ -1514,41 +1547,40 @@
           <li style="display:grid;grid-template-columns:auto 1fr;gap:2vw;align-items:start;padding:2.6vh 0;border-top:1px solid var(--border-subtle)">
             <div style="font-family:var(--sans);font-weight:200;font-size:min(4.4vw,7.8vh);line-height:.9;color:var(--text-primary)">01</div>
             <div>
-              <h3 style="font-family:var(--sans);font-weight:400;font-size:max(18px,1.8vw);line-height:1.2;letter-spacing:-.015em;color:var(--text-primary);margin-bottom:1vh">Rigor, ported</h3>
-              <p style="font-family:var(--sans);font-size:max(16px,.94vw);line-height:1.6;color:var(--text-secondary);font-weight:400">TraMineR-class sequence analysis — metrics, typologies, indicators, mining — native to the Python data stack.</p>
+              <h3 style="font-family:var(--sans);font-weight:400;font-size:max(18px,1.8vw);line-height:1.2;letter-spacing:-.015em;color:var(--text-primary);margin-bottom:1vh">TraMineR-checked</h3>
+              <p style="font-family:var(--sans);font-size:max(16px,.94vw);line-height:1.6;color:var(--text-secondary);font-weight:400">The same state-sequence methods, with expected values pinned against the R reference — narrower in scope than TanaT, on purpose.</p>
             </div>
           </li>
           <li style="display:grid;grid-template-columns:auto 1fr;gap:2vw;align-items:start;padding:2.6vh 0;border-top:1px solid var(--border-subtle)">
             <div style="font-family:var(--sans);font-weight:200;font-size:min(4.4vw,7.8vh);line-height:.9;color:var(--text-primary)">02</div>
             <div>
-              <h3 style="font-family:var(--sans);font-weight:400;font-size:max(18px,1.8vw);line-height:1.2;letter-spacing:-.015em;color:var(--text-primary);margin-bottom:1vh">DataFrames in, DataFrames out</h3>
-              <p style="font-family:var(--sans);font-size:max(16px,.94vw);line-height:1.6;color:var(--text-secondary);font-weight:400">polars everywhere; plotting and downstream modeling stay yours. No framework tax, no lock-in.</p>
+              <h3 style="font-family:var(--sans);font-weight:400;font-size:max(18px,1.8vw);line-height:1.2;letter-spacing:-.015em;color:var(--text-primary);margin-bottom:1vh">polars in, polars out</h3>
+              <p style="font-family:var(--sans);font-size:max(16px,.94vw);line-height:1.6;color:var(--text-secondary);font-weight:400">Long-format DataFrames both directions; cluster labels and indicators join straight back onto your tables.</p>
             </div>
           </li>
           <li style="display:grid;grid-template-columns:auto 1fr;gap:2vw;align-items:start;padding:2.6vh 0;border-top:1px solid var(--border-subtle);border-bottom:2px solid var(--accent)">
             <div style="font-family:var(--sans);font-weight:200;font-size:min(4.4vw,7.8vh);line-height:.9;color:var(--accent)">03</div>
             <div>
-              <h3 style="font-family:var(--sans);font-weight:400;font-size:max(18px,1.8vw);line-height:1.2;letter-spacing:-.015em;color:var(--accent);margin-bottom:1vh">Live now</h3>
-              <p style="font-family:var(--sans);font-size:max(16px,.94vw);line-height:1.6;color:var(--text-secondary);font-weight:400">v0.5.0 on PyPI · docs on GitHub Pages · MIT. The backlog and the ADRs are in the open — come build.</p>
+              <h3 style="font-family:var(--sans);font-weight:400;font-size:max(18px,1.8vw);line-height:1.2;letter-spacing:-.015em;color:var(--accent);margin-bottom:1vh">Speaks parquet</h3>
+              <p style="font-family:var(--sans);font-size:max(16px,.94vw);line-height:1.6;color:var(--text-secondary);font-weight:400">Spark and Hive data flow in and out through parquet and Arrow — no R bridge, no JVM in the loop.</p>
             </div>
           </li>
         </ul>
-        <div data-anim="foot" class="t-meta" style="color:var(--text-helper);text-align:right">→ END · YASQAT FIELD NOTE 01</div>
+        <div data-anim="foot" class="t-meta" style="color:var(--text-helper);text-align:right">→ END · QUESTIONS WELCOME</div>
       </div>
     </div>
   </div>
 </section>
-
 </div>
 
 <div id="nav"></div>
 
 <script>
-/* =============== WebGL 网格背景 (瑞士风专用) ===============
-   极简移动网格 + 微弱点阵叠加,营造"工业感、精准感"
-   - 主网格: 缓慢漂移的细线网格
-   - 次级: 鼠标附近的极细点阵微扰
-   - 颜色: 跟随主题(浅底深线 / 深底亮线),配合 mix-blend-mode
+/* =============== WebGL grid background (Swiss-style only) ===============
+   A minimal drifting grid + a faint dot overlay for an "industrial, precise" feel.
+   - Primary grid: slowly drifting hairline grid
+   - Secondary: fine dot perturbation near the mouse
+   - Color: follows the theme (dark lines on light bg / light lines on dark bg), via mix-blend-mode
 */
 const VS = `attribute vec2 position;void main(){gl_Position=vec4(position,0.0,1.0);}`;
 
@@ -1573,16 +1605,16 @@ void main(){
   vec2 p = uv;
   p.x *= aspect;
 
-  // 缓慢平移
+  // slow pan
   vec2 drift = vec2(u_time * 0.008, u_time * 0.005);
   vec2 gp = p + drift;
 
-  // 主细网格 (大间距)
+  // primary fine grid (wide spacing)
   float mainGrid = gridLine(gp, 0.12, 0.012);
-  // 次级网格 (更细更密)
+  // secondary grid (finer, denser)
   float subGrid = gridLine(gp, 0.024, 0.04) * 0.4;
 
-  // 鼠标附近的强化
+  // boost near the mouse
   vec2 m = u_mouse;
   m.x *= aspect;
   float md = length(p - m);
@@ -1590,18 +1622,18 @@ void main(){
 
   float gridStrength = (mainGrid + subGrid * 0.5) * (0.45 + mInfluence);
 
-  // 点阵 (作为基底)
+  // dot field (as a base layer)
   vec2 dotGrid = fract(gp * 50.0) - 0.5;
   float dotMask = 1.0 - smoothstep(0.05, 0.14, length(dotGrid));
-  // 用低频噪声调制点阵密度
+  // modulate dot density with low-frequency noise
   float wave = sin(gp.x * 1.4 + u_time * 0.15) * cos(gp.y * 1.6 - u_time * 0.12);
   dotMask *= smoothstep(-0.3, 0.6, wave) * 0.6;
 
-  // 颜色: 浅底用深线条,深底用浅线条;高亮处带 accent 痕迹
+  // color: dark lines on light background, light lines on dark background; accent tint near highlights
   vec3 lineColor = mix(vec3(0.08), vec3(0.92), u_dark);
   vec3 bgColor = mix(vec3(0.97, 0.97, 0.96), vec3(0.06, 0.06, 0.07), u_dark);
 
-  // accent 暗示 (鼠标附近偷渡一点 accent 色)
+  // accent hint (a touch of accent color sneaks in near the mouse)
   vec3 col = bgColor;
   col = mix(col, lineColor, gridStrength * 0.55);
   col = mix(col, lineColor, dotMask * 0.35);
@@ -1639,10 +1671,10 @@ function bootGL(canvasId, fsSrc){
   };
   addEventListener('resize',resize);resize();
 
-  // 读取 CSS 变量,把 accent 颜色塞进 shader
+  // read the CSS variable and feed the accent color into the shader
   function readAccent(){
     const cs = getComputedStyle(document.documentElement);
-    const hex = cs.getPropertyValue('--accent').trim() || '#002FA7';
+    const hex = cs.getPropertyValue('--accent').trim() || '#0F3D70';
     const m = hex.match(/^#([0-9a-f]{6})$/i);
     if(!m) return [0, 0.18, 0.65];
     const n = parseInt(m[1], 16);
@@ -1691,7 +1723,7 @@ if(document.body.classList.contains('canvas-mode')){
 }
 addEventListener('swiss-low-power-change', e=>{e.detail.on ? stopGrid() : startGrid();});
 
-// =============== 导航 ===============
+// =============== Navigation ===============
 const deck=document.getElementById('deck');
 const slides=deck.querySelectorAll('.slide');
 const nav=document.getElementById('nav');
@@ -1720,7 +1752,7 @@ function go(n){
   lock=true;setTimeout(()=>lock=false,700);
 }
 
-/* =============== ESC 索引视图 =============== */
+/* =============== ESC index view =============== */
 let overviewOn=false;
 const ov=document.createElement('div');
 ov.id='overview';
@@ -1743,7 +1775,7 @@ function buildOverview(){
     clone.style.cssText='width:100vw;height:100vh;transform:scale('+(1/4.5)+');transform-origin:top left;position:absolute;top:0;left:0;pointer-events:none';
     wrap.appendChild(clone);
     const label=document.createElement('div');
-    /* ESC 索引卡 label */
+    /* ESC index card label */
   label.style.cssText='padding:6px 10px;font-family:var(--mono);font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink);opacity:.7';
     label.textContent=(i+1)+' / '+total;
     card.appendChild(wrap);
@@ -1809,7 +1841,7 @@ go(Number.isFinite(initialSlide) ? initialSlide : 0);
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <script>lucide.createIcons();</script>
 
-<!-- Motion One 动效引擎 (与原模板一致) -->
+<!-- Motion One animation engine (matches original template) -->
 <script type="module">
 let motion;
 try {
@@ -1829,8 +1861,8 @@ if(motion){
   document.body.classList.add('motion-ready');
 
   /* ============================================================
-     IBM Carbon Motion · 每个 recipe 服务一种表达
-     不是一刀切的 stagger,而是把动效绑在内容语义上
+     IBM Carbon Motion: each recipe serves one kind of expression.
+     Not a one-size-fits-all stagger - motion is tied to content semantics.
      ============================================================ */
   const EASE_PROD       = [.2, 0, .38, .9];
   const EASE_ENTRY_EXP  = [0, 0, .3, 1];
@@ -1843,54 +1875,54 @@ if(motion){
       el.style.opacity='';
       el.style.transform='';
     });
-    /* 同时复位需要被 recipe 接管的元素 */
+    /* also reset elements the recipe needs to take over */
     slide.querySelectorAll('.row-fill,.tl-node,.stack-block,.bar-tower,.sub-card,.col,.vrule,.kpi-cell')
       .forEach(el=>{el.style.cssText = el.dataset._origCss || el.style.cssText;});
   }
 
-  /* ---------- 通用工具 ---------- */
+  /* ---------- shared utilities ---------- */
   const fade = (el, opts={})=>animate(el,
     {opacity:[0,1], y:[opts.y ?? 12, 0]},
     {duration:opts.duration ?? .6, delay:opts.delay ?? 0,
      easing:opts.easing ?? EASE_ENTRY_EXP});
 
-  /* ---------- recipe: hero · 封面索引 ----------
-     大编号一个个亮起 → 索引行最后落定 */
+  /* ---------- recipe: hero - cover index ----------
+     large numbers light up one by one, index row settles last */
   function rHero(slide, all){
     const numRows = [...slide.querySelectorAll('.cover-row')];
     const rest = all.filter(el=>!numRows.length || el !== numRows[0]);
-    /* 先入: chrome 240ms */
+    /* enters first: chrome, 240ms */
     const chrome = slide.querySelector('.chrome-min');
     if(chrome) animate(chrome, {opacity:[0,1]}, {duration:.24, easing:EASE_PROD});
-    /* 大编号 01/02/03 像点名一样依次亮 */
+    /* large numbers 01/02/03 light up in sequence like a roll call */
     numRows.forEach((row, i)=>{
       animate(row, {opacity:[0,1], x:[-12,0]},
         {duration:.5, delay:.15 + i*.18, easing:EASE_ENTRY_EXP});
     });
-    /* 索引底栏最后慢慢落定 */
+    /* index footer settles slowly last */
     const idx = slide.querySelector('[data-anim="line"]');
     if(idx) fade(idx, {delay:.15 + numRows.length*.18 + .1, duration:.5, y:6});
   }
 
   /* ---------- recipe: progression · 1× → 10× → 1000× ----------
-     节点依次入场,每个节点的数字单独"递进生长"营造跃迁 */
+     nodes enter in sequence; each node's number "grows" individually for a stepped feel */
   function rProgression(slide, all){
     const head = slide.querySelector('[data-anim="line"]');
     if(head) fade(head, {duration:.6, y:10});
 
     const nodes = [...slide.querySelectorAll('.tl-node')];
     nodes.forEach((node, i)=>{
-      const base = .35 + i*.32;          /* 节点之间间隔大,营造时间感 */
-      /* 整个节点先轻微浮入 */
+      const base = .35 + i*.32;          /* wide spacing between nodes for a sense of time passing */
+      /* the whole node floats in gently first */
       animate(node, {opacity:[0,1], y:[14, 0]},
         {duration:.55, delay:base, easing:EASE_ENTRY_EXP});
-      /* 再让 multi(数字)从 .85 scale 弹到 1,延迟 100ms */
+      /* then the number bounces from .85 scale to 1, delayed 100ms */
       const multi = node.querySelector('.multi');
       if(multi) animate(multi, {scale:[.92, 1], opacity:[0,1]},
         {duration:.5, delay:base + .12, easing:EASE_ENTRY_EXP});
     });
 
-    /* 底部 KPI 4 列最后落定,内部 60ms stagger */
+    /* bottom 4-column KPI row settles last, 60ms internal stagger */
     const kpis = [...slide.querySelectorAll('.kpi-cell')];
     kpis.forEach((cell, i)=>{
       animate(cell, {opacity:[0,1], y:[8, 0]},
@@ -1898,8 +1930,8 @@ if(motion){
     });
   }
 
-  /* ---------- recipe: statement · 大宣言 ----------
-     左半屏标题逐行落下,右半屏 leaked 信息晚 600ms 进 */
+  /* ---------- recipe: statement - big statement ----------
+     left half title drops in line by line, right half leaked info enters 600ms later */
   function rStatement(slide, all){
     const halves = [...slide.querySelectorAll('.half')];
     if(halves.length === 2){
@@ -1908,7 +1940,7 @@ if(motion){
       animate(halves[1], {opacity:[0,1], y:[18,0]},
         {duration:.7, delay:.6, easing:EASE_ENTRY_EXP});
     } else {
-      /* P9 Index Card — 三行像盖章一样依次落 */
+      /* index card - three lines settle like a stamp, in sequence */
       const head = slide.querySelector('[data-anim="line"]');
       if(head) fade(head, {duration:.5, y:6});
       const blocks = all.filter(el=>el !== head);
@@ -1919,8 +1951,8 @@ if(motion){
     }
   }
 
-  /* ---------- recipe: grid-reveal · 五个定义 ----------
-     卡片按 nb-corner 序号 01→02→03→04→05→Σ 依次揭示 */
+  /* ---------- recipe: grid-reveal - five definitions ----------
+     cards reveal in nb-corner order 01 to 05 to Sigma */
   function rGridReveal(slide, all){
     const head = slide.querySelector('[data-anim="line"]');
     if(head) fade(head, {duration:.6, y:10});
@@ -1931,20 +1963,20 @@ if(motion){
     });
   }
 
-  /* ---------- recipe: stack-build · 三层架构 ----------
-     中间 thin 先入 → 上层 fat skills 从顶推下 → 下层 application 从底推上 */
+  /* ---------- recipe: stack-build - three-tier architecture ----------
+     middle thin layer enters first, top layer pushes down from the top, bottom layer pushes up from the bottom */
   function rStackBuild(slide, all){
     const head = slide.querySelector('[data-anim="line"]');
     if(head) fade(head, {duration:.6, y:10});
 
     const blocks = [...slide.querySelectorAll('.stack-block')];
-    /* 先入: 中间薄层(LAYER 02) */
+    /* enters first: middle thin layer (LAYER 02) */
     if(blocks[1]) animate(blocks[1], {opacity:[0,1], scaleY:[.85, 1]},
       {duration:.55, delay:.3, easing:EASE_ENTRY_EXP});
-    /* 上推下: LAYER 01 fat skills 从顶部 push down */
+    /* pushes down: LAYER 01 from the top */
     if(blocks[0]) animate(blocks[0], {opacity:[0,1], y:[-22, 0]},
       {duration:.6, delay:.6, easing:EASE_ENTRY_EXP});
-    /* 下推上: LAYER 03 application 从底部 push up */
+    /* pushes up: LAYER 03 from the bottom */
     if(blocks[2]) animate(blocks[2], {opacity:[0,1], y:[22, 0]},
       {duration:.6, delay:.6, easing:EASE_ENTRY_EXP});
 
@@ -1952,8 +1984,8 @@ if(motion){
     if(foot) animate(foot, {opacity:[0,1]}, {duration:.3, delay:1.3, easing:EASE_PROD});
   }
 
-  /* ---------- recipe: measure-up · YC KPI 塔 ----------
-     塔从底部 scaleY 0→1 生长 + 数字最后弹入 */
+  /* ---------- recipe: measure-up - KPI towers ----------
+     towers grow scaleY 0 to 1 from the bottom + numbers bounce in last */
   function rMeasureUp(slide, all){
     const head = slide.querySelector('[data-anim="line"]');
     if(head) fade(head, {duration:.6, y:10});
@@ -1966,20 +1998,20 @@ if(motion){
         animate(block, {opacity:[0,1], scaleY:[.05, 1]},
           {duration:.7, delay:.35 + i*.12, easing:EASE_ENTRY_EXP});
       }
-      /* cap (顶部图标) 等柱体长好后弹入 */
+      /* the cap (top icon) bounces in after the bar has grown */
       const cap = tower.querySelector('.cap');
       if(cap) animate(cap, {opacity:[0,1], y:[-8, 0]},
         {duration:.4, delay:.85 + i*.12, easing:EASE_PROD});
     });
   }
 
-  /* ---------- recipe: bar-grow · 90% 价值分布 ----------
-     标题先入 → hairline 从中点向两侧 stroke draw → bar 依次 width 0→target → 数值 fade in */
+  /* ---------- recipe: bar-grow - value distribution ----------
+     title enters, hairline strokes outward from center, bars grow width 0 to target in sequence, values fade in */
   function rBarGrow(slide, all){
     const head = slide.querySelector('[data-anim="line"]');
     if(head) fade(head, {duration:.6, y:10});
 
-    /* 中部 hairline:从 100% width 0 拉到 100% (transformOrigin: center) */
+    /* center hairline: strokes from width 0 to 100% (transformOrigin: center) */
     const midRow = slide.querySelector('[data-anim="up"]');
     if(midRow){
       const midLabel = midRow.querySelector('.t-cat');
@@ -1993,7 +2025,7 @@ if(motion){
       }
     }
 
-    /* bar 行依次 width 增长 */
+    /* bar rows grow in width, in sequence */
     const fills = [...slide.querySelectorAll('.row-fill')];
     const labels = [...slide.querySelectorAll('.row-lbl')];
     const values = [...slide.querySelectorAll('.row-val')];
@@ -2010,7 +2042,7 @@ if(motion){
   }
 
   /* ---------- recipe: duo-mirror · Latent vs Deterministic ----------
-     左 80ms 入,vrule 从中心 scaleY 0→1,右 240ms 入 */
+     left enters at 80ms, vrule scales 0 to 1 from center, right enters at 240ms */
   function rDuoMirror(slide, all){
     const head = slide.querySelector('[data-anim="line"]');
     if(head) fade(head, {duration:.6, y:10});
@@ -2031,11 +2063,11 @@ if(motion){
     if(foot) animate(foot, {opacity:[0,1]}, {duration:.3, delay:1.3, easing:EASE_PROD});
   }
 
-  /* ---------- recipe: split-statement · 收尾 ----------
-     左黑半屏的 once / forever 错位入场;右白半屏 takeaway list 后跟 */
+  /* ---------- recipe: split-statement - closing ----------
+     left black half: labels enter offset; right white half: takeaway list follows */
   function rSplitStatement(slide, all){
     const halves = [...slide.querySelectorAll('.half')];
-    /* 左黑半屏 — once 先入,forever 间隔 600ms */
+    /* left black half - first label first, second label 600ms later */
     if(halves[0]){
       animate(halves[0], {opacity:[0,1]}, {duration:.4, easing:EASE_PROD});
       const kpis = halves[0].querySelectorAll('.kpi-thin');
@@ -2044,7 +2076,7 @@ if(motion){
           {duration:.7, delay:.25 + i*.55, easing:EASE_ENTRY_EXP});
       });
     }
-    /* 右白半屏 — list 三条依次入,在左侧 once 出现后开始 */
+    /* right white half - three list items enter in sequence, starting after the left side appears */
     if(halves[1]){
       animate(halves[1], {opacity:[0,1]}, {duration:.4, delay:.3, easing:EASE_PROD});
       const items = halves[1].querySelectorAll('.takeaway-list li');
@@ -2055,8 +2087,8 @@ if(motion){
     }
   }
 
-  /* ---------- recipe: timeline-walk · P11 横向 evolution ----------
-     标题先入 → 横轴虚线 scaleX 拉开(伪) → 5 个 dot 按年代依次 scale 入 → label 跟随 */
+  /* ---------- recipe: timeline-walk - horizontal evolution ----------
+     title enters, horizontal dashed axis scales in (simulated), 5 dots scale in by era in sequence, labels follow */
   function rTimelineWalk(slide, all){
     const head = slide.querySelector('[data-anim="line"]');
     if(head) fade(head, {duration:.55, y:10});
@@ -2076,7 +2108,7 @@ if(motion){
       }
       if(label){
         const fromY = node.classList.contains('up') ? 8 : -8;
-        /* 保留 CSS 的水平居中 translateX(-50%),避免动效覆盖后 label 与 dot 错位 */
+        /* preserves CSS's horizontal centering translateX(-50%), so motion doesn't misalign label vs dot */
         animate(label, {opacity:[0,1], transform:[`translate(-50%, ${fromY}px)`, 'translate(-50%, 0px)']},
           {duration:.5, delay:base + .12, easing:EASE_ENTRY_EXP});
       }
@@ -2087,7 +2119,7 @@ if(motion){
   }
 
   /* ---------- recipe: manifesto · P12 Form & Found ----------
-     副标先入 → 大字两段错峰落 → 底部 ink 通栏条从下推上 */
+     subtitle enters, big text drops in two staggered lines, bottom ink banner pushes up from below */
   function rManifesto(slide, all){
     const head = slide.querySelector('[data-anim="line"]');
     if(head){
@@ -2098,7 +2130,7 @@ if(motion){
       if(title) animate(title, {opacity:[0,1], y:[26, 0]},
         {duration:.85, delay:.3, easing:EASE_ENTRY_EXP});
     }
-    /* 底部 ink 条从下推入 */
+    /* bottom ink banner pushes in from below */
     const foot = [...slide.querySelectorAll('[data-anim="up"]')];
     foot.forEach((el, i)=>{
       animate(el, {opacity:[0,1], y:[40, 0]},
@@ -2107,7 +2139,7 @@ if(motion){
   }
 
   /* ---------- recipe: three-forces · P13 ----------
-     左 ink hero 先入 → 右 3 张卡按 1/2/3 依次从右滑入 + 每张大数字单独弹入 */
+     left ink hero enters first, right 3 cards slide in from the right in order 1/2/3 + each big number bounces in individually */
   function rThreeForces(slide, all){
     const head = slide.querySelector('[data-anim="line"]');
     if(head) fade(head, {duration:.5, y:8});
@@ -2130,8 +2162,8 @@ if(motion){
     });
   }
 
-  /* ---------- recipe: loop-form · P14 自学闭环 ----------
-     左 4 步像台阶依次入 → 右环图节点按时钟顺序入 → 中心 improves scale 入 */
+  /* ---------- recipe: loop-form - self-learning loop ----------
+     left 4 steps enter like stairs in sequence, right loop-diagram nodes enter clockwise, center label scales in */
   function rLoopForm(slide, all){
     const head = slide.querySelector('[data-anim="line"]');
     if(head) fade(head, {duration:.55, y:10});
@@ -2139,14 +2171,14 @@ if(motion){
     const grid = slide.querySelector('[data-anim="up"]');
     if(grid) animate(grid, {opacity:[0,1]}, {duration:.3, delay:.35, easing:EASE_PROD});
 
-    /* 左侧 4 步台阶,每步从左滑入 */
+    /* left 4 steps, each slides in from the left */
     const steps = grid ? [...grid.querySelectorAll(':scope > div:first-child > div')] : [];
     steps.forEach((step, i)=>{
       animate(step, {opacity:[0,1], x:[-18, 0]},
         {duration:.5, delay:.5 + i*.14, easing:EASE_ENTRY_EXP});
     });
 
-    /* 右侧 SVG 节点 (4 个 circle + label) 按 01→04 顺序入 */
+    /* right SVG nodes (4 circles + labels) enter in order 01 to 04 */
     const svg = grid?.querySelector('svg');
     if(svg){
       const ring = svg.querySelector('circle:first-of-type');
@@ -2173,8 +2205,8 @@ if(motion){
     }
   }
 
-  /* ---------- recipe: matrix-fill · P15 skill 矩阵 ----------
-     标题入 → 12 张卡按对角线波 (i+j) 扫入 → 底部 20,000 大数字最后 fade 入 */
+  /* ---------- recipe: matrix-fill - skill matrix ----------
+     title enters, 12 cards sweep in on a diagonal wave (i+j), bottom big number fades in last */
   function rMatrixFill(slide, all){
     const head = slide.querySelector('[data-anim="line"]');
     if(head) fade(head, {duration:.55, y:10});
@@ -2192,7 +2224,7 @@ if(motion){
         {duration:.42, delay:.5 + wave, easing:EASE_ENTRY_EXP});
     });
 
-    /* 底部 20,000 区块 */
+    /* bottom big-number block */
     const foot = [...slide.querySelectorAll('[data-anim="up"]')][1];
     if(foot){
       animate(foot, {opacity:[0,1], y:[18, 0]},
@@ -2203,8 +2235,8 @@ if(motion){
     }
   }
 
-  /* ---------- recipe: field-notes · P16 散点观察 ----------
-     标题入 → 6 张卡按"散点"乱序延迟入,微小旋转复位 */
+  /* ---------- recipe: field-notes - scattered observations ----------
+     title enters, 6 cards enter in scattered order with a slight rotation reset, for a "scatter" feel */
   function rFieldNotes(slide, all){
     const head = slide.querySelector('[data-anim="line"]');
     if(head) fade(head, {duration:.55, y:10});
@@ -2213,7 +2245,7 @@ if(motion){
     if(!grid) return;
     animate(grid, {opacity:[0,1]}, {duration:.3, delay:.35, easing:EASE_PROD});
 
-    /* 散点顺序: 用一个稍微打乱的索引数组,营造"乱中有序"感 */
+    /* scatter order: a slightly shuffled index array for an "ordered chaos" feel */
     const order = [0, 3, 1, 4, 2, 5];
     const cards = [...grid.children];
     order.forEach((idx, i)=>{
@@ -2224,8 +2256,8 @@ if(motion){
     });
   }
 
-  /* ---------- recipe: system-diagram · P17 三圆系统图 ----------
-     标题入 → SVG 三组图依次入 + 中间同心圆从外向内 scale 入 → 下方注释列依次入 */
+  /* ---------- recipe: system-diagram - three-circle system diagram ----------
+     title enters, the three SVG groups enter in sequence + concentric circles scale in from outer to inner, caption list enters last */
   function rSystemDiagram(slide, all){
     const head = slide.querySelector('[data-anim="line"]');
     if(head) fade(head, {duration:.55, y:10});
@@ -2238,7 +2270,7 @@ if(motion){
     svgs.forEach((svg, i)=>{
       const base = .55 + i*.22;
       const circles = [...svg.querySelectorAll('circle')];
-      /* 中间是同心圆: 从外圈到内圈依次 scale 入 */
+      /* middle: concentric circles scale in from outer ring to inner */
       if(circles.length > 1){
         circles.forEach((c, j)=>{
           c.style.transformOrigin = `${c.getAttribute('cx')}px ${c.getAttribute('cy')}px`;
@@ -2257,7 +2289,7 @@ if(motion){
       });
     });
 
-    /* 下方注释列 */
+    /* caption list below */
     const cols = [...stage.querySelectorAll(':scope > div:last-child > div')];
     cols.forEach((col, i)=>{
       animate(col, {opacity:[0,1], y:[12, 0]},
@@ -2265,8 +2297,8 @@ if(motion){
     });
   }
 
-  /* ---------- recipe: why-now · P18 三列 + 巨大底数 ----------
-     标题入 → 三列文本入 → 三个底部巨数 01/02/03 错峰 scale 落定 */
+  /* ---------- recipe: why-now - three columns + oversized bottom numbers ----------
+     title enters, three text columns enter, three bottom big numbers 01/02/03 settle with staggered scale */
   function rWhyNow(slide, all){
     const head = slide.querySelector('[data-anim="line"]');
     if(head) fade(head, {duration:.55, y:10});
@@ -2287,10 +2319,10 @@ if(motion){
     });
   }
 
-  /* ---------- recipe: four-cards · P19 4 列卡片 ----------
-     顶部红线 scaleX 0→1 → 标题入 → 4 卡按 01-04 依次入 */
+  /* ---------- recipe: four-cards - four-column cards ----------
+     top accent line scales 0 to 1, title enters, 4 cards enter in order 01-04 */
   function rFourCards(slide, all){
-    /* 顶部红线 */
+    /* top accent line */
     const topRule = slide.querySelector('[data-anim="line"] > div:first-child');
     if(topRule){
       topRule.style.transformOrigin = 'left center';
@@ -2316,7 +2348,7 @@ if(motion){
     });
   }
 
-  /* ============ P20 · Stacked KPI Ledger · 4 行账单逐行点亮 + 行间发丝从左画 ============ */
+  /* ============ Stacked KPI Ledger - 4 rows light up in sequence + hairline draws left-to-right between rows ============ */
   function rStackedLedger(slide, all){
     const ledger = slide.querySelector('[data-anim="ledger"]');
     if(!ledger) return;
@@ -2334,7 +2366,7 @@ if(motion){
     });
   }
 
-  /* ============ P21 · Tech Spec Sheet · 标题分行 / KPI 顶线画出 + count 风感 / 竖线弹起 / 底巨数 ============ */
+  /* ============ Tech Spec Sheet - title breaks into lines / KPI top rule draws / counter feel / vertical bars pop up / big bottom number ============ */
   function rTechSpec(slide, all){
     const head = slide.querySelector('[data-anim="line"]');
     if(head) fade(head, {duration:.5, y:8});
@@ -2343,7 +2375,7 @@ if(motion){
     if(main){
       animate(main, {opacity:[0,1]}, {duration:.3, delay:.25, easing:EASE_PROD});
 
-      /* 左大标题分行 */
+      /* left large title, broken into lines */
       const titleLines = main.querySelector(':scope > div:first-child > div:first-child');
       if(titleLines){
         animate(titleLines, {opacity:[0,1], y:[18, 0]}, {duration:.7, delay:.35, easing:EASE_ENTRY_EXP});
@@ -2353,7 +2385,7 @@ if(motion){
         animate(titleNote, {opacity:[0,1], y:[10, 0]}, {duration:.5, delay:.95, easing:EASE_ENTRY_EXP});
       }
 
-      /* 三 KPI · 顶线 scaleX + 数字 fade-up + 副文字 */
+      /* three KPIs - top rule scaleX + number fade-up + subtext */
       const kpis = [...main.querySelectorAll(':scope > div:not([data-anim]):not(:first-child)')];
       kpis.forEach((kpi, i)=>{
         const base = .55 + i*.18;
@@ -2372,7 +2404,7 @@ if(motion){
 
     }
 
-    /* 底部 hero 区: 巨数 + goal + tags + 右下竖线 */
+    /* bottom hero area: big number + goal + tags + right-side vertical bars */
     const hero = slide.querySelector('[data-anim="hero"]');
     if(hero){
       animate(hero, {opacity:[0,1]}, {duration:.3, delay:1.3, easing:EASE_PROD});
@@ -2390,7 +2422,7 @@ if(motion){
           }
         });
       }
-      /* 右下: 文字先入, 9 根竖线再从底部 scaleY 弹起 */
+      /* bottom right: text enters first, then 9 vertical bars bounce up from the bottom */
       const right = hero.querySelector(':scope > div:nth-child(3)');
       if(right){
         const rightText = right.querySelector(':scope > div:last-child');
@@ -2404,7 +2436,7 @@ if(motion){
     }
   }
 
-  /* ============ P22 · Image Hero · 图缓推 + 标题白块从左滑入 + 三 KPI 顶线画出 ============ */
+  /* ============ Image Hero - image eases in + title white block slides in from the left + three KPI top rules draw ============ */
   function rImageHero(slide, all){
     const img = slide.querySelector('[data-anim="img"] img');
     if(img){
@@ -2423,11 +2455,11 @@ if(motion){
     if(kpiWrap){
       animate(kpiWrap, {opacity:[0,1]}, {duration:.3, delay:.7, easing:EASE_PROD});
 
-      /* 段落 */
+      /* paragraph */
       const para = kpiWrap.querySelector(':scope > div:first-child');
       if(para) animate(para, {opacity:[0,1], y:[14, 0]}, {duration:.6, delay:.85, easing:EASE_ENTRY_EXP});
 
-      /* 三列 KPI · 顶线 scaleX + 数字升起 */
+      /* three-column KPI - top rule scaleX + number rises */
       const cols = [...kpiWrap.querySelectorAll(':scope > div:nth-child(2) > div')];
       cols.forEach((col, i)=>{
         const base = 1.1 + i*.18;
@@ -2496,8 +2528,8 @@ if(motion){
 
     resetAnims(slide);
 
-    /* 关键:[data-anim] 容器很多时候只是占位标记,真正的几何动画在子元素上.
-       默认强制 reveal 所有 [data-anim] 容器, recipe 想做块入场时用 motion 的 {opacity:[0,1]} 会自动覆盖 */
+    /* Note: [data-anim] containers are often just placeholder markers - the real geometric animation lives on child elements.
+       By default all [data-anim] containers are force-revealed; when a recipe wants to animate the block itself, motion's {opacity:[0,1]} call overrides this automatically. */
     slide.querySelectorAll('[data-anim]').forEach(el=>{
       el.style.opacity = '1';
       el.style.transform = 'none';
@@ -2508,24 +2540,24 @@ if(motion){
     const fn = RECIPES[recipe];
     if(fn){ fn(slide, all); return; }
 
-    /* fallback: 平凡 fade */
+    /* fallback: plain fade */
     if(all.length) animate(all, {opacity:[0,1], y:[12,0]},
       {duration:.6, delay:i=>i*.08, easing:EASE_ENTRY_EXP});
   }
 
   window.__playSlide = playSlide;
-  window.__pipeAdvance = ()=>false;  /* 当前 deck 不用 pipeline recipe */
+  window.__pipeAdvance = ()=>false;  /* this deck doesn't use the pipeline recipe */
 
   playSlide(window.__currentSlideIndex || 0);
 }
 </script>
 
 <script>
-/* ============== ASCII 点阵呼吸场 · IKB 封面/封底专用 ==============
-   sin/cos 二维噪声场驱动字符显隐,营造工业仪表板的"涌动呼吸"质感.
-   纯 canvas 2D, mix-blend-mode:screen 让字符在 IKB 底色上自然发亮.
-   用法:在需要呼吸场的容器(.canvas-card 或 split .half.b-accent)内首位插入
-        <canvas class="ascii-bg" aria-hidden="true">,本脚本会自动扫描并启动. */
+/* ============== ASCII dot breathing field - IKB cover/closing only ==============
+   a 2D sin/cos noise field drives character visibility, for an industrial-dashboard "pulsing breath" feel.
+   pure canvas 2D, mix-blend-mode:screen lets characters glow naturally against the IKB background.
+   usage: insert <canvas class="ascii-bg" aria-hidden="true"> as the first child of any container that needs
+   the breathing field (.canvas-card or split .half.b-accent) - this script auto-scans and starts it. */
 (function(){
   const canvases = [...document.querySelectorAll('canvas.ascii-bg')];
   if(!canvases.length) return;
@@ -2593,7 +2625,7 @@ if(motion){
     const t = (now - t0) / 1000 * 0.55;
     frame++;
     canvases.forEach(c=>{
-      // 离屏 slide 降帧:每 4 帧渲染一次,在屏 slide 每帧渲染
+      // off-screen slides render at a lower frame rate (once every 4 frames); on-screen slides render every frame
       const slide = c.closest('.slide');
       const rect = slide ? slide.getBoundingClientRect() : null;
       const onscreen = rect && rect.right > 0 && rect.left < window.innerWidth;

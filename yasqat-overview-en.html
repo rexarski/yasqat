@@ -374,8 +374,8 @@
   </div>
   <div class="cover-meta">
     <strong>rexarski</strong><br>
-    v0.4.1 live · v0.5.0 in development · 2026.06<br>
-    github.com/rexarski/yasqat · MIT License
+    v0.5.0 live on PyPI · 2026.07<br>
+    github.com/rexarski/yasqat · rexarski.github.io/yasqat · MIT License
   </div>
 </section>
 
@@ -613,11 +613,11 @@ longitudinal_entropy(pool)                    # → a polars DataFrame, like eve
       </tr>
       <tr>
         <td><strong>Normative indicators</strong></td>
-        <td>Volatility, precarity, insecurity, degradation, badness, integration (per-state), proportion-positive — for "good vs. bad state" social-science measures.</td>
+        <td>Volatility (label-weighted and label-free objective variants), precarity, insecurity, degradation, badness, integration (per-state), proportion-positive, per-sequence state distributions — for "good vs. bad state" social-science measures.</td>
       </tr>
       <tr>
         <td><strong>Discrepancy &amp; mining</strong></td>
-        <td>Pseudo-ANOVA with permutation tests, multi-factor discrepancy, dissimilarity trees; frequent-subsequence mining with support and length thresholds.</td>
+        <td>Pseudo-ANOVA with permutation tests, multi-factor discrepancy, dissimilarity trees; frequent-subsequence mining with support and length thresholds; sequential association rules scored by confidence, lift, leverage, and conviction.</td>
       </tr>
       <tr>
         <td><strong>I/O &amp; synthetic</strong></td>
@@ -634,7 +634,7 @@ longitudinal_entropy(pool)                    # → a polars DataFrame, like eve
 
   <p class="lead">
     The codebase favours <span class="hl">deep modules behind narrow seams</span>: a lot of capability reached
-    through a small, obvious interface. Three seams carry most of the surface.
+    through a small, obvious interface. Four seams carry most of the surface.
   </p>
 
   <h2>Single seams, not scattered entry points</h2>
@@ -644,19 +644,24 @@ longitudinal_entropy(pool)                    # → a polars DataFrame, like eve
       <code>SequencePool.compute_distances(method=...)</code> — the sole path for pairwise and matrix computation.</li>
     <li><strong>One encoding seam.</strong> States become integers in exactly one place, <code>get_encoded_sequence</code>,
       so the JIT kernels always see a consistent representation.</li>
-    <li><strong>One coercion seam.</strong> Statistics accept either container through a <code>SequenceData</code> protocol
-      and normalize via <code>SequencePool.coerce</code> / <code>StateSequence.coerce</code> — no scattered type checks.</li>
+    <li><strong>One coercion seam.</strong> Statistics and filters accept either container through a <code>SequenceData</code> protocol
+      and normalize via <code>SequencePool.coerce</code> / <code>StateSequence.coerce</code> — both delegating to a single
+      rebuild rule — no scattered type checks.</li>
+    <li><strong>One per-sequence reduce seam.</strong> Every indicator that maps a scalar over each sequence goes through
+      <code>reduce_per_sequence</code>, which owns the loop, the id column, and the per-sequence / aggregate collapse;
+      each statistic contributes only its scalar function.</li>
   </ul>
 
-  <h2>Recent hardening (v0.5.0, in development)</h2>
+  <h2>Hardening shipped in v0.5.0</h2>
   <p>
-    The current cycle is a deliberate simplification pass — removing concepts rather than adding them, so that each
+    The v0.5.0 cycle was a deliberate simplification pass — removing concepts rather than adding them, so that each
     task has exactly one obvious path:
   </p>
   <ul>
     <li>Removed a dead per-metric class layer (an unused abstract base and eleven subclasses), collapsing all distance work onto <code>compute_distances</code>.</li>
     <li>Removed a dead encoding method that no caller used.</li>
     <li>Unified the statistics layer on the <code>SequenceData</code> protocol and the symmetric <code>coerce</code> seam, deleting ~30 duplicated type-coercion blocks.</li>
+    <li>Collapsed seventeen loop-shaped per-sequence statistics onto the <code>reduce_per_sequence</code> seam — each is now just a scalar function, with the boilerplate written once.</li>
   </ul>
 
   <div class="callout">
@@ -688,13 +693,13 @@ longitudinal_entropy(pool)                    # → a polars DataFrame, like eve
       <tr><th>Version</th><th>Status</th><th>What it means for integrators</th></tr>
     </thead>
     <tbody>
-      <tr><td><code>v0.4.1</code></td><td>Live on PyPI</td><td>The current installable release; the full feature set described here.</td></tr>
-      <tr><td><code>v0.5.0</code></td><td>In development (on <code>dev</code>)</td><td>An internal hardening release with breaking API changes for advanced users — see migration note below.</td></tr>
+      <tr><td><code>v0.4.1</code></td><td>Superseded</td><td>The previous release; upgrading is a <code>pip install -U</code> away (see migration note below).</td></tr>
+      <tr><td><code>v0.5.0</code></td><td>Live on PyPI</td><td>The current installable release; the full feature set described here, including association rules, per-sequence state distributions, and objective volatility.</td></tr>
       <tr><td><code>1.0</code></td><td>Planned</td><td>A stable, committed public interface once the data-model vocabulary is settled.</td></tr>
     </tbody>
   </table>
 
-  <h2>Migration note for v0.5.0</h2>
+  <h2>Migration note: upgrading to v0.5.0</h2>
   <p>
     The breaking changes affect direct users of internal classes, not typical pipeline code:
   </p>
@@ -709,15 +714,15 @@ longitudinal_entropy(pool)                    # → a polars DataFrame, like eve
   <p>
     The container question is now settled: <code>SequencePool</code> is the canonical analysis container and
     <code>StateSequence</code> the representation view, recorded as ADR-0002 — every loader returns a pool, and
-    the <code>coerce</code> seam lets both containers flow through the statistics layer without churn. Remaining
-    pre-1.0 work is narrower: widening <code>filters/</code> to the same <code>SequenceData</code> surface, and
-    routing discrepancy analysis through <code>DistanceMatrix</code> instead of raw arrays.
+    the <code>coerce</code> seam lets both containers flow through the statistics and filters layers without churn.
+    Remaining pre-1.0 work is narrower: routing discrepancy analysis through <code>DistanceMatrix</code> instead of
+    raw arrays, a preparation seam inside the distance engine, and settling where cluster-quality indices live.
   </p>
 
   <div class="takeaway">
     <div class="takeaway-label">If you read one thing</div>
     yasqat brings TraMineR-class sequence analysis to fast, DataFrame-native Python. It is usable today at
-    <code>v0.4.1</code>; the active <code>v0.5.0</code> work makes the engine smaller and sharper ahead of a stable 1.0.
+    <code>v0.5.0</code> — a smaller, sharper engine than the 0.4 line — on the way to a stable 1.0.
   </div>
 </section>
 
@@ -743,6 +748,7 @@ longitudinal_entropy(pool)                    # → a polars DataFrame, like eve
     <li><strong>polars</strong> — the columnar DataFrame engine yasqat is built on. pola.rs</li>
     <li><strong>numba</strong> &amp; <strong>scipy</strong> — JIT-compiled metric kernels and hierarchical linkage.</li>
     <li>Source &amp; issue tracker — github.com/rexarski/yasqat</li>
+    <li>Documentation — API reference, quick-start, glossary, changelog. rexarski.github.io/yasqat</li>
   </ul>
 </section>
 
