@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Journey Pathways Deck Template</title>
+<style>
+  :root{
+    --navy:#0F3D70;        /* house navy: headings, dividers */
+    --ink:#1B2A41;         /* body text */
+    --paper:#FFFFFF;
+    --teal:#0E7C6B;        /* signal */
+    --teal-soft:#E3F1EE;
+    --amber:#C97B00;       /* action / intervention / the ask */
+    --amber-soft:#FBF1DC;
+    --grey:#6C7A89;        /* caveats, baselines (blue-biased) */
+    --grey-soft:#EEF2F6;
+    --rule:#D7DFE8;
+    --sky:#9DB9DA;         /* journey-strip secondary state */
+    --sans:"Segoe UI","Helvetica Neue",Helvetica,Arial,sans-serif;
+    --mono:"Cascadia Code",Consolas,Menlo,"Courier New",monospace;
+    --W:1280px; --H:720px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:#2B3442;color:var(--ink);font-family:var(--sans)}
+  body{overflow:hidden}
+
+  /* ---------- stage & slide frame ---------- */
+  #stage{position:fixed;inset:0;display:grid;place-items:center}
+  .slide{
+    width:var(--W);height:var(--H);background:var(--paper);color:var(--ink);
+    position:absolute;top:50%;left:50%;transform-origin:center;
+    transform:translate(-50%,-50%) scale(var(--s,1));
+    padding:56px 72px 64px;display:none;flex-direction:column;
+    box-shadow:0 20px 60px rgba(0,0,0,.35);
+  }
+  .slide.active{display:flex}
+  .slide.navy{background:var(--navy);color:#fff}
+  .slide.navy .kicker{color:#BFD3EA}
+  .slide.navy h1{color:#fff}
+  .slide.navy .sub{color:#DCE7F3}
+
+  .kicker{font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--grey);font-weight:600;margin:0 0 10px}
+  h1{font-size:40px;line-height:1.15;margin:0 0 8px;color:var(--navy);font-weight:700;text-wrap:balance;max-width:1080px}
+  h1.big{font-size:60px;max-width:960px}
+  .sub{font-size:22px;color:var(--ink);margin:0;max-width:900px;line-height:1.35}
+  .body{flex:1;display:flex;flex-direction:column;margin-top:26px;min-height:0}
+  p,li{font-size:19px;line-height:1.4}
+  ul{margin:0;padding-left:22px}
+  li+li{margin-top:8px}
+  .muted{color:var(--grey)}
+  .mono{font-family:var(--mono)}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* footer: slide number + mini journey strip */
+  .foot{position:absolute;left:72px;right:72px;bottom:24px;display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--grey)}
+  .slide.navy .foot{color:#BFD3EA}
+  .foot .strip .cell{width:14px;height:8px}
+
+  /* ---------- journey strip motif ---------- */
+  .strip{display:flex;gap:3px}
+  .strip .cell{width:44px;height:26px;background:var(--grey-soft);border-radius:2px;position:relative}
+  .cell.navy{background:var(--navy)} .cell.teal{background:var(--teal)}
+  .cell.amber{background:var(--amber)} .cell.sky{background:var(--sky)}
+  .cell.dark{background:#0A5A4C}
+  .cell.hit{outline:3px solid var(--amber);outline-offset:2px}
+  .strip.big .cell{width:82px;height:44px}
+  .strip.pathway .cell{width:300px;height:62px;color:#fff;display:flex;align-items:center;padding:0 16px;font-size:16px;font-weight:600;line-height:1.2}
+  .strip.pathway .cell small{display:block;font-weight:400;opacity:.85;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+  .arrow{align-self:center;color:var(--grey);font-size:26px;padding:0 6px}
+
+  /* ---------- reusable blocks ---------- */
+  .cols{display:grid;gap:28px}
+  .cols.three{grid-template-columns:repeat(3,1fr)}
+  .cols.two{grid-template-columns:1fr 1fr}
+  .measure{border-top:4px solid var(--rule);padding-top:16px}
+  .measure.teal{border-color:var(--teal)} .measure.amber{border-color:var(--amber)} .measure.grey{border-color:var(--grey)}
+  .measure .n{font-size:52px;font-weight:700;line-height:1;margin:0 0 8px;color:var(--navy)}
+  .measure.teal .n{color:var(--teal)} .measure.amber .n{color:var(--amber)} .measure.grey .n{color:var(--grey)}
+  .measure .q{font-size:19px;font-style:italic;margin:0 0 10px;color:var(--ink)}
+  .measure p{font-size:17px;margin:0}
+  .caveat{margin-top:auto;border-top:1px solid var(--rule);padding-top:12px;color:var(--grey);font-size:16px}
+
+  table{border-collapse:collapse;width:100%;font-size:17px}
+  th{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--grey);text-align:left;padding:6px 12px;border-bottom:2px solid var(--navy);font-weight:600}
+  td{padding:11px 12px;border-bottom:1px solid var(--rule);vertical-align:top;line-height:1.3}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  td.lift{color:var(--teal);font-weight:700} td.gain{color:var(--amber);font-weight:700}
+  .fill{display:inline-block;border:1.5px dashed var(--amber);color:var(--amber);border-radius:3px;padding:1px 8px;font-size:13px;font-family:var(--mono)}
+  .step{font-family:var(--mono);font-size:14px;color:var(--navy);white-space:nowrap}
+
+  .band{display:flex;gap:18px;align-items:baseline;background:var(--amber-soft);border-left:6px solid var(--amber);padding:12px 18px;margin-top:auto}
+  .band b{color:var(--amber);letter-spacing:.1em;text-transform:uppercase;font-size:13px;white-space:nowrap}
+  .band span{font-size:17px}
+
+  .setup{font-family:var(--mono);font-size:19px;line-height:1.7;color:#DCE7F3;margin-top:auto;white-space:pre}
+  .setup b{color:#fff;display:inline-block;width:150px;font-weight:600}
+  .setup i{color:#F3C36B;font-style:normal}
+
+  .placeholder{border:2px dashed var(--sky);color:var(--grey);display:grid;place-items:center;text-align:center;font-size:16px;padding:20px;border-radius:4px}
+
+  .pipe{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  .pipe .st{border:1px solid var(--rule);border-top:4px solid var(--navy);padding:14px 16px;min-height:150px;position:relative}
+  .pipe .st h3{margin:0 0 6px;font-size:19px;color:var(--navy)}
+  .pipe .st p{font-size:15px;margin:0;color:var(--ink)}
+  .pipe .st:not(:last-child)::after{content:"→";position:absolute;right:-16px;top:60px;color:var(--grey);font-size:22px}
+  .buys{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:20px}
+  .buys div{font-size:16px;line-height:1.35}
+  .buys b{color:var(--teal);display:block;font-size:17px;margin-bottom:2px}
+  .code{font-family:var(--mono);font-size:13px;background:var(--grey-soft);padding:10px 14px;border-radius:3px;color:var(--ink);white-space:pre;margin-top:16px;line-height:1.5;align-self:flex-start}
+  .code .fn{color:var(--teal);font-weight:600}
+
+  .compare{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid var(--rule)}
+  .compare > div{padding:16px 18px;border-right:1px solid var(--rule)}
+  .compare > div:last-child{border-right:0;background:var(--amber-soft)}
+  .compare h3{margin:0 0 12px;font-size:16px;letter-spacing:.08em;text-transform:uppercase;color:var(--navy)}
+  .compare > div:last-child h3{color:var(--amber)}
+  .compare p{font-size:16px;margin:0 0 12px;line-height:1.35}
+  .bottomline{margin-top:auto;font-size:24px;font-weight:700;color:var(--navy);line-height:1.3}
+  .bottomline span{font-weight:400;color:var(--ink);font-size:20px}
+
+  .status{display:grid;gap:14px}
+  .tile{border-top:3px solid var(--navy);padding-top:10px}
+  .tile b{display:block;font-size:22px;color:var(--navy)}
+  .tile span{font-size:15px;color:var(--grey)}
+  .asks{counter-reset:ask;display:grid;gap:18px}
+  .ask{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start}
+  .ask::before{counter-increment:ask;content:counter(ask);width:36px;height:36px;border-radius:50%;background:var(--amber);color:#fff;display:grid;place-items:center;font-weight:700;font-size:18px}
+  .ask b{display:block;font-size:22px;color:var(--amber);margin-bottom:2px}
+  .ask span{font-size:17px}
+  .ask:first-child b{font-size:26px}
+
+  .annot{display:grid;gap:10px;margin-top:14px;font-size:15px}
+  .annot div{display:flex;gap:10px;align-items:center}
+  .annot .sw{width:16px;height:16px;border-radius:2px;flex:none}
+
+  /* ---------- chrome: counter, notes, overview, help ---------- */
+  #hud{position:fixed;right:16px;bottom:12px;color:#AEB8C6;font-size:13px;font-family:var(--mono);z-index:5;user-select:none}
+  #notes{position:fixed;left:0;right:0;bottom:0;max-height:38vh;overflow:auto;background:#0B1B31;color:#E6EDF5;padding:18px 28px;font-size:16px;line-height:1.55;display:none;z-index:6;border-top:3px solid var(--amber)}
+  #notes h4{margin:0 0 6px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#F3C36B}
+  body.notes #notes{display:block}
+  body.notes #stage{bottom:38vh}
+  .slide aside{display:none}
+  body.overview #stage{display:block;overflow:auto;padding:24px;bottom:0}
+  body.overview .slide{display:flex;position:relative;top:auto;left:auto;transform:none;zoom:.31;margin:0 0 40px;cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.4)}
+  body.overview #grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0 24px;max-width:1300px;margin:0 auto}
+  body.overview #hud{display:none}
+  #help{position:fixed;left:16px;bottom:12px;color:#AEB8C6;font-size:12px;font-family:var(--mono);z-index:5}
+  @media (prefers-reduced-motion:no-preference){.slide.active{animation:in .18s ease-out}}
+  @keyframes in{from{opacity:.4}to{opacity:1}}
+
+  @media print{
+    html,body{background:#fff;overflow:visible;height:auto}
+    #stage{position:static;display:block}
+    .slide{display:flex!important;position:relative;top:auto;left:auto;transform:none;box-shadow:none;page-break-after:always;margin:0 auto}
+    #hud,#help,#notes{display:none!important}
+    .slide aside{display:block;position:absolute;left:72px;right:72px;bottom:-9999px}
+  }
+</style>
+</head>
+<body>
+<!--
+  TEMPLATE. All bracketed [tokens], XX% / X.XX× figures and dashed "fill" chips are
+  placeholders. Replicate the LAYOUT, PALETTE and SLIDE STRUCTURE; do not treat any
+  number here as data. Palette: navy #0F3D70 (headings/dividers), teal #0E7C6B (signal),
+  amber #C97B00 (action/intervention/ask), grey #6C7A89 (caveats), white ground.
+  Motif: the "journey strip" (row of coloured cells, one per period, one colour per state).
+  Keys: arrows navigate, N = speaker notes, O = overview grid, P = print.
+-->
+<div id="stage"><div id="grid">
+
+<!-- ============ 01 TITLE ============ -->
+<section class="slide navy">
+  <p class="kicker">[Programme name] · [Team name]</p>
+  <h1 class="big">From event log to customer pathways</h1>
+  <p class="sub">Which early journeys lead to [outcome], and the engine that finds them, repeatably.</p>
+  <div class="body" style="justify-content:center">
+    <div class="strip big">
+      <div class="cell sky"></div><div class="cell sky"></div><div class="cell amber"></div><div class="cell teal"></div><div class="cell teal"></div><div class="cell dark"></div>
+      <div class="cell sky"></div><div class="cell amber"></div><div class="cell teal"></div><div class="cell teal"></div><div class="cell dark"></div><div class="cell dark"></div>
+    </div>
+    <p class="muted" style="color:#BFD3EA;font-size:14px;margin-top:10px;letter-spacing:.08em">ONE CUSTOMER · M1 → M12 · ONE COLOUR PER BEHAVIOUR STATE</p>
+  </div>
+  <p style="font-size:18px;color:#F3C36B;margin:0;max-width:900px"><em>The pathway slides are the visible output. The long-term value is the engine that produces them.</em></p>
+  <aside>Thanks, [teammate]. What you just saw is the activity log: [N] first-year customers, every touchpoint, every day. I'll do two things in ten minutes. First, show what that log tells us about which early journeys lead to [outcome]. Second, show the engine behind it, so this is a capability we can point at the next question, not a one-off.</aside>
+</section>
+
+<!-- ============ 02 HANDOFF ============ -->
+<section class="slide">
+  <p class="kicker">How do customers interact with [Company] across their first year?</p>
+  <h1>Read it by column, it's a count. Read it by customer, it's a story.</h1>
+  <div class="body">
+    <div class="cols" style="grid-template-columns:1.5fr 1fr;flex:1;min-height:0">
+      <div class="placeholder">
+        <div>[Teammate]'s <b>event-lifecycle heatmap</b> goes here, unchanged and slightly dimmed.<br><br><span class="mono" style="font-size:13px">Highlight one row (e.g. [event row]) and link it to the strip on the right.</span></div>
+      </div>
+      <div>
+        <p class="kicker" style="margin-bottom:8px">One customer, twelve months</p>
+        <div class="strip">
+          <div class="cell sky"></div><div class="cell navy hit"></div><div class="cell amber hit"></div><div class="cell teal hit"></div><div class="cell teal"></div><div class="cell dark"></div>
+          <div class="cell dark"></div><div class="cell teal"></div><div class="cell dark"></div><div class="cell dark"></div><div class="cell dark"></div><div class="cell dark"></div>
+        </div>
+        <div class="annot">
+          <div><span class="sw" style="background:var(--navy)"></span>M2 · [Event A]</div>
+          <div><span class="sw" style="background:var(--amber)"></span>M3 · [Event B]</div>
+          <div><span class="sw" style="background:var(--teal)"></span>M4 · [Event C]</div>
+        </div>
+        <ul style="margin-top:22px">
+          <li><b>Column:</b> what share of customers did X on day 30.</li>
+          <li><b>Row, per customer:</b> joined → [event A] → [event B] → [event C].</li>
+          <li>[Event B] <em>before</em> [event A] is a different customer than [event B] <em>after</em> it.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>N = [cohort size] customers who joined [date range]</span><span class="strip"><span class="cell sky"></span><span class="cell navy"></span><span class="cell amber"></span><span class="cell teal"></span><span class="cell dark"></span></span></div>
+  <aside>One reframe of [teammate]'s chart, because it sets up everything else. Read a column and you get a count: how many customers did something on day 30. Read it one customer at a time and you get an ordered story: joined, [event A], [event B], [event C]. The order carries information: a customer who does [event B] before [event A] is in a different place than one who does it after. The rest of the talk treats every customer as one of these sequences and asks which sequences lead where.</aside>
+</section>
+
+<!-- ============ 03 SETUP ============ -->
+<section class="slide navy">
+  <p class="kicker">Quantifying customer journey pathways</p>
+  <h1 class="big">Which first-[90]-day journeys lead to [Outcome]?</h1>
+  <div class="body">
+    <div class="setup"><b>Situation</b>New customers, first [90] days (M1 · M2 · M3)
+<b>Outcome</b>[Outcome] at Month [6], and again at Month [12]     <i>[definition: ___]</i>
+<b>Cohort</b>[N] customers, joined [date range]                  <i>[analysed: ___]</i></div>
+  </div>
+  <aside>Here is the question precisely. The situation is a new customer in their first [90] days. The outcome is [outcome] at month [6], and we check again at month [12] to see whether the early signal lasts. A pathway is an ordered set of behaviours inside that window. We are looking for pathways that are followed by [outcome] far more often than the average customer, and that enough customers actually take for it to matter.</aside>
+</section>
+
+<!-- ============ 04 MEASURES ============ -->
+<section class="slide">
+  <p class="kicker">How we score a pathway</p>
+  <h1>How much more likely, does the last step add anything, and how many customers does it touch</h1>
+  <div class="body">
+    <div class="cols three">
+      <div class="measure teal">
+        <p class="n num">X.X× lift</p>
+        <p class="q">How much more likely than baseline?</p>
+        <p>Customers on this pathway reach [outcome] X.X× as often as the cohort average.</p>
+      </div>
+      <div class="measure amber">
+        <p class="n num">+XX% gain</p>
+        <p class="q">Did the last step add signal?</p>
+        <p>For pathway A → B → C: compare the [outcome] rate of A → B → C with that of A → B alone. Positive means C tells us something the prefix didn't.</p>
+        <div class="strip" style="margin-top:12px"><div class="cell sky" style="width:36px"></div><div class="cell sky" style="width:36px"></div><div class="cell amber hit" style="width:36px"></div></div>
+        <p class="mono muted" style="font-size:13px;margin-top:10px">gain = outcome rate(A→B→C) vs outcome rate(A→B)</p>
+      </div>
+      <div class="measure grey">
+        <p class="n">Reach: <span class="fill">N customers · x %</span></p>
+        <p class="q">How many customers took this path?</p>
+        <p>Strength without reach is a curiosity. Reach without strength is the baseline.</p>
+      </div>
+    </div>
+    <p class="caveat">These are observed associations. They tell us where to intervene; a test tells us whether the intervention works.</p>
+  </div>
+  <div class="foot"><span>Gain against prefix: state once whether it is a difference or a ratio</span><span class="strip"><span class="cell sky"></span><span class="cell sky"></span><span class="cell amber"></span></span></div>
+  <aside>Three numbers per pathway. Lift: how much more likely than the average new customer is someone on this pathway to reach [outcome]. Gain against prefix: when we extend a pathway A-B by one more behaviour C, does C add information, or is it riding on A and B? We compare the [outcome] rate of A-B-C with that of A-B alone; that tells us which step is worth nudging. And reach: how many customers actually walk this path. A high rate on a few hundred customers is a curiosity; the same rate on tens of thousands is a programme. Honesty note: these are associations. They tell us where to intervene; whether the nudge causes the outcome is a test, and I'll come back to that in the ask.</aside>
+</section>
+
+<!-- ============ 05 HORIZON 1 ============ -->
+<section class="slide">
+  <p class="kicker">[Outcome] by Month [6]</p>
+  <h1>The strongest early pathway is [behaviour B] formed in the second month</h1>
+  <div class="body" style="margin-top:18px">
+    <div class="strip pathway">
+      <div class="cell navy"><span><small>M1 · days 0–29</small>[Trigger A] → [response A]</span></div><span class="arrow">→</span>
+      <div class="cell teal"><span><small>M2 · days 30–59</small>[Behaviour B], repeated next week</span></div><span class="arrow">→</span>
+      <div class="cell dark"><span><small>M3 · days 60–89</small>[Behaviour C] sustained</span></div>
+    </div>
+    <table style="margin-top:18px">
+      <thead><tr><th>Step</th><th>Behaviour</th><th class="num">[Outcome] rate</th><th class="num">Lift</th><th class="num">Gain vs prefix</th><th class="num">Reach</th></tr></thead>
+      <tbody>
+        <tr><td class="step">M1 · d 0–29</td><td>[Trigger A] → [response A] within a week</td><td class="num">XX%</td><td class="num lift">X.XX×</td><td class="num gain">+XX%</td><td class="num"><span class="fill">___</span></td></tr>
+        <tr><td class="step">M2 · d 30–59</td><td>+ [behaviour B] one week, repeated the next</td><td class="num">XX%</td><td class="num lift">X.XX×</td><td class="num gain">+XX%</td><td class="num"><span class="fill">___</span></td></tr>
+        <tr><td class="step">M3 · d 60–89</td><td>+ [behaviour C] sustained for [N] consecutive weeks</td><td class="num">XX%</td><td class="num lift">X.XX×</td><td class="num gain">+XX%</td><td class="num"><span class="fill">___</span></td></tr>
+      </tbody>
+    </table>
+    <p class="muted" style="font-size:14px;margin:10px 0 0">Baseline [outcome] rate at Month [6]: XX%. Other month-1 openers with the same shape: [trigger D] → [response A]; [trigger E] → [response A].</p>
+    <div class="band"><b>Intervention window · days 30–59</b><span>[Intervention name]: [one sentence on what to nudge, and when].</span></div>
+  </div>
+  <div class="foot"><span>Selected pathways identified with the toolkit on the analysed sample; reach scaled to cohort</span><span class="strip"><span class="cell navy"></span><span class="cell teal"></span><span class="cell dark"></span></span></div>
+  <aside>Here is the pathway that stood out at month [6]. Customers who do [trigger A] in their first month and, within a week, show [response A] reach [outcome] XX% of the time, about X times the baseline. Notice the first step is itself a pair: an intent signal followed quickly by a usage response. If in month two they do [behaviour B] one week and come back the next week, that rises to XX%. Sustain it in month three, XX%. The gain-against-prefix column says the second step is where the biggest jump in signal happens: month one is activation; month two is habit formation, and it most separates the customers who reach [outcome] from those who don't. That makes days 30 to 59 the intervention window, and the reach column tells us how many customers are in play there.</aside>
+</section>
+
+<!-- ============ 06 HORIZON 2 ============ -->
+<section class="slide">
+  <p class="kicker">[Outcome] by Month [12]</p>
+  <h1>The same [behaviour B] still shows a year later, from a different front door</h1>
+  <div class="body" style="margin-top:18px">
+    <div class="strip pathway">
+      <div class="cell amber"><span><small>M1 · days 0–29</small>[Trigger D] → [response A]</span></div><span class="arrow">→</span>
+      <div class="cell teal"><span><small>M2 · days 30–59</small>[Behaviour B], repeated next week</span></div><span class="arrow">→</span>
+      <div class="cell dark"><span><small>M3 · days 60–89</small>[Behaviour C] sustained</span></div>
+    </div>
+    <table style="margin-top:18px">
+      <thead><tr><th>Step</th><th>Behaviour</th><th class="num">[Outcome] rate</th><th class="num">Lift</th><th class="num">Gain vs prefix</th><th class="num">Reach</th></tr></thead>
+      <tbody>
+        <tr><td class="step">M1 · d 0–29</td><td>[Trigger D] → [response A] within a week</td><td class="num">XX%</td><td class="num lift">X.XX×</td><td class="num gain">+XX%</td><td class="num"><span class="fill">___</span></td></tr>
+        <tr><td class="step">M2 · d 30–59</td><td>+ [behaviour B] one week, repeated the next</td><td class="num">XX%</td><td class="num lift">X.XX×</td><td class="num gain">+XX%</td><td class="num"><span class="fill">___</span></td></tr>
+        <tr><td class="step">M3 · d 60–89</td><td>+ [behaviour C] sustained for [N] consecutive weeks</td><td class="num">XX%</td><td class="num lift">X.XX×</td><td class="num gain">+XX%</td><td class="num"><span class="fill">___</span></td></tr>
+      </tbody>
+    </table>
+    <p class="muted" style="font-size:14px;margin:10px 0 0">Baseline [outcome] rate at Month [12]: XX%. Lift vs Month [6]: slightly lower, as expected over time. [Trigger A] also holds at Month [12]; [trigger E] is a Month-[6] signal only.</p>
+    <div class="band"><b>Intervention window · days 30–59</b><span>Same window. The entry door differs; the habit loop is the same.</span></div>
+  </div>
+  <div class="foot"><span>Selected pathways identified with the toolkit on the analysed sample; reach scaled to cohort</span><span class="strip"><span class="cell amber"></span><span class="cell teal"></span><span class="cell dark"></span></span></div>
+  <aside>Two things at month [12]. The lift is a little lower, which is expected: the further out the outcome, the more life gets in the way. But it is still well above baseline, so what happens in the first [90] days is visible a year later. Second, the front doors: [trigger D] and [trigger A] both survive to month [12]; [trigger E] shows up at month [6] and fades. What did not change is months two and three: [behaviour B], repeated, then sustained. That is the durable part of the story, and the part we can act on regardless of how the customer came in.</aside>
+</section>
+
+<!-- ============ 07 DIVIDER ============ -->
+<section class="slide navy">
+  <p class="kicker">[Notebook environment]</p>
+  <h1 class="big">Inside the toolkit</h1>
+  <p class="sub">One engine, any outcome: from a question to a pathway slide in days, not weeks.</p>
+  <div class="body"></div>
+  <div class="foot"><span></span><span class="strip"><span class="cell sky"></span><span class="cell navy"></span><span class="cell teal"></span><span class="cell dark"></span></span></div>
+  <aside>Those slides were the output. What I want you to leave with is that they came out of an engine, and the engine is the thing worth funding. Three slides on it.</aside>
+</section>
+
+<!-- ============ 08 ENGINE ============ -->
+<section class="slide">
+  <p class="kicker">[Toolkit] · the sequence-analytics engine behind the pathway slides</p>
+  <h1>Ask a question, get scored pathways and journey groups back</h1>
+  <div class="body">
+    <div class="pipe">
+      <div class="st"><h3>1 · Define the situation</h3><p>Who, and when: new customers, first [90] days.</p><div class="strip" style="margin-top:14px"><div class="cell navy" style="width:26px;height:14px"></div><div class="cell" style="width:26px;height:14px"></div><div class="cell" style="width:26px;height:14px"></div></div></div>
+      <div class="st"><h3>2 · Build the journeys</h3><p>One state per period per customer, straight from the activity log.</p><div class="strip" style="margin-top:14px"><div class="cell sky" style="width:26px;height:14px"></div><div class="cell amber" style="width:26px;height:14px"></div><div class="cell teal" style="width:26px;height:14px"></div><div class="cell dark" style="width:26px;height:14px"></div></div></div>
+      <div class="st"><h3>3 · Score the pathways</h3><p>Frequent ordered behaviours → rules with confidence, lift, gain, reach.</p><p class="mono" style="margin-top:12px;font-size:12px;color:var(--teal)">A→B ⇒ HE · conf .91 · lift 2.4</p></div>
+      <div class="st"><h3>4 · Group the journeys</h3><p>Similarity between whole journeys → clusters → one representative customer per group.</p><div style="display:grid;gap:4px;margin-top:12px"><div class="strip"><div class="cell sky" style="width:18px;height:8px"></div><div class="cell teal" style="width:18px;height:8px"></div><div class="cell dark" style="width:18px;height:8px"></div></div><div class="strip"><div class="cell amber" style="width:18px;height:8px"></div><div class="cell amber" style="width:18px;height:8px"></div><div class="cell sky" style="width:18px;height:8px"></div></div><div class="strip"><div class="cell navy" style="width:18px;height:8px"></div><div class="cell sky" style="width:18px;height:8px"></div><div class="cell sky" style="width:18px;height:8px"></div></div></div></div>
+    </div>
+    <div class="buys">
+      <div><b>Repeatable</b>Same notebook, next outcome: [outcome 2], [outcome 3], [outcome 4].</div>
+      <div><b>Fast</b>Runs in a [notebook environment]; the slides you saw are a day of analyst time, not a project.</div>
+      <div><b>Auditable</b>Every number is a standard measure, and the maths is tested against the [reference implementation].</div>
+    </div>
+    <div class="code">situation = <span class="fn">filter</span>(journeys, [criteria...])
+rules     = <span class="fn">score_pathways</span>(situation, min_support=..., min_confidence=...)</div>
+  </div>
+  <div class="foot"><span>[Install line]</span><span class="strip"><span class="cell navy"></span><span class="cell sky"></span><span class="cell teal"></span><span class="cell dark"></span></span></div>
+  <aside>Four steps, every time. One, define the situation: which customers, which window. Two, turn the activity log into journeys, one state per period per customer. Three, score the pathways: find the ordered behaviours that recur, and for each compute how often it leads to the outcome, how much more than baseline, and how many customers take it. Four, group whole journeys by similarity, so instead of one average customer we get a handful of typical journeys with a representative for each, and score pathways inside each group. What this buys us is repeatability: the month-[6] and month-[12] slides are the same notebook with one parameter changed. Point it at [outcome 2] and you get the same kind of slide back in days.</aside>
+</section>
+
+<!-- ============ 09 MLLIB ============ -->
+<section class="slide">
+  <p class="kicker">The fair question: "Why not just use [incumbent tool]? It's already in [platform]."</p>
+  <h1>[Incumbent tool] finds frequent patterns. It doesn't answer "given this situation, how much more likely, and what's around it."</h1>
+  <div class="body" style="margin-top:18px">
+    <div class="compare">
+      <div><h3>What [incumbent tool] does well</h3>
+        <p><b>[Method 1]:</b> what co-occurs in a basket, with confidence and lift.</p>
+        <p><b>[Method 2]:</b> which <em>ordered</em> patterns are frequent, at cluster scale.</p>
+        <p>Zero build cost; it ships with [platform].</p></div>
+      <div><h3>Where it stops</h3>
+        <p>[Method 1] ignores order. A-then-B and B-then-A are the same basket.</p>
+        <p>[Method 2] returns patterns and counts only. No lift, no confidence, no gain, no rules for sequences.</p>
+        <p>Nothing around the miner: no situations, no durations, no journey similarity, no grouping.</p></div>
+      <div><h3>Where our toolkit is weaker</h3>
+        <p>Runs on one node; today's results come from a sample of the [N] cohort, not all of it.</p>
+        <p>Our pattern miner is simple and exhaustive; [Method 2] is faster on large alphabets.</p>
+        <p>We own it, so we maintain it.</p></div>
+    </div>
+    <p class="bottomline">Different jobs, not competitors. <span>If we ever outgrow one node, [Method 2] generates the candidate pathways and the toolkit still scores, conditions, and groups them.</span></p>
+  </div>
+  <div class="foot"><span>Reference: [incumbent tool documentation link]</span><span class="strip"><span class="cell sky"></span><span class="cell sky"></span><span class="cell sky"></span></span></div>
+  <aside>The fair question, and I'd rather raise it than have it raised: [incumbent tool] is right there in [platform] and it does frequent-pattern mining. Its due: [method 1] is excellent for basket questions; [method 2] finds frequent ordered patterns and scales across a cluster, and at very large scale it is the right tool and ours is not. Where it stops: [method 1] throws away order, and order is our signal. [Method 2] keeps order but returns patterns with counts only: no lift, no confidence, no gain, none of the three numbers on every card you just saw. And nothing around the miner: no situations, durations, journey similarity, or grouping. Our side of the ledger: the toolkit runs on one machine; today's results come from a sample of [N]; our miner is simple and exhaustive; and we own the maintenance. So: different jobs. If we outgrow one node, [method 2] generates candidate pathways and everything else stays where it is.</aside>
+</section>
+
+<!-- ============ 10 STATUS & ASK ============ -->
+<section class="slide">
+  <p class="kicker">Status and next steps</p>
+  <h1>It's shipped. Give us the next question and one intervention to test.</h1>
+  <div class="body">
+    <div class="cols" style="grid-template-columns:1fr 2fr;gap:56px">
+      <div class="status">
+        <p class="kicker" style="margin:0">Status</p>
+        <div class="tile"><b>[Version] released</b><span>[Date] · one-line install</span></div>
+        <div class="tile"><b>Correctness pinned</b><span>Tests match [reference implementation], the academic reference for this method family</span></div>
+        <div class="tile"><b>Runs in [platform] today</b><span>Notebooks we already use; no new runtime</span></div>
+      </div>
+      <div class="asks">
+        <p class="kicker" style="margin:0;color:var(--amber)">Ask</p>
+        <div class="ask"><div><b>The next outcome question</b><span>[Outcome 2], or [outcome 3]. Pathway slides back in [two] weeks.</span></div></div>
+        <div class="ask"><div><b>One intervention test</b><span>The month-two [behaviour B] nudge, A/B on new customers, so X.X× lift becomes a measured dollar effect.</span></div></div>
+        <div class="ask"><div><b>Full-scale benchmark</b><span>Run on all [N] customers; publish the numbers either way. If we hit the wall, fund the faster miner.</span></div></div>
+      </div>
+    </div>
+    <div class="strip big" style="margin-top:auto">
+      <div class="cell sky"></div><div class="cell navy"></div><div class="cell teal hit"></div><div class="cell teal"></div><div class="cell dark"></div><div class="cell dark"></div>
+      <div class="cell dark"></div><div class="cell teal"></div><div class="cell dark"></div><div class="cell dark"></div><div class="cell dark"></div><div class="cell dark"></div>
+    </div>
+  </div>
+  <div class="foot"><span>The found pattern: month 2, outlined</span><span class="strip"><span class="cell sky"></span><span class="cell navy"></span><span class="cell teal"></span><span class="cell dark"></span></span></div>
+  <aside>Where this stands: it is a released, versioned package, tested against the reference implementation rather than against itself, and it runs in the notebooks we already use. The ask is small and falsifiable. One: give us the next outcome, [outcome 2] or [outcome 3], and we bring back the same kind of pathway slide in [two] weeks. Two: let us test one intervention, the month-two [behaviour B] nudge, as an A/B on new customers, so that lift becomes a measured effect with a dollar sign on it. Three: we run the full [N] and publish the benchmark, flattering or not. Questions?</aside>
+</section>
+
+</div></div>
+
+<div id="hud">1 / 10</div>
+<div id="help">← → navigate · N notes · O overview · P print</div>
+<div id="notes"><h4>Speaker notes</h4><div id="notesBody"></div></div>
+
+<script>
+(function(){
+  var slides=[].slice.call(document.querySelectorAll('.slide')),i=0,hud=document.getElementById('hud'),nb=document.getElementById('notesBody');
+  function fit(){var st=document.getElementById('stage'),r=st.getBoundingClientRect(),s=Math.min((r.width-40)/1280,(r.height-40)/720);document.documentElement.style.setProperty('--s',s.toFixed(4));}
+  function show(n){i=(n+slides.length)%slides.length;slides.forEach(function(s,k){s.classList.toggle('active',k===i)});hud.textContent=(i+1)+' / '+slides.length;var a=slides[i].querySelector('aside');nb.textContent=a?a.textContent:'';location.hash=i+1;}
+  document.addEventListener('keydown',function(e){
+    if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){show(i+1);e.preventDefault();}
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){show(i-1);e.preventDefault();}
+    else if(e.key==='Home'){show(0)} else if(e.key==='End'){show(slides.length-1)}
+    else if(e.key==='n'||e.key==='N'){document.body.classList.toggle('notes');fit();}
+    else if(e.key==='o'||e.key==='O'){document.body.classList.toggle('overview');}
+    else if(e.key==='p'||e.key==='P'){window.print();}
+  });
+  slides.forEach(function(s,k){s.addEventListener('click',function(e){if(document.body.classList.contains('overview')){document.body.classList.remove('overview');show(k);}else{show(e.clientX>innerWidth/2?i+1:i-1);}});});
+  window.addEventListener('resize',fit);
+  var h=parseInt(location.hash.slice(1),10);fit();show(isNaN(h)?0:h-1);
+})();
+</script>
+</body>
+</html>
