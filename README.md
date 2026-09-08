@@ -1,4 +1,9 @@
-# yasqat
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rexarski/yasqat/main/docs/_static/logo-dark.svg">
+    <img src="https://raw.githubusercontent.com/rexarski/yasqat/main/docs/_static/logo-light.svg" alt="yasqat" width="360">
+  </picture>
+</p>
 
 **Yet Another Sequence Analytics Toolkit**
 

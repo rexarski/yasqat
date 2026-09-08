@@ -53,4 +53,10 @@ intersphinx_mapping = {
 # --- HTML output ------------------------------------------------------------
 html_theme = "furo"
 html_static_path = ["_static"]
+html_favicon = "_static/favicon.svg"
+html_theme_options = {
+    "light_logo": "logo-light.svg",
+    "dark_logo": "logo-dark.svg",
+    "sidebar_hide_name": True,  # the lockup already carries the wordmark
+}
 html_title = f"yasqat {release}"
