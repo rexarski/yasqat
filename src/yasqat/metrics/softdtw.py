@@ -14,7 +14,7 @@ import numba
 import numpy as np
 
 
-@numba.jit(nopython=True, cache=True)
+@numba.jit(nopython=True, cache=True, nogil=True)
 def _softmin(values: np.ndarray, gamma: float) -> float:
     """
     Compute soft minimum using log-sum-exp trick.
@@ -37,7 +37,7 @@ def _softmin(values: np.ndarray, gamma: float) -> float:
     return min_val - gamma * log_sum_exp
 
 
-@numba.jit(nopython=True, cache=True)
+@numba.jit(nopython=True, cache=True, nogil=True)
 def _softdtw_kernel(
     dist_matrix: np.ndarray,
     gamma: float,
@@ -76,7 +76,7 @@ def _softdtw_kernel(
     return float(R[n, m])
 
 
-@numba.jit(nopython=True, cache=True)
+@numba.jit(nopython=True, cache=True, nogil=True)
 def _softdtw_kernel_with_window(
     dist_matrix: np.ndarray,
     gamma: float,
@@ -120,7 +120,7 @@ def _softdtw_kernel_with_window(
     return float(R[n, m])
 
 
-@numba.jit(nopython=True, cache=True)
+@numba.jit(nopython=True, cache=True, nogil=True)
 def _compute_pairwise_distances(
     seq_a: np.ndarray,
     seq_b: np.ndarray,

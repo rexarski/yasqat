@@ -310,3 +310,121 @@ class TestCoerce:
         assert pool.sequence_ids == state_sequence.sequence_ids
         assert pool.alphabet == state_sequence.alphabet
         assert pool.get_sequence(1) == ["A", "A", "B", "C"]
+
+
+class TestPoolFilter:
+    """SequencePool.filter returns a typed pool that chains into analysis.
+
+    Fixture sequences: 1 = A A B C, 2 = A B B C, 3 = B B C D.
+    """
+
+    def test_single_criterion_keeps_matching_ids(
+        self, sequence_pool: SequencePool
+    ) -> None:
+        from yasqat.filters import ContainsStateCriterion
+
+        situation = sequence_pool.filter(ContainsStateCriterion(states=["A"]))
+        assert isinstance(situation, SequencePool)
+        assert situation.sequence_ids == [1, 2]
+        assert situation.get_sequence(2) == ["A", "B", "B", "C"]
+
+    def test_and_combination(self, sequence_pool: SequencePool) -> None:
+        from yasqat.filters import ContainsStateCriterion, StartsWithCriterion
+
+        situation = sequence_pool.filter(
+            [StartsWithCriterion(states=["B"]), ContainsStateCriterion(states=["D"])]
+        )
+        assert situation.sequence_ids == [3]
+
+    def test_or_combination(self, sequence_pool: SequencePool) -> None:
+        from yasqat.filters import ContainsStateCriterion, StartsWithCriterion
+
+        situation = sequence_pool.filter(
+            [StartsWithCriterion(states=["B"]), ContainsStateCriterion(states=["A"])],
+            combine="or",
+        )
+        assert situation.sequence_ids == [1, 2, 3]
+
+    def test_alphabet_and_config_are_preserved(
+        self, sequence_pool: SequencePool
+    ) -> None:
+        from yasqat.filters import ContainsStateCriterion
+
+        # "D" only occurs in sequence 3, which is filtered out; the alphabet
+        # must still carry it so encodings match the parent pool.
+        situation = sequence_pool.filter(ContainsStateCriterion(states=["A"]))
+        assert situation.alphabet == sequence_pool.alphabet
+        assert situation.config == sequence_pool.config
+        assert list(situation.get_encoded_sequence(1)) == list(
+            sequence_pool.get_encoded_sequence(1)
+        )
+
+    def test_empty_result_is_an_empty_pool(self, sequence_pool: SequencePool) -> None:
+        from yasqat.filters import LengthCriterion
+
+        situation = sequence_pool.filter(LengthCriterion(min_length=10))
+        assert len(situation) == 0
+        assert situation.sequence_ids == []
+
+    def test_chains_into_compute_distances(self, sequence_pool: SequencePool) -> None:
+        from yasqat.filters import ContainsStateCriterion
+
+        situation = sequence_pool.filter(ContainsStateCriterion(states=["A"]))
+        dm = situation.compute_distances(method="hamming")
+        assert dm.values.shape == (2, 2)
+        assert dm.labels == [1, 2]
+        # A A B C vs A B B C differ at exactly one position.
+        assert dm.values[0, 1] == pytest.approx(1.0)
+
+
+class TestOmDispatchHoistsSubstitutionMatrix:
+    """compute_distances builds the constant OM matrix once per call.
+
+    Regression for .scratch/issues/17: the hoisted pool-wide matrix must give
+    exactly the per-pair results of ``optimal_matching_distance``.
+    """
+
+    @staticmethod
+    def _per_pair(pool: SequencePool, **kwargs: object) -> np.ndarray:
+        from yasqat.metrics import optimal_matching_distance
+
+        ids = pool.sequence_ids
+        enc = [pool.get_encoded_sequence(i) for i in ids]
+        n = len(ids)
+        out = np.zeros((n, n))
+        for i in range(n):
+            for j in range(i + 1, n):
+                out[i, j] = out[j, i] = optimal_matching_distance(
+                    enc[i],
+                    enc[j],
+                    **kwargs,  # type: ignore[arg-type]
+                )
+        return out
+
+    def test_default_matches_per_pair(self, sequence_pool: SequencePool) -> None:
+        dm = sequence_pool.compute_distances(method="om")
+        np.testing.assert_allclose(dm.values, self._per_pair(sequence_pool))
+
+    def test_sub_cost_is_honoured(self, sequence_pool: SequencePool) -> None:
+        # With indel=1.0 a substitution only wins when it costs < 2 indels,
+        # so use 1.5 to make the hoisted cost observable.
+        dm = sequence_pool.compute_distances(method="om", sub_cost=1.5)
+        expected = self._per_pair(sequence_pool, sub_cost=1.5)
+        np.testing.assert_allclose(dm.values, expected)
+        assert dm.values[0, 1] == pytest.approx(1.5)
+        default = sequence_pool.compute_distances(method="om").values
+        assert default[0, 1] == pytest.approx(2.0)
+
+    def test_explicit_matrix_is_not_overridden(
+        self, sequence_pool: SequencePool
+    ) -> None:
+        n = len(sequence_pool.alphabet.states)
+        sm = np.full((n, n), 5.0)
+        np.fill_diagonal(sm, 0.0)
+        dm = sequence_pool.compute_distances(method="om", sm=sm)
+        np.testing.assert_allclose(dm.values, self._per_pair(sequence_pool, sm=sm))
+
+    def test_parallel_matches_sequential(self, sequence_pool: SequencePool) -> None:
+        dm_seq = sequence_pool.compute_distances(method="om", n_jobs=1)
+        dm_par = sequence_pool.compute_distances(method="om", n_jobs=2)
+        np.testing.assert_allclose(dm_seq.values, dm_par.values)

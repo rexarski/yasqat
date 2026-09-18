@@ -92,7 +92,7 @@ def build_position_costs(pool: SequencePool) -> np.ndarray:
     return costs
 
 
-@numba.jit(nopython=True, cache=True)
+@numba.jit(nopython=True, cache=True, nogil=True)
 def _dhd_kernel(
     seq_a: np.ndarray,
     seq_b: np.ndarray,

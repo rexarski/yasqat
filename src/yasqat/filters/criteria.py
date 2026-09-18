@@ -268,8 +268,14 @@ def filter_sequences(
             - "or": Any criterion must match (union)
 
     Returns:
-        Filtered DataFrame containing only matching sequences. To continue
-        working with a typed container, wrap the result::
+        Filtered DataFrame containing only matching sequences. To keep working
+        with a typed container, prefer :meth:`yasqat.core.SequencePool.filter`,
+        which applies the same criteria and returns a pool that chains into
+        distances and statistics::
+
+            situation = pool.filter(criteria)
+
+        or wrap the DataFrame yourself::
 
             df = filter_sequences(seq, criteria)
             pool = SequencePool(data=df, config=seq.config, alphabet=seq.alphabet)

@@ -123,14 +123,21 @@ def cluster_quality(
     """
     Compute multiple cluster quality metrics.
 
-    Metrics:
-        - ASW: Average Silhouette Width (mean silhouette score)
-        - PBC: Point Biserial Correlation between distances and
-          cluster membership (0/1 same-cluster indicator)
-        - HG: Hubert's Gamma (correlation between distances and
-          binary same/different cluster indicator)
-        - R2: Proportion of variance explained by clustering
-          (1 - within-cluster SS / total SS)
+    Metrics (definitions follow WeightedCluster's ``wcClusterQuality``, the
+    TraMineR-side reference; all are "higher is better"):
+
+        - ASW: Average Silhouette Width (mean silhouette score).
+        - PBC: Point Biserial Correlation, ``-corr(distance, same-cluster)``
+          over every cell of the full distance matrix, diagonal included.
+          Positive when same-cluster pairs are closer than different-cluster
+          pairs.
+        - HG: Hubert's Gamma, the Goodman-Kruskal gamma between distance and
+          the different-cluster indicator: ``(C - D) / (C + D)`` where a
+          concordant pair of cells has the larger distance in the
+          different-cluster cell. Pairs tied on distance are ignored.
+        - R2: Proportion of variance explained by clustering, computed on
+          squared distances (``1 - within SS / total SS``). This is
+          WeightedCluster's ``R2sq``; its ``R2`` uses raw distances.
 
     Args:
         dist_matrix: Symmetric pairwise distance matrix (n x n).
@@ -146,27 +153,14 @@ def cluster_quality(
     # ASW
     asw = silhouette_score(dist_matrix, labels)
 
-    # Extract upper triangle pairs for correlation metrics
-    pairs_dist = []
-    pairs_same = []
-    for i in range(n):
-        for j in range(i + 1, n):
-            pairs_dist.append(dist_matrix[i, j])
-            pairs_same.append(1.0 if labels[i] == labels[j] else 0.0)
+    # PBC and HG are defined over every cell of the full matrix, diagonal
+    # included, which is how the reference weights the pairs (each
+    # off-diagonal pair twice, each diagonal zero-distance cell once).
+    cells_dist = dist_matrix.astype(np.float64).ravel()
+    cells_same = (labels[:, None] == labels[None, :]).astype(np.float64).ravel()
 
-    pairs_dist_arr = np.array(pairs_dist, dtype=np.float64)
-    pairs_same_arr = np.array(pairs_same, dtype=np.float64)
-
-    # PBC: Point Biserial Correlation
-    # Correlation between distances and same-cluster indicator
-    # We use same-cluster = 1, different = 0
-    # Expect negative correlation (same cluster -> small distance)
-    pbc = _pearson_correlation(pairs_dist_arr, pairs_same_arr)
-
-    # HG: Hubert's Gamma
-    # Correlation between distances and different-cluster indicator
-    pairs_diff_arr = 1.0 - pairs_same_arr
-    hg = _pearson_correlation(pairs_dist_arr, pairs_diff_arr)
+    pbc = -_pearson_correlation(cells_dist, cells_same)
+    hg = _goodman_kruskal_gamma(cells_dist, cells_same)
 
     # R2: 1 - (within-cluster SS / total SS)
     # Total SS = sum of squared distances from each point to overall centroid
@@ -320,6 +314,35 @@ def pam_range(
         results[k] = quality
 
     return results
+
+
+def _goodman_kruskal_gamma(dist: np.ndarray, same: np.ndarray) -> float:
+    """Goodman-Kruskal gamma between distance and the different-cluster flag.
+
+    A pair of cells is concordant when the cell with the larger distance is
+    the different-cluster one, discordant when it is the same-cluster one.
+    Pairs tied on distance, or with the same flag, do not count. This mirrors
+    the distinct-distance sweep in WeightedCluster's ``clusterqualitybody.cpp``
+    (each ordered pair of cells is visited from both sides, which scales
+    concordant and discordant counts equally and leaves the ratio intact).
+    """
+    order = np.argsort(dist, kind="stable")
+    dist = dist[order]
+    same = same[order]
+    _, first = np.unique(dist, return_index=True)
+    n_at = np.diff(np.append(first, len(dist))).astype(np.float64)
+    s0 = np.add.reduceat(same, first)  # weight of same-cluster cells per distance
+    s1 = n_at - s0  # weight of different-cluster cells per distance
+    tot0, tot1 = float(s0.sum()), float(s1.sum())
+    below0 = np.cumsum(s0) - s0  # strictly smaller distances, same cluster
+    below1 = np.cumsum(s1) - s1  # strictly smaller distances, different cluster
+    above0 = tot0 - below0 - s0
+    above1 = tot1 - below1 - s1
+    concordant = float((s1 * below0).sum() + (s0 * above1).sum())
+    discordant = float((s0 * below1).sum() + (s1 * above0).sum())
+    if concordant + discordant == 0:
+        return 0.0
+    return (concordant - discordant) / (concordant + discordant)
 
 
 def _pearson_correlation(x: np.ndarray, y: np.ndarray) -> float:

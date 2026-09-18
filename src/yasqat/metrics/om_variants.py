@@ -13,7 +13,7 @@ import numpy as np
 # ---------- OMloc (Localized OM) ----------
 
 
-@numba.jit(nopython=True, cache=True)
+@numba.jit(nopython=True, cache=True, nogil=True)
 def _omloc_kernel(
     seq_a: np.ndarray,
     seq_b: np.ndarray,
@@ -110,7 +110,7 @@ def omloc_distance(
 # ---------- OMspell (Spell-length sensitive OM) ----------
 
 
-@numba.jit(nopython=True, cache=True)
+@numba.jit(nopython=True, cache=True, nogil=True)
 def _compute_spell_lengths(seq: np.ndarray) -> np.ndarray:
     """Compute the spell length at each position."""
     n = len(seq)
@@ -132,7 +132,7 @@ def _compute_spell_lengths(seq: np.ndarray) -> np.ndarray:
     return spell_lens
 
 
-@numba.jit(nopython=True, cache=True)
+@numba.jit(nopython=True, cache=True, nogil=True)
 def _omspell_kernel(
     seq_a: np.ndarray,
     seq_b: np.ndarray,
@@ -230,7 +230,7 @@ def omspell_distance(
 # ---------- OMstran (Transition-sensitive OM) ----------
 
 
-@numba.jit(nopython=True, cache=True)
+@numba.jit(nopython=True, cache=True, nogil=True)
 def _omstran_kernel(
     seq_a: np.ndarray,
     seq_b: np.ndarray,

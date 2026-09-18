@@ -1,5 +1,54 @@
 # Changelog
 
+## Unreleased
+
+### Documentation
+
+- **Documentation site rebuilt around the technical primer.** New *Concepts*
+  section (what sequence analysis is, the data model, the pipeline and its
+  seams), six *Guides* with runnable examples and their real outputs (loading,
+  distances with optimal matching worked by hand, clustering, statistics,
+  mining with every rule measure derived on paper, conditioning on a
+  situation), a *Why yasqat* page (problem, approach, limits, roadmap), a
+  plain-English glossary, four explanatory SVG diagrams, and the logo. The
+  primer itself ships under `docs/_static/primer/`.
+
+### Added
+
+- **`SequencePool.filter(criteria, combine="and")`** returns a new pool holding
+  only the matching sequences, keeping the parent's config and full alphabet.
+  It is the typed counterpart of `filter_sequences` (which still returns a
+  DataFrame), so "define a situation, then score it" is now one chain:
+  `pool.filter([...])` → `association_rules(...)` / `compute_distances(...)`
+  with no manual pool rebuild in between.
+
+### Fixed
+
+- **`cluster_quality` PBC and HG now match WeightedCluster's
+  `wcClusterQuality`.** PBC had its sign flipped (a good partition scored
+  negative) and HG was computed as a Pearson correlation equal to `-PBC`
+  rather than Hubert's Gamma. Both are now defined over the full distance
+  matrix as in the reference: PBC as minus the point-biserial correlation
+  with the same-cluster indicator, HG as the Goodman-Kruskal gamma between
+  distance and the different-cluster indicator. Both are positive for a good
+  partition. `R2` is unchanged and documented as the squared-distance variant
+  (WeightedCluster's `R2sq`). Values from `pam_range` change accordingly.
+
+### Performance
+
+- **`n_jobs` now actually parallelises.** Every numba kernel in `yasqat.metrics`
+  is compiled with `nogil=True`, so the thread pool behind
+  `SequencePool.compute_distances(n_jobs=...)` overlaps kernel time instead of
+  serialising on the GIL. Pays off when the kernel dominates each pair: OM on
+  120 sequences × 300 time points runs 3× faster with `n_jobs=4`. For short
+  sequences the per-pair Python overhead still dominates and `n_jobs=1` stays
+  faster; the docstring now says which regime you are in.
+- **OM dispatch builds the constant substitution matrix once per pool**
+  instead of once per pair, and the OM wrapper no longer copies an array `sm`
+  on every call. Sequential OM on 400 sequences × 24 time points: 0.34 s →
+  0.19 s. Results are unchanged; a regression test pins the hoisted matrix to
+  the per-pair function.
+
 ## 0.5.0 (2026-07-11)
 
 ### Breaking changes
