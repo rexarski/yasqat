@@ -11,7 +11,7 @@ import numba
 import numpy as np
 
 
-@numba.jit(nopython=True, cache=True)
+@numba.jit(nopython=True, cache=True, nogil=True)
 def _compute_state_counts(seq: np.ndarray, n_states: int) -> np.ndarray:
     """
     Count occurrences of each state in a sequence.
@@ -29,7 +29,7 @@ def _compute_state_counts(seq: np.ndarray, n_states: int) -> np.ndarray:
     return counts
 
 
-@numba.jit(nopython=True, cache=True)
+@numba.jit(nopython=True, cache=True, nogil=True)
 def _chi2_distance_kernel(counts_a: np.ndarray, counts_b: np.ndarray) -> float:
     """
     Compute Chi2 distance between two count vectors.

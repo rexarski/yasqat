@@ -10,7 +10,7 @@ import numba
 import numpy as np
 
 
-@numba.jit(nopython=True, cache=True)
+@numba.jit(nopython=True, cache=True, nogil=True)
 def _twed_kernel(
     seq_a: np.ndarray,
     seq_b: np.ndarray,

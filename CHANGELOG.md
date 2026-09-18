@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+### Performance
+
+- **`n_jobs` now actually parallelises.** Every numba kernel in `yasqat.metrics`
+  is compiled with `nogil=True`, so the thread pool behind
+  `SequencePool.compute_distances(n_jobs=...)` overlaps kernel time instead of
+  serialising on the GIL. Pays off when the kernel dominates each pair: OM on
+  120 sequences × 300 time points runs 3× faster with `n_jobs=4`. For short
+  sequences the per-pair Python overhead still dominates and `n_jobs=1` stays
+  faster; the docstring now says which regime you are in.
+- **OM dispatch builds the constant substitution matrix once per pool**
+  instead of once per pair, and the OM wrapper no longer copies an array `sm`
+  on every call. Sequential OM on 400 sequences × 24 time points: 0.34 s →
+  0.19 s. Results are unchanged; a regression test pins the hoisted matrix to
+  the per-pair function.
+
 ## 0.5.0 (2026-07-11)
 
 ### Breaking changes

@@ -10,7 +10,7 @@ import numba
 import numpy as np
 
 
-@numba.jit(nopython=True, cache=True)
+@numba.jit(nopython=True, cache=True, nogil=True)
 def _compute_proportions(seq: np.ndarray, n_states: int) -> np.ndarray:
     """
     Compute state proportions for a sequence.
@@ -32,7 +32,7 @@ def _compute_proportions(seq: np.ndarray, n_states: int) -> np.ndarray:
     return counts
 
 
-@numba.jit(nopython=True, cache=True)
+@numba.jit(nopython=True, cache=True, nogil=True)
 def _euclidean_kernel(props_a: np.ndarray, props_b: np.ndarray) -> float:
     """
     Compute Euclidean distance between two proportion vectors.

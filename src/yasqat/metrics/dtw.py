@@ -6,7 +6,7 @@ import numba
 import numpy as np
 
 
-@numba.jit(nopython=True, cache=True)
+@numba.jit(nopython=True, cache=True, nogil=True)
 def _dtw_kernel(
     seq_a: np.ndarray,
     seq_b: np.ndarray,
@@ -54,7 +54,7 @@ def _dtw_kernel(
     return dp[n, m]
 
 
-@numba.jit(nopython=True, cache=True)
+@numba.jit(nopython=True, cache=True, nogil=True)
 def _dtw_kernel_with_time(
     seq_a: np.ndarray,
     seq_b: np.ndarray,
@@ -114,7 +114,7 @@ def _dtw_kernel_with_time(
     return dp[n, m]
 
 
-@numba.jit(nopython=True, cache=True)
+@numba.jit(nopython=True, cache=True, nogil=True)
 def _dtw_path_length(
     seq_a: np.ndarray,
     seq_b: np.ndarray,

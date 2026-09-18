@@ -173,9 +173,13 @@ class SequencePool:
                 :func:`yasqat.metrics.dhd.build_position_costs` unless passed
                 explicitly.
             n_jobs: Number of parallel workers. 1 = sequential (default).
-                -1 = use all available CPUs. Values > 1 use that many threads.
-                Parallelism uses threads (not processes) since numba releases
-                the GIL.
+                -1 = use all available CPUs. Values > 1 use that many threads;
+                the numba kernels release the GIL, so threads overlap when the
+                kernel dominates each pair. That is the case for long
+                sequences (hundreds of time points: ~3× faster with 4
+                threads). For short sequences (a few dozen time points) the
+                per-pair Python overhead dominates and ``n_jobs=1`` is
+                faster; leave the default there.
             **kwargs: Method-specific parameters.
 
         Returns:
@@ -234,6 +238,17 @@ class SequencePool:
         if method == "dhd" and "position_costs" not in kwargs:
             # Also validates that every sequence has the same length.
             kwargs["position_costs"] = build_position_costs(self)
+
+        sm_arg = kwargs.get("sm", "constant")
+        if method == "om" and isinstance(sm_arg, str) and sm_arg == "constant":
+            # Build the constant substitution matrix once for the whole pool
+            # instead of once per pair (the per-pair build dominated the
+            # runtime for short sequences; see .scratch/issues/17). Sized to
+            # the full alphabet, which the OM wrapper explicitly permits.
+            n_states = len(self._alphabet.states)
+            sm = np.full((n_states, n_states), kwargs.get("sub_cost", 2.0))
+            np.fill_diagonal(sm, 0.0)
+            kwargs["sm"] = sm
 
         metric_fn = methods[method]
         n = len(self)

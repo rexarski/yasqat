@@ -6,7 +6,7 @@ import numba
 import numpy as np
 
 
-@numba.jit(nopython=True, cache=True)
+@numba.jit(nopython=True, cache=True, nogil=True)
 def _optimal_matching_kernel(
     seq_a: np.ndarray,
     seq_b: np.ndarray,
@@ -107,7 +107,9 @@ def optimal_matching_distance(
         else:
             raise ValueError(f"Unknown substitution method: {sm}")
     else:
-        sm_matrix = sm.astype(np.float64)
+        # No copy when the caller already passes float64 (the pool-level
+        # dispatch does), which matters on the per-pair hot path.
+        sm_matrix = np.asarray(sm, dtype=np.float64)
 
     # Validate substitution matrix shape. Requirements:
     #   (1) square — the numba kernel indexes ``sm_matrix[a, b]`` symmetrically

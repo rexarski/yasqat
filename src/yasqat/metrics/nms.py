@@ -11,7 +11,7 @@ import numba
 import numpy as np
 
 
-@numba.jit(nopython=True, cache=True)
+@numba.jit(nopython=True, cache=True, nogil=True)
 def _count_common_subsequences(
     seq_a: np.ndarray,
     seq_b: np.ndarray,
@@ -107,7 +107,7 @@ def nmsmst_distance(
     return 0.0
 
 
-@numba.jit(nopython=True, cache=True)
+@numba.jit(nopython=True, cache=True, nogil=True)
 def _spell_vectors(seq: np.ndarray, n_states: int) -> np.ndarray:
     """Extract spell structure: for each state, sorted list of spell lengths."""
     # Count spells per state
