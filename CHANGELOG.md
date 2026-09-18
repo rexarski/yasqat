@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Added
+
+- **`SequencePool.filter(criteria, combine="and")`** returns a new pool holding
+  only the matching sequences, keeping the parent's config and full alphabet.
+  It is the typed counterpart of `filter_sequences` (which still returns a
+  DataFrame), so "define a situation, then score it" is now one chain:
+  `pool.filter([...])` → `association_rules(...)` / `compute_distances(...)`
+  with no manual pool rebuild in between.
+
 ### Performance
 
 - **`n_jobs` now actually parallelises.** Every numba kernel in `yasqat.metrics`

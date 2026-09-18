@@ -312,6 +312,71 @@ class TestCoerce:
         assert pool.get_sequence(1) == ["A", "A", "B", "C"]
 
 
+class TestPoolFilter:
+    """SequencePool.filter returns a typed pool that chains into analysis.
+
+    Fixture sequences: 1 = A A B C, 2 = A B B C, 3 = B B C D.
+    """
+
+    def test_single_criterion_keeps_matching_ids(
+        self, sequence_pool: SequencePool
+    ) -> None:
+        from yasqat.filters import ContainsStateCriterion
+
+        situation = sequence_pool.filter(ContainsStateCriterion(states=["A"]))
+        assert isinstance(situation, SequencePool)
+        assert situation.sequence_ids == [1, 2]
+        assert situation.get_sequence(2) == ["A", "B", "B", "C"]
+
+    def test_and_combination(self, sequence_pool: SequencePool) -> None:
+        from yasqat.filters import ContainsStateCriterion, StartsWithCriterion
+
+        situation = sequence_pool.filter(
+            [StartsWithCriterion(states=["B"]), ContainsStateCriterion(states=["D"])]
+        )
+        assert situation.sequence_ids == [3]
+
+    def test_or_combination(self, sequence_pool: SequencePool) -> None:
+        from yasqat.filters import ContainsStateCriterion, StartsWithCriterion
+
+        situation = sequence_pool.filter(
+            [StartsWithCriterion(states=["B"]), ContainsStateCriterion(states=["A"])],
+            combine="or",
+        )
+        assert situation.sequence_ids == [1, 2, 3]
+
+    def test_alphabet_and_config_are_preserved(
+        self, sequence_pool: SequencePool
+    ) -> None:
+        from yasqat.filters import ContainsStateCriterion
+
+        # "D" only occurs in sequence 3, which is filtered out; the alphabet
+        # must still carry it so encodings match the parent pool.
+        situation = sequence_pool.filter(ContainsStateCriterion(states=["A"]))
+        assert situation.alphabet == sequence_pool.alphabet
+        assert situation.config == sequence_pool.config
+        assert list(situation.get_encoded_sequence(1)) == list(
+            sequence_pool.get_encoded_sequence(1)
+        )
+
+    def test_empty_result_is_an_empty_pool(self, sequence_pool: SequencePool) -> None:
+        from yasqat.filters import LengthCriterion
+
+        situation = sequence_pool.filter(LengthCriterion(min_length=10))
+        assert len(situation) == 0
+        assert situation.sequence_ids == []
+
+    def test_chains_into_compute_distances(self, sequence_pool: SequencePool) -> None:
+        from yasqat.filters import ContainsStateCriterion
+
+        situation = sequence_pool.filter(ContainsStateCriterion(states=["A"]))
+        dm = situation.compute_distances(method="hamming")
+        assert dm.values.shape == (2, 2)
+        assert dm.labels == [1, 2]
+        # A A B C vs A B B C differ at exactly one position.
+        assert dm.values[0, 1] == pytest.approx(1.0)
+
+
 class TestOmDispatchHoistsSubstitutionMatrix:
     """compute_distances builds the constant OM matrix once per call.
 

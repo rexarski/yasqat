@@ -15,6 +15,7 @@ from yasqat.core.sequence import SequenceConfig, StateSequence
 
 if TYPE_CHECKING:
     from yasqat.core.protocols import SequenceData
+    from yasqat.filters.criteria import SequenceCriterion
     from yasqat.metrics.base import DistanceMatrix
 
 
@@ -301,6 +302,47 @@ class SequencePool:
         valid_ids = lengths[id_col].to_list()
         filtered_data = self._data.filter(pl.col(id_col).is_in(valid_ids))
 
+        return SequencePool(
+            data=filtered_data,
+            config=self._config,
+            alphabet=self._alphabet,
+        )
+
+    def filter(
+        self,
+        criteria: SequenceCriterion | list[SequenceCriterion],
+        combine: str = "and",
+    ) -> SequencePool:
+        """
+        Return a new pool holding only the sequences that match ``criteria``.
+
+        This is the typed counterpart of
+        :func:`yasqat.filters.filter_sequences`, which returns the matching
+        rows as a DataFrame. The new pool keeps this pool's column config and
+        its full alphabet, so state encodings stay comparable across the
+        filtered and unfiltered pools and the result chains straight into
+        :meth:`compute_distances` or any ``statistics`` function.
+
+        Args:
+            criteria: A single criterion or a list of criteria from
+                :mod:`yasqat.filters`.
+            combine: ``"and"`` keeps sequences matching every criterion,
+                ``"or"`` those matching any.
+
+        Returns:
+            A ``SequencePool`` with the same config and alphabet.
+
+        Example:
+            >>> from yasqat.filters import ContainsStateCriterion, StartsWithCriterion
+            >>> situation = pool.filter([
+            ...     StartsWithCriterion(states=["free"]),
+            ...     ContainsStateCriterion(states=["support"]),
+            ... ])
+            >>> rules = association_rules(situation, min_support=0.1)
+        """
+        from yasqat.filters import filter_sequences
+
+        filtered_data = filter_sequences(self, criteria, combine=combine)
         return SequencePool(
             data=filtered_data,
             config=self._config,
