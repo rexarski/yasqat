@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Documentation
+
+- **Documentation site rebuilt around the technical primer.** New *Concepts*
+  section (what sequence analysis is, the data model, the pipeline and its
+  seams), six *Guides* with runnable examples and their real outputs (loading,
+  distances with optimal matching worked by hand, clustering, statistics,
+  mining with every rule measure derived on paper, conditioning on a
+  situation), a *Why yasqat* page (problem, approach, limits, roadmap), a
+  plain-English glossary, four explanatory SVG diagrams, and the logo. The
+  primer itself ships under `docs/_static/primer/`.
+
 ### Added
 
 - **`SequencePool.filter(criteria, combine="and")`** returns a new pool holding

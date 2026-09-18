@@ -18,7 +18,7 @@ there with a pointer to this tracker.
 | 05 | [`encode_states` / `recode_states` — keep or remove?](issues/05-encode-recode-states.md) | question | `resolved` (0.5.0) |
 | 06 | [StateSequence vs SequencePool roles](issues/06-statesequence-vs-pool-roles.md) | docs | `resolved` (0.5.0) |
 | 07 | [`sequence_frequency_table` vs `subsequence_count`](issues/07-freqtable-vs-subseqcount-docs.md) | docs | `resolved` (0.5.0) |
-| 08 | [Compile `pitch.md`](issues/08-pitch-doc.md) | docs | `ready-for-human` |
+| 08 | [Compile `pitch.md`](issues/08-pitch-doc.md) | docs | `resolved` (dev) |
 | 09 | [Compile v0.3.2 terminology glossary](issues/09-v032-appendix-glossary.md) | docs | `resolved` (0.5.0) |
 | 10 | [DHD has no pool-level matrix path](issues/10-dhd-dispatch-gap.md) | enhancement | `resolved` (0.5.0) |
 | 11 | [More time-series content](issues/11-time-series-content.md) | enhancement | `on-hold` |
