@@ -51,26 +51,35 @@ from yasqat.clustering import pam_range
 pam_range(dm, k_values=range(2, 6))
 ```
 
-| k | ASW | R² | total cost |
-|---|---|---|---|
-| 2 | 0.190 | 0.182 | 3510 |
-| 3 | 0.139 | 0.258 | 3272 |
-| 4 | 0.122 | 0.289 | 3120 |
-| 5 | 0.106 | 0.358 | 2944 |
+| k | ASW | PBC | HG | R² | total cost |
+|---|---|---|---|---|---|
+| 2 | 0.190 | 0.386 | 0.492 | 0.182 | 3510 |
+| 3 | 0.139 | 0.372 | 0.489 | 0.258 | 3272 |
+| 4 | 0.122 | 0.358 | 0.497 | 0.289 | 3120 |
+| 5 | 0.106 | 0.367 | 0.549 | 0.358 | 2944 |
 
-Two indices pull in opposite directions, which is normal:
+All four indices are "higher is better", and they pull in different
+directions, which is normal:
 
 - **ASW**, average silhouette width, measures how much closer each sequence is
-  to its own cluster than to the next one. Higher is better; here it prefers
-  `k = 2`. Values below about 0.25 indicate weak structure, and this synthetic
-  population is deliberately noisy.
+  to its own cluster than to the next one. Here it prefers `k = 2`. Values
+  below about 0.25 indicate weak structure, and this synthetic population is
+  deliberately noisy.
+- **PBC**, point biserial correlation, is the correlation between the
+  distances and a same-cluster indicator, signed so that a good partition
+  scores positive. It is nearly flat across `k` here.
+- **HG**, Hubert's Gamma, is the rank-based version of the same idea: the
+  share of concordant minus discordant pairs when distances are compared
+  against cluster membership. Being rank-based, it is indifferent to how
+  distances are scaled.
 - **R²** is the share of total discrepancy explained by the partition. It
   always rises with `k`, so look for the elbow rather than the maximum.
 
-`cluster_quality(dm, labels)` returns the same indices for a single partition,
-including Point Biserial Correlation (PBC) and Hubert's Gamma (HG). Reading the
-table above, three clusters is the defensible choice: ASW does not collapse
-and R² gains most of its value there.
+The definitions follow WeightedCluster's `wcClusterQuality`, the reference on
+the TraMineR side. `cluster_quality(dm, labels)` returns the same four indices
+for a single partition. Reading the table above, three clusters is the
+defensible choice: ASW does not collapse and R² gains most of its value
+there.
 
 ## CLARA: PAM for large pools
 

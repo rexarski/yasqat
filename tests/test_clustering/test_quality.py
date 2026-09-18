@@ -149,12 +149,78 @@ class TestClusterQuality:
 
         # ASW should be high
         assert metrics["ASW"] > 0.5
-        # HG should be positive (larger distance = different cluster)
+        # HG and PBC are both "higher is better" in WeightedCluster's
+        # convention: positive when same-cluster pairs are the closer ones.
         assert metrics["HG"] > 0
-        # PBC should be negative (same cluster = smaller distance)
-        assert metrics["PBC"] < 0
+        assert metrics["PBC"] > 0
         # R2 should be high
         assert metrics["R2"] > 0.5
+
+
+class TestPbcAndHgMatchWeightedCluster:
+    """Pinned against a brute-force transcription of WeightedCluster's
+    ``clusterqualitybody.cpp`` (PBC = -pearson over the full matrix incl. the
+    diagonal; HG = Goodman-Kruskal gamma ignoring distance ties). See
+    .scratch/issues/19.
+    """
+
+    def test_clean_two_clusters(self) -> None:
+        dist = np.array(
+            [
+                [0, 1, 1, 5, 5],
+                [1, 0, 1, 5, 5],
+                [1, 1, 0, 5, 5],
+                [5, 5, 5, 0, 1],
+                [5, 5, 5, 1, 0],
+            ],
+            dtype=np.float64,
+        )
+        metrics = cluster_quality(dist, np.array([0, 0, 0, 1, 1]))
+        assert metrics["PBC"] == pytest.approx(0.987417083986967)
+        assert metrics["HG"] == pytest.approx(1.0)
+
+    def test_imperfect_assignment(self) -> None:
+        dist = np.array(
+            [
+                [0, 1, 1, 5, 5],
+                [1, 0, 1, 5, 5],
+                [1, 1, 0, 5, 5],
+                [5, 5, 5, 0, 1],
+                [5, 5, 5, 1, 0],
+            ],
+            dtype=np.float64,
+        )
+        metrics = cluster_quality(dist, np.array([0, 0, 1, 1, 1]))
+        assert metrics["PBC"] == pytest.approx(0.4099801927665186)
+        assert metrics["HG"] == pytest.approx(0.7037037037037037)
+
+    def test_euclidean_points_three_clusters(self) -> None:
+        # Nine 2-D points, pairwise Euclidean distances rounded to 3 dp so the
+        # gamma sees genuine distance ties.
+        rng = np.random.default_rng(3)
+        points = rng.random((9, 2))
+        diff = points[:, None, :] - points[None, :, :]
+        dist = np.round(np.sqrt((diff**2).sum(axis=-1)), 3)
+        metrics = cluster_quality(dist, np.array([0, 0, 0, 1, 1, 1, 2, 2, 2]))
+        assert metrics["PBC"] == pytest.approx(0.3947133523248635)
+        assert metrics["HG"] == pytest.approx(0.42935528120713307)
+
+    def test_hg_is_not_minus_pbc(self) -> None:
+        # The old implementation had HG == -PBC exactly; a gamma is rank-based
+        # and differs from a Pearson correlation on any non-trivial matrix.
+        dist = np.array(
+            [
+                [0, 1, 1, 5, 5],
+                [1, 0, 1, 5, 5],
+                [1, 1, 0, 5, 5],
+                [5, 5, 5, 0, 1],
+                [5, 5, 5, 1, 0],
+            ],
+            dtype=np.float64,
+        )
+        metrics = cluster_quality(dist, np.array([0, 0, 1, 1, 1]))
+        assert metrics["HG"] != pytest.approx(-metrics["PBC"])
+        assert metrics["HG"] != pytest.approx(metrics["PBC"])
 
     def test_asw_matches_silhouette_score(
         self, well_separated_clusters: tuple[np.ndarray, np.ndarray]

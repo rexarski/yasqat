@@ -22,6 +22,18 @@
   `pool.filter([...])` → `association_rules(...)` / `compute_distances(...)`
   with no manual pool rebuild in between.
 
+### Fixed
+
+- **`cluster_quality` PBC and HG now match WeightedCluster's
+  `wcClusterQuality`.** PBC had its sign flipped (a good partition scored
+  negative) and HG was computed as a Pearson correlation equal to `-PBC`
+  rather than Hubert's Gamma. Both are now defined over the full distance
+  matrix as in the reference: PBC as minus the point-biserial correlation
+  with the same-cluster indicator, HG as the Goodman-Kruskal gamma between
+  distance and the different-cluster indicator. Both are positive for a good
+  partition. `R2` is unchanged and documented as the squared-distance variant
+  (WeightedCluster's `R2sq`). Values from `pam_range` change accordingly.
+
 ### Performance
 
 - **`n_jobs` now actually parallelises.** Every numba kernel in `yasqat.metrics`

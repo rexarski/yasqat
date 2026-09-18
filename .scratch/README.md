@@ -28,6 +28,7 @@ there with a pointer to this tracker.
 | 16 | [Lift quality functions out of clustering/](issues/16-clustering-quality-placement.md) | enhancement | `needs-triage` |
 | 17 | [n_jobs thread pool slower than sequential (GIL)](issues/17-njobs-threadpool-gil.md) | bug | `resolved` (dev) |
 | 18 | [`SequencePool.filter` — typed filter-then-score chain](issues/18-pool-filter-method.md) | enhancement | `resolved` (dev) |
+| 19 | [`cluster_quality`: PBC sign flipped, HG not a gamma](issues/19-cluster-quality-pbc-hg.md) | bug | `resolved` (dev) |
 
 ## Status legend
 
