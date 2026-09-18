@@ -24,9 +24,9 @@ Build a new one. Decisions needed at triage:
 
 ## Consequences to fix alongside
 
-- The `yasqat-release` skill's Phase 3/7 still reference `docs/changelog.qmd`
-  and `docs/_quarto.yml` — stale since `fe171a2`. Update the skill (or the
-  new site must recreate those paths).
+- The release skill's Phase 3/7 referenced `docs/changelog.qmd` and
+  `docs/_quarto.yml` — stale since `fe171a2`. Moot now: that skill was
+  retired on 2026-09-07 along with the authored-skills repo.
 
 ## Tasks
 
@@ -48,7 +48,7 @@ Build a new one. Decisions needed at triage:
   `.github/workflows/docs.yml` builds and deploys to GitHub Pages on push to
   `main` (actions pinned; `setup-uv@v8.2.0`). Builds locally with **zero
   warnings**; fixed two docstring list-formatting nits surfaced by docutils.
-  **Consequence fix done:** the `yasqat-release` skill's Phase 3/7/8/12 and
+  **Consequence fix done:** the (since-retired) release skill's Phase 3/7/8/12 and
   quick-reference no longer point at `docs/changelog.qmd`, `docs/_quarto.yml`,
   `quarto preview`, or `deploy-docs.yml`.
 - **Follow-ups (not blocking):** GitHub Pages must be enabled once in repo

@@ -26,6 +26,7 @@ there with a pointer to this tracker.
 | 13 | [New documentation website](issues/13-documentation-website.md) | docs | `resolved` (0.5.0) |
 | 15 | [Split distance engine out of SequencePool](issues/15-distance-engine-prepare-seam.md) | enhancement | `needs-triage` |
 | 16 | [Lift quality functions out of clustering/](issues/16-clustering-quality-placement.md) | enhancement | `needs-triage` |
+| 17 | [n_jobs thread pool slower than sequential (GIL)](issues/17-njobs-threadpool-gil.md) | bug | `ready-for-agent` |
 
 ## Status legend
 
