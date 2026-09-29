@@ -44,9 +44,15 @@ functions `snake_case`. Control public API with `__all__` in each `__init__.py`.
 
 **Metrics** — a metric is a free function `name_distance(seq_a, seq_b, **kwargs)
 -> float` over integer-encoded arrays (use `@numba.njit` for the inner loop).
-Register it in the dispatch dict in `SequencePool.compute_distances`
-(`core/pool.py`) — that is the single seam for pairwise/matrix computation.
-`DistanceMatrix` and `build_substitution_matrix` live in `metrics/base.py`.
+Register it as a `MetricSpec` in the `METRICS` dict in `metrics/engine.py` —
+that is the single seam for pairwise/matrix computation
+(`SequencePool.compute_distances` only delegates to it). Anything a metric
+needs derived from the *pool* (a substitution matrix sized to the alphabet,
+DHD position costs, the alphabet size) goes in the spec's `prepare(pool,
+kwargs)` hook, never in `core/pool.py`. Metrics that take `sm` get string
+method names resolved by the shared `_prepare_sm` hook. `DistanceMatrix` and
+`build_substitution_matrix` live in `metrics/base.py`; TraMineR's `seqcost`
+is the reference for the cost builders.
 
 **Dependencies** — polars for DataFrames (never pandas in core code; pyarrow only
 as an interop bridge), numpy for numeric arrays, numba `@njit` for hot inner loops

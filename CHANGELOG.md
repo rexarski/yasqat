@@ -62,8 +62,34 @@
 - **Pinned values for the three yasqat OM heuristics** (previously only
   identity/symmetry/positivity were tested).
 
+- **Pairwise distance engine** (`yasqat.metrics.engine`, issue 15). Metrics
+  are registered as `MetricSpec(fn, prepare)`; the `prepare(pool, kwargs)`
+  hook derives pool-level inputs once (substitution matrix, DHD position
+  costs, OMstran alphabet size), so `core/pool.py` no longer knows any
+  metric's internals. `SequencePool.compute_distances` keeps its signature
+  and delegates; `compute_distance_matrix(pool, method, ...)` is the free
+  function behind it.
+- **Distinct-sequence deduplication.** The engine computes each distinct
+  pair once and expands the result to the full matrix, as TraMineR's
+  `seqdist` does. Cost drops from C(n, 2) to C(u, 2) kernel calls for `u`
+  distinct trajectories; results are unchanged.
+- **Substitution matrices by name.** Every metric that takes `sm` accepts a
+  TraMineR `seqcost` method name (`"constant"`, `"trate"`, `"indels"`,
+  `"indelslog"`, `"future"`), built once for the pool's alphabet via
+  `pool_substitution_matrix`. `statistics.substitution_cost_matrix` gains the
+  same methods and a `sub_cost` argument. `build_substitution_matrix` is now
+  exported from `yasqat.metrics` (the README advertised its methods, but it
+  was not importable from the package).
+
 ### Fixed
 
+- **`build_substitution_matrix` now matches TraMineR `seqcost`** (checked
+  against `R/seqcost.R` in 2.2-14): `"indelslog"` uses
+  `log(2 / (1 + freq))` per state, not `log(1 / freq)`; `"future"` is the
+  chi-square distance `sqrt(sum_k (p_ak - p_bk)^2 / colsum_k)`, not an
+  un-rooted symmetric chi-square; states absent from the data get indel 1
+  instead of a 1e10 cost. `"trate"`, `"constant"` and `"features"` were
+  already correct.
 - **`turbulence` now computes Elzinga & Liefbroer's index (TraMineR
   `seqST`).** The previous code used the spell count where the formula uses
   the number of distinct subsequences of the DSS, divided by the mean spell

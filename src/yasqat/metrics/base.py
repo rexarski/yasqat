@@ -113,12 +113,16 @@ def build_substitution_matrix(
         method: Method for computing costs.
             - "constant": All substitutions cost `cost`.
             - "trate": Costs based on transition rates (requires transition_rates).
-            - "indels": Costs based on inverse state frequencies
-              (c(a,b) = 1/freq(a) + 1/freq(b)). Requires state_frequencies.
-            - "indelslog": Log variant (c(a,b) = log(1/freq(a)) + log(1/freq(b))).
-              Requires state_frequencies.
-            - "future": Chi-squared distance between next-state distributions.
-              Requires transition_rates.
+            - "indels": TraMineR ``seqcost(method="INDELS")``: per-state indel
+              ``1 / freq(a)`` (states absent from the data get 1) and
+              ``c(a,b) = indel(a) + indel(b)``. Requires state_frequencies.
+            - "indelslog": TraMineR ``INDELSLOG``: per-state indel
+              ``log(2 / (1 + freq(a)))``, summed likewise. Requires
+              state_frequencies.
+            - "future": TraMineR ``FUTURE``: chi-square distance between the
+              rows of the transition matrix,
+              ``sqrt(sum_k (p(a,k) - p(b,k))^2 / colsum_k)``. Requires
+              transition_rates.
             - "features": Gower distance on user-defined state feature vectors.
               Requires state_frequencies as a (n_states, n_features) array.
         cost: Constant substitution cost (for "constant" method).
@@ -148,9 +152,8 @@ def build_substitution_matrix(
         if state_frequencies is None:
             raise ValueError("state_frequencies required for 'indels' method")
         freq = np.asarray(state_frequencies, dtype=np.float64)
-        # Avoid division by zero: replace zeros with a small value
-        freq_safe = np.where(freq > 0, freq, 1e-10)
-        inv_freq = 1.0 / freq_safe
+        # seqcost.R: indels[is.na(indels)] <- 1 for states absent from the data.
+        inv_freq = np.where(freq > 0, 1.0 / np.where(freq > 0, freq, 1.0), 1.0)
         # c(a,b) = 1/freq(a) + 1/freq(b)
         result = inv_freq[:, None] + inv_freq[None, :]
         np.fill_diagonal(result, 0.0)
@@ -160,27 +163,28 @@ def build_substitution_matrix(
         if state_frequencies is None:
             raise ValueError("state_frequencies required for 'indelslog' method")
         freq = np.asarray(state_frequencies, dtype=np.float64)
-        freq_safe = np.where(freq > 0, freq, 1e-10)
-        log_inv_freq = np.log(1.0 / freq_safe)
-        # c(a,b) = log(1/freq(a)) + log(1/freq(b))
-        result = log_inv_freq[:, None] + log_inv_freq[None, :]
+        # seqcost.R: indels <- log(2 / (1 + freq)); absent states count as freq 1.
+        freq_safe = np.where(freq > 0, freq, 1.0)
+        log_indel = np.log(2.0 / (1.0 + freq_safe))
+        result = log_indel[:, None] + log_indel[None, :]
         np.fill_diagonal(result, 0.0)
         return result
 
     if method == "future":
         if transition_rates is None:
             raise ValueError("transition_rates required for 'future' method")
-        # Chi-squared distance between row distributions of transition matrix
-        # c(a,b) = sum_k (p(a->k) - p(b->k))^2 / (p(a->k) + p(b->k))
+        # seqcost.R chisqdista(): sqrt(sum_k (1 / colsum_k) * (p(a,k) - p(b,k))^2),
+        # with a zero column sum contributing nothing (1 / Inf).
+        rates = np.asarray(transition_rates, dtype=np.float64)
+        col_sums = rates.sum(axis=0)
+        weights = np.where(
+            col_sums > 0, 1.0 / np.where(col_sums > 0, col_sums, 1.0), 0.0
+        )
         result = np.zeros((n_states, n_states), dtype=np.float64)
         for a in range(n_states):
             for b in range(a + 1, n_states):
-                chi2_dist = 0.0
-                for k in range(n_states):
-                    total = transition_rates[a, k] + transition_rates[b, k]
-                    if total > 0:
-                        diff = transition_rates[a, k] - transition_rates[b, k]
-                        chi2_dist += (diff * diff) / total
+                diff = rates[a] - rates[b]
+                chi2_dist = float(np.sqrt(np.sum(weights * diff * diff)))
                 result[a, b] = chi2_dist
                 result[b, a] = chi2_dist
         return result

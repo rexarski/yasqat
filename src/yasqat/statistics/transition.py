@@ -188,33 +188,23 @@ def state_duration_stats(
 def substitution_cost_matrix(
     sequence: SequenceData,
     method: str = "trate",
+    sub_cost: float = 2.0,
 ) -> np.ndarray:
     """
-    Generate substitution cost matrix for distance metrics.
+    Generate a substitution cost matrix for distance metrics (TraMineR ``seqcost``).
 
     Args:
         sequence: StateSequence or SequencePool.
-        method: Method for computing costs.
-            - "trate": Based on transition rates (c = 2 - p_ij - p_ji).
-            - "constant": Constant cost of 2.0.
+        method: ``"trate"`` (``2 - p_ij - p_ji``, default), ``"constant"``
+            (``sub_cost`` off the diagonal), ``"indels"``, ``"indelslog"``
+            (from state frequencies), or ``"future"`` (chi-square distance
+            between transition-matrix rows). See
+            :func:`yasqat.metrics.build_substitution_matrix` for the formulas.
+        sub_cost: Constant cost for ``method="constant"``.
 
     Returns:
-        Square numpy array of substitution costs.
+        Square numpy array of substitution costs over the full alphabet.
     """
-    pool = SequencePool.coerce(sequence)
+    from yasqat.metrics.engine import pool_substitution_matrix
 
-    n_states = len(pool.alphabet)
-
-    if method == "constant":
-        result = np.full((n_states, n_states), 2.0)
-        np.fill_diagonal(result, 0.0)
-        return result
-
-    if method == "trate":
-        rates = transition_rate_matrix(pool, as_counts=False)
-        # Cost inversely proportional to transition probability
-        result = 2.0 - rates - rates.T
-        np.fill_diagonal(result, 0.0)
-        return np.asarray(result)
-
-    raise ValueError(f"Unknown method: {method}")
+    return pool_substitution_matrix(SequencePool.coerce(sequence), method, sub_cost)

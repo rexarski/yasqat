@@ -1,6 +1,6 @@
 # Split the pairwise distance engine out of SequencePool
 
-**Status:** `needs-triage`
+**Status:** `resolved` (dev, 2026-09-29)
 **Type:** enhancement / architecture
 **Source:** architecture review 2026-07-11, candidate B (deferred from the
 0.5.0 review — structural move judged too close to the release)
@@ -40,14 +40,21 @@ where the OM subcost repro (issues 01/04) can be re-run against the new seam.
 
 ## Tasks
 
-- [ ] Triage: confirm the `prepare(pool, kwargs)` hook shape vs. alternatives
+- [x] Triage: confirm the `prepare(pool, kwargs)` hook shape vs. alternatives
       (e.g. a per-metric dataclass carrying both `fn` and `prepare`).
-- [ ] Move the O(n²) driver (sequential + threaded) into `metrics/`.
-- [ ] Give `dhd` (and OM's substitution matrix) a symmetric prepare path.
-- [ ] Reword the `CLAUDE.md` "Metrics" dispatch rule to match.
+- [x] Move the O(n²) driver (sequential + threaded) into `metrics/`.
+- [x] Give `dhd` (and OM's substitution matrix) a symmetric prepare path.
+- [x] Reword the `CLAUDE.md` "Metrics" dispatch rule to match.
 
 ## Comments
 
 - 2026-07-11: Filed from the architecture review. Candidate A (statistics
   reduce seam) and C (unified `coerce`) shipped in the same review; B and D
   (this + issue 16) deferred as structural/API moves too close to 0.5.0.
+- 2026-09-29: Shipped as `metrics/engine.py`: `MetricSpec(fn, prepare)` in a
+  `METRICS` dict (the per-metric dataclass alternative from the triage
+  question), `compute_distance_matrix(pool, method, n_jobs, **kwargs)`,
+  `SequencePool.compute_distances` delegates. Prepare hooks: `_prepare_sm`
+  (shared by every `sm` metric, also resolves TraMineR method names),
+  `_prepare_dhd`, `_prepare_omstran`. The driver also deduplicates distinct
+  sequences. CLAUDE.md, CONTEXT.md and the pipeline concept page reworded.

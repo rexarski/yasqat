@@ -60,8 +60,10 @@ which also seed the transition-rate substitution costs.
 ## Analysis vocabulary
 
 **Metric** — a free function `name_distance(seq_a, seq_b, **kwargs) -> float`
-over integer-encoded arrays, registered in the dispatch dict in
-`SequencePool.compute_distances`.
+over integer-encoded arrays, registered as a `MetricSpec` (function plus an
+optional pool-level `prepare` hook) in `metrics/engine.py`;
+`SequencePool.compute_distances` delegates to that engine, which computes
+each distinct pair of sequences once.
 
 **Optimal Matching (OM)** — the workhorse edit-distance metric: the minimal
 cost of turning one sequence into another using substitutions (priced by the

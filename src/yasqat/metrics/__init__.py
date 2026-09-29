@@ -1,9 +1,15 @@
 """Distance metrics for sequence comparison."""
 
-from yasqat.metrics.base import DistanceMatrix
+from yasqat.metrics.base import DistanceMatrix, build_substitution_matrix
 from yasqat.metrics.chi2 import chi2_distance
 from yasqat.metrics.dhd import dhd_distance
 from yasqat.metrics.dtw import dtw_distance
+from yasqat.metrics.engine import (
+    METRICS,
+    MetricSpec,
+    compute_distance_matrix,
+    pool_substitution_matrix,
+)
 from yasqat.metrics.euclidean import euclidean_distance
 from yasqat.metrics.hamming import hamming_distance
 from yasqat.metrics.lcp import lcp_distance, lcp_length, lcp_similarity
@@ -23,8 +29,12 @@ from yasqat.metrics.softdtw import softdtw_distance
 from yasqat.metrics.twed import twed_distance
 
 __all__ = [
+    "METRICS",
     "DistanceMatrix",
+    "MetricSpec",
+    "build_substitution_matrix",
     "chi2_distance",
+    "compute_distance_matrix",
     "dhd_distance",
     "dtw_distance",
     "euclidean_distance",
@@ -45,6 +55,7 @@ __all__ = [
     "omstran_costs",
     "omstran_distance",
     "optimal_matching_distance",
+    "pool_substitution_matrix",
     "rlcp_distance",
     "rlcp_length",
     "rlcp_similarity",

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -77,7 +77,7 @@ class Alphabet:
         """Return the number of states in the alphabet."""
         return len(self.states)
 
-    def __iter__(self):  # type: ignore[no-untyped-def]
+    def __iter__(self) -> Iterator[str]:
         """Iterate over states."""
         return iter(self.states)
 

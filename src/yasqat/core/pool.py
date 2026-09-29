@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -126,7 +126,7 @@ class SequencePool:
         """Get a sequence by ID."""
         return self._sequences[seq_id]
 
-    def __iter__(self):  # type: ignore[no-untyped-def]
+    def __iter__(self) -> Iterator[int | str]:
         """Iterate over sequence IDs."""
         return iter(self._sequences)
 
@@ -193,125 +193,27 @@ class SequencePool:
                 sequences, 4 threads are about 3× faster than sequential at
                 100 time points and beyond, but still slower at 24. For
                 short sequences (a few dozen time points) leave the default.
-            **kwargs: Method-specific parameters.
+            **kwargs: Method-specific parameters. Metrics that take ``sm``
+                accept a TraMineR ``seqcost`` method name in place of a
+                matrix: ``"constant"`` (default, uses ``sub_cost``),
+                ``"trate"``, ``"indels"``, ``"indelslog"``, ``"future"``; the
+                matrix is built once for the pool's alphabet.
 
         Returns:
             DistanceMatrix with pairwise distances and sequence ID labels.
 
         Note:
-            This uses an O(n²) loop over sequence pairs. For large pools
+            Metrics, their pool-level preparation, and the pairwise driver
+            live in :mod:`yasqat.metrics.engine`. Identical sequences are
+            computed once and expanded, so the O(n²) loop runs over the
+            *distinct* sequences. For large pools
             (n > ~500) consider using :meth:`sample` to draw a representative
             subset first, or use CLARA clustering which applies sampling
             internally (see :func:`yasqat.clustering.clara_clustering`).
         """
-        from yasqat.metrics import (
-            chi2_distance,
-            euclidean_distance,
-            hamming_distance,
-            lcp_distance,
-            lcs_distance,
-            nms_distance,
-            nmsmst_distance,
-            om_boundary_weighted_distance,
-            om_spell_scaled_distance,
-            om_transition_penalty_distance,
-            omloc_distance,
-            omspell_distance,
-            omstran_distance,
-            optimal_matching_distance,
-            rlcp_distance,
-            softdtw_distance,
-            svrspell_distance,
-            twed_distance,
-        )
-        from yasqat.metrics.base import DistanceMatrix
-        from yasqat.metrics.dhd import build_position_costs, dhd_distance
-        from yasqat.metrics.dtw import dtw_distance
+        from yasqat.metrics.engine import compute_distance_matrix
 
-        methods: dict[str, Callable[..., float]] = {
-            "om": optimal_matching_distance,
-            "hamming": hamming_distance,
-            "lcs": lcs_distance,
-            "lcp": lcp_distance,
-            "rlcp": rlcp_distance,
-            "euclidean": euclidean_distance,
-            "chi2": chi2_distance,
-            "dtw": dtw_distance,
-            "softdtw": softdtw_distance,
-            "twed": twed_distance,
-            "dhd": dhd_distance,
-            "om_boundary": om_boundary_weighted_distance,
-            "om_spellscaled": om_spell_scaled_distance,
-            "om_transpenalty": om_transition_penalty_distance,
-            "omloc": omloc_distance,
-            "omspell": omspell_distance,
-            "omstran": omstran_distance,
-            "nms": nms_distance,
-            "nmsmst": nmsmst_distance,
-            "svrspell": svrspell_distance,
-        }
-
-        if method not in methods:
-            raise ValueError(f"Unknown method: {method}. Available: {list(methods)}")
-
-        if method == "dhd" and "position_costs" not in kwargs:
-            # Also validates that every sequence has the same length.
-            kwargs["position_costs"] = build_position_costs(self)
-        if method == "omstran" and "n_states" not in kwargs:
-            # Transition tokens must be encoded over the whole alphabet so
-            # every pair shares one token space and one cost matrix.
-            kwargs["n_states"] = len(self._alphabet.states)
-
-        sm_arg = kwargs.get("sm", "constant")
-        if method == "om" and isinstance(sm_arg, str) and sm_arg == "constant":
-            # Build the constant substitution matrix once for the whole pool
-            # instead of once per pair (the per-pair build dominated the
-            # runtime for short sequences; see .scratch/issues/17). Sized to
-            # the full alphabet, which the OM wrapper explicitly permits.
-            n_states = len(self._alphabet.states)
-            sm = np.full((n_states, n_states), kwargs.get("sub_cost", 2.0))
-            np.fill_diagonal(sm, 0.0)
-            kwargs["sm"] = sm
-
-        metric_fn = methods[method]
-        n = len(self)
-        ids = self.sequence_ids
-        distances = np.zeros((n, n), dtype=np.float64)
-
-        # Pre-encode all sequences
-        encoded = [self.get_encoded_sequence(ids[i]) for i in range(n)]
-
-        if n_jobs == 1:
-            for i in range(n):
-                for j in range(i + 1, n):
-                    dist = metric_fn(encoded[i], encoded[j], **kwargs)
-                    distances[i, j] = dist
-                    distances[j, i] = dist
-        else:
-            import os
-            from concurrent.futures import ThreadPoolExecutor
-
-            workers = (os.cpu_count() or 1) if n_jobs == -1 else n_jobs
-            if workers < 1:
-                raise ValueError(f"n_jobs must be >= 1 or -1, got {n_jobs}")
-            pairs = [(i, j) for i in range(n) for j in range(i + 1, n)]
-            # One task per worker, not one per pair: a Future per pair costs
-            # more than a short kernel call and made n_jobs>1 several times
-            # slower than sequential on typical 24-step sequences. Each task
-            # writes its own disjoint cells, so no locking is needed.
-            chunks = [pairs[k::workers] for k in range(workers)]
-
-            def _compute_chunk(chunk: list[tuple[int, int]]) -> None:
-                for i, j in chunk:
-                    dist = metric_fn(encoded[i], encoded[j], **kwargs)
-                    distances[i, j] = dist
-                    distances[j, i] = dist
-
-            with ThreadPoolExecutor(max_workers=workers) as executor:
-                # list() re-raises any worker exception on the caller.
-                list(executor.map(_compute_chunk, chunks))
-
-        return DistanceMatrix(values=distances, labels=ids)
+        return compute_distance_matrix(self, method, n_jobs, **kwargs)
 
     def filter_by_length(
         self,
