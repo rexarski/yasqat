@@ -110,21 +110,18 @@ def build_substitution_matrix(
 
     Args:
         n_states: Number of states in the alphabet.
-        method: Method for computing costs.
-            - "constant": All substitutions cost `cost`.
-            - "trate": Costs based on transition rates (requires transition_rates).
-            - "indels": TraMineR ``seqcost(method="INDELS")``: per-state indel
-              ``1 / freq(a)`` (states absent from the data get 1) and
-              ``c(a,b) = indel(a) + indel(b)``. Requires state_frequencies.
-            - "indelslog": TraMineR ``INDELSLOG``: per-state indel
-              ``log(2 / (1 + freq(a)))``, summed likewise. Requires
-              state_frequencies.
-            - "future": TraMineR ``FUTURE``: chi-square distance between the
-              rows of the transition matrix,
-              ``sqrt(sum_k (p(a,k) - p(b,k))^2 / colsum_k)``. Requires
-              transition_rates.
-            - "features": Gower distance on user-defined state feature vectors.
-              Requires state_frequencies as a (n_states, n_features) array.
+        method: Method for computing costs (TraMineR ``seqcost`` names,
+            lower-cased). ``"constant"``: all substitutions cost ``cost``.
+            ``"trate"``: ``2 - p(a,b) - p(b,a)`` from ``transition_rates``.
+            ``"indels"``: per-state indel ``1 / freq(a)`` (states absent
+            from the data get 1), ``c(a,b) = indel(a) + indel(b)``; needs
+            ``state_frequencies``. ``"indelslog"``: per-state indel
+            ``log(2 / (1 + freq(a)))``, summed likewise. ``"future"``:
+            chi-square distance between the rows of the transition matrix,
+            ``sqrt(sum_k (p(a,k) - p(b,k))^2 / colsum_k)``; needs
+            ``transition_rates``. ``"features"``: Gower distance on
+            user-defined state feature vectors passed as
+            ``state_frequencies`` with shape ``(n_states, n_features)``.
         cost: Constant substitution cost (for "constant" method).
         transition_rates: Transition rate matrix (for "trate" and "future" methods).
         state_frequencies: Array of state frequencies/proportions (for "indels"
