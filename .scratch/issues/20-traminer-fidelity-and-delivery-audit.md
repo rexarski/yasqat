@@ -1,6 +1,6 @@
 # TraMineR fidelity and delivery audit: wrong formulas, impersonating metrics, no oracle tests, no CI
 
-**Status:** `ready-for-agent`
+**Status:** `ready-for-agent` (in progress on dev)
 **Priority:** high — work this before any other open issue
 **Type:** bug / process
 **Source:** critical review 2026-09-28, full evidence in
@@ -24,7 +24,7 @@ no CI runs tests, lint, or types on push or PR, and mypy does not pass.
 | Sequence | turbulence (yasqat) | seqST (formula) | complexity (yasqat) | seqici (formula) |
 |---|---|---|---|---|
 | AABB | 0.00 | 3.00 | 0.354 | 0.408 |
-| ABAB | 2.00 | 3.00 | 0.612 | 0.707 |
+| ABAB | 2.00 | 3.58 | 0.612 | 0.707 |
 | AAAA | 0.00 | 1.00 | 0.000 | 0.000 |
 | ABCD | 2.00 | 4.00 | 0.866 | 1.000 |
 
@@ -74,35 +74,38 @@ formulas; TraMineR is not installed on the dev machine.
 
 ## Tasks (in order)
 
-- [ ] **Oracle fixture.** Install R + TraMineR (or borrow a machine that has
-      it), run `mvad` or `biofam` through `seqient`, `seqST`, `seqici`,
-      `seqsubsn`, `seqtrate`, `seqcost(TRATE)`, and `seqdist` for OM, HAM,
-      LCS, LCP, RLCP, DHD, OMloc, OMspell, OMstran, and commit the values as
-      a fixture under `tests/fixtures/`. Every metric/statistic test then
-      pins against it. Until R is available, pin hand-derived values from
-      the formulas (as issue 19 did) and mark them as such.
-- [ ] Fix `turbulence` and `normalized_turbulence` to the reference formula.
-- [ ] Fix `complexity_index` to `seqici`.
-- [ ] Reimplement `omloc`, `omspell`, `omstran` to TraMineR's definitions,
-      or rename them so they stop impersonating TraMineR. Decide with the
-      user before renaming (breaking).
-- [ ] Fix the OM `normalize` docstring.
-- [ ] Validate null states with a `ValueError` at the `SequencePool` /
+- [x] **Oracle = TraMineR source, not an R run.** The CRAN source is public
+      (`github.com/cran/TraMineR`, 2.2-14). Definitions are read from
+      `R/*.R` and `src/*.cpp` and reference values derived by hand, as
+      issue 19 did for WeightedCluster. Done for seqST, seqivardur,
+      seqsubsn, seqici, seqtransn, seqient. Still to read for the metrics:
+      `OMdistance.cpp`, `OMPerdistance*.cpp` (OMspell, `timecost`),
+      `OMVIdistance.cpp` (OMloc, `localcost`/`timecost`), `seqdist-OMstran.R`.
+- [x] Fix `turbulence` and `normalized_turbulence` to the reference formula.
+- [x] Fix `complexity_index` to `seqici`.
+- [x] Rename `omloc`, `omspell`, `omstran` (user decision 2026-09-29) to
+      `om_boundary_weighted_distance` / `om_spell_scaled_distance` /
+      `om_transition_penalty_distance`, keys `om_boundary` /
+      `om_spellscaled` / `om_transpenalty`.
+- [ ] Implement TraMineR's real OMloc, OMspell, OMstran as new functions
+      from the C++/R source above (separate issue if it grows).
+- [x] Fix the OM `normalize` docstring.
+- [x] Validate null states with a `ValueError` at the `SequencePool` /
       `StateSequence` boundary.
-- [ ] Either fix the threaded distance path (chunk pairs, or move the pair
+- [x] Either fix the threaded distance path (chunk pairs, or move the pair
       loop into numba `prange`) or make the docstring and changelog say it
       only pays off for long sequences. Re-run the n=1000 T=24 benchmark.
-- [ ] Replace `assert val > 0.0` in the turbulence/complexity/OM-variant
+- [x] Replace `assert val > 0.0` in the turbulence/complexity/OM-variant
       tests with pinned values.
-- [ ] Add `.github/workflows/ci.yml`: pytest + ruff check + ruff format
+- [x] Add `.github/workflows/ci.yml`: pytest + ruff check + ruff format
       --check + mypy on push and PR, on a 3.11–3.13 matrix.
-- [ ] Make mypy pass (fix `pam.py`, set `python_version` so numpy stubs
+- [x] Make mypy pass (fix `pam.py`, set `python_version` so numpy stubs
       parse); commit `uv.lock`; drop `pyarrow` from dependencies.
-- [ ] Rewrite the "Fidelity over novelty" and "Engineering discipline"
+- [x] Rewrite the "Fidelity over novelty" and "Engineering discipline"
       paragraphs of `docs/why-yasqat.md` to state only what the repo proves.
-- [ ] Re-run the docs guide examples and paste the corrected outputs (or
+- [x] Re-run the docs guide examples and paste the corrected outputs (or
       wire up doctest / myst-nb so they cannot drift again).
-- [ ] CHANGELOG entries under Unreleased (Fixed, Changed).
+- [x] CHANGELOG entries under Unreleased (Fixed, Changed).
 
 ## Out of scope here (file separately if wanted)
 
@@ -115,3 +118,27 @@ class/function clustering API (issue 16).
 
 - 2026-09-28: Filed from the critical review. Review kept as the evidence
   record; this issue is the actionable list.
+- 2026-09-29: Fixed turbulence, normalized_turbulence, complexity_index, the
+  OM normalize docstring, null-state validation, the chunked `n_jobs` path,
+  mypy, CI workflow, lockfile, pyarrow removal, docs claims, guide values,
+  changelog. Correction to the table: ABAB's DSS is `ABAB` (phi = 12), so
+  seqST = log2(12) = 3.585, not 3.00; the implementation returns 3.585.
+  Open decisions for the user: (1) the OM variants keep their names with
+  honest docstrings — reimplement to TraMineR or rename? (2) turbulence uses
+  the population variance (ddof=0), consistent with the `s2_max` bound;
+  TraMineR's default `type=1` may use the sample variance — settle with the
+  oracle run. (3) `normalized_turbulence` divides by `T_max = length`
+  per sequence; TraMineR normalises by the max over the pool's longest
+  sequence, identical for equal-length pools. (4) `subsequence_count` keeps
+  its non-DSS, empty-excluded default; TraMineR's `seqsubsn` default is
+  DSS=TRUE including the empty subsequence. Still open: the oracle fixture
+  (needs R + TraMineR), the OM-variant decision, the OM-variant tests.
+- 2026-09-29 (later): User decisions: (1) rename, done; (2)–(4) follow
+  TraMineR. Read from source: `seqST` type=1 uses the population variance
+  and `(n-1)(1-tbar)^2`, which is what was implemented — no change;
+  `seqST(norm=TRUE)` rescales `(T-1)/(maxT-1)` against a max-length
+  sequence cycling the alphabet — implemented; `seqsubsn` defaults to
+  DSS=TRUE and counts the empty subsequence — now the default. TanaT has no
+  turbulence, complexity, or OM-variant code, so it is not the source of
+  the old formulas. Remaining: the real OMloc/OMspell/OMstran, and pinned
+  tests for the renamed heuristics (currently identity/symmetry only).

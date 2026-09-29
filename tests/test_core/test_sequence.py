@@ -13,6 +13,15 @@ from yasqat.core.sequence import (
 )
 
 
+class TestNullStates:
+    def test_null_state_raises_value_error(self) -> None:
+        df = pl.DataFrame(
+            {"id": [1, 1, 2, 2], "time": [0, 1, 0, 1], "state": ["A", None, "A", "B"]}
+        )
+        with pytest.raises(ValueError, match="contains 1 null value"):
+            StateSequence(df)
+
+
 class TestCoerce:
     """Tests for StateSequence.coerce, the symmetric union-normalization seam."""
 

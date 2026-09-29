@@ -78,19 +78,20 @@ moves.
 from yasqat.statistics import longitudinal_entropy, turbulence, complexity_index, spell_count
 
 longitudinal_entropy(pool)     # 0.692  (population mean, normalised to [0, 1])
-turbulence(pool)               # 4.059
-complexity_index(pool)         # 0.166
+turbulence(pool)               # 8.014
+complexity_index(pool)         # 0.414
 spell_count(pool)              # 6.82   spells per sequence on average
 ```
 
 - **Longitudinal entropy** measures how evenly a sequence's time is spread
   across states. A whole career in one state scores 0; equal time in every
   state scores 1. It ignores order.
-- **Turbulence** combines the number of distinct subsequences with the
-  variance of spell durations, so it rewards both switching and irregular
-  durations. Unlike entropy it does see order.
-- **Complexity index** is a normalised blend of transitions and entropy in
-  [0, 1].
+- **Turbulence** (TraMineR `seqST`) combines the number of distinct
+  subsequences with the variance of spell durations, so it rewards both
+  switching and irregular durations. Unlike entropy it does see order. A
+  career that never changes state scores exactly 1, the index's minimum.
+- **Complexity index** (TraMineR `seqici`) is the geometric mean of the
+  normalised transition count and the normalised entropy, in [0, 1].
 
 With `per_sequence=True` each becomes a per-id column, ready to join to
 covariates or to compare across clusters.

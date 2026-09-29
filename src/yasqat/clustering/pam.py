@@ -66,7 +66,7 @@ class PAMClusteringResult:
         )
 
 
-@numba.jit(nopython=True, cache=True)  # type: ignore[untyped-decorator]
+@numba.jit(nopython=True, cache=True)
 def _compute_cost(
     dist_matrix: np.ndarray,
     medoids: np.ndarray,
@@ -80,7 +80,7 @@ def _compute_cost(
     return total
 
 
-@numba.jit(nopython=True, cache=True)  # type: ignore[untyped-decorator]
+@numba.jit(nopython=True, cache=True)
 def _assign_clusters(
     dist_matrix: np.ndarray,
     medoids: np.ndarray,
@@ -103,7 +103,7 @@ def _assign_clusters(
     return labels
 
 
-@numba.jit(nopython=True, cache=True)  # type: ignore[untyped-decorator]
+@numba.jit(nopython=True, cache=True)
 def _pam_swap_step(
     dist_matrix: np.ndarray,
     medoids: np.ndarray,
@@ -240,12 +240,12 @@ def _initialize_medoids(
                 # All points are medoids or zero distance
                 remaining = [i for i in range(n) if i not in medoids]
                 if remaining:
-                    next_medoid = rng.choice(remaining)
+                    next_medoid = int(rng.choice(remaining))
                 else:
                     break
             else:
                 probs /= probs.sum()
-                next_medoid = rng.choice(n, p=probs)
+                next_medoid = int(rng.choice(n, p=probs))
 
             medoids.append(int(next_medoid))
 

@@ -23,7 +23,7 @@ Hand-derived TraMineR formulas on four toy sequences over alphabet {A,B,C,D}:
 | Sequence | turbulence (yasqat) | seqST (formula) | complexity (yasqat) | seqici (formula) |
 |---|---|---|---|---|
 | AABB | 0.00 | 3.00 | 0.354 | 0.408 |
-| ABAB | 2.00 | 3.00 | 0.612 | 0.707 |
+| ABAB | 2.00 | 3.58 | 0.612 | 0.707 |
 | AAAA | 0.00 | 1.00 | 0.000 | 0.000 |
 | ABCD | 2.00 | 4.00 | 0.866 | 1.000 |
 

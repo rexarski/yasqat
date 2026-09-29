@@ -222,6 +222,14 @@ class TestExtractSequencesPerformance:
 class TestPoolEdgeCases:
     """Tests for edge cases in SequencePool."""
 
+    def test_null_state_raises_value_error(self) -> None:
+        """A null state is rejected at the boundary, not as a TypeError later."""
+        df = pl.DataFrame(
+            {"id": [1, 1, 2, 2], "time": [0, 1, 0, 1], "state": ["A", None, "A", "B"]}
+        )
+        with pytest.raises(ValueError, match="contains 1 null value"):
+            SequencePool(df)
+
     def test_empty_pool_error(self) -> None:
         """Creating a pool from an empty DataFrame should raise an error."""
         empty_df = pl.DataFrame(
@@ -428,3 +436,24 @@ class TestOmDispatchHoistsSubstitutionMatrix:
         dm_seq = sequence_pool.compute_distances(method="om", n_jobs=1)
         dm_par = sequence_pool.compute_distances(method="om", n_jobs=2)
         np.testing.assert_allclose(dm_seq.values, dm_par.values)
+
+    def test_parallel_uneven_chunks_cover_every_pair(self) -> None:
+        """7 sequences = 21 pairs over 4 workers: chunks of 6, 5, 5, 5."""
+        rng = np.random.default_rng(0)
+        n, t = 7, 6
+        df = pl.DataFrame(
+            {
+                "id": np.repeat(np.arange(n), t),
+                "time": np.tile(np.arange(t), n),
+                "state": rng.choice(["A", "B", "C"], size=n * t),
+            }
+        )
+        pool = SequencePool(df)
+        dm_seq = pool.compute_distances(method="om", n_jobs=1)
+        dm_par = pool.compute_distances(method="om", n_jobs=4)
+        np.testing.assert_allclose(dm_seq.values, dm_par.values)
+        assert (dm_par.values[np.triu_indices(n, k=1)] > 0).all()
+
+    def test_n_jobs_zero_rejected(self, sequence_pool: SequencePool) -> None:
+        with pytest.raises(ValueError, match="n_jobs"):
+            sequence_pool.compute_distances(method="om", n_jobs=0)

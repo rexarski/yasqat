@@ -65,7 +65,8 @@ over integer-encoded arrays, registered in the dispatch dict in
 
 **Optimal Matching (OM)** — the workhorse edit-distance metric: the minimal
 cost of turning one sequence into another using substitutions (priced by the
-substitution matrix) and indels. Variants (OMloc, OMspell, OMstran, …) reweight
+substitution matrix) and indels. yasqat's OM heuristics (`om_boundary`,
+`om_spellscaled`, `om_transpenalty`; not TraMineR's OMloc/OMspell/OMstran) reweight
 localization, spells, or transitions.
 
 **Indel** — an insertion/deletion edit operation in OM-family metrics, priced

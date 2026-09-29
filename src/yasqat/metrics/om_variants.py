@@ -1,8 +1,21 @@
-"""Optimal Matching variants: OMloc, OMspell, OMstran.
+"""yasqat's own Optimal Matching heuristics (not TraMineR's OM variants).
 
-OMloc: Localized OM with position-dependent substitution costs.
-OMspell: Spell-length sensitive OM that penalizes changes within long spells.
-OMstran: Transition-sensitive OM that accounts for transition frequencies.
+- ``om_boundary_weighted_distance``: substitution costs weighted by distance
+  from the sequence ends.
+- ``om_spell_scaled_distance``: substitution costs scaled down inside long
+  spells.
+- ``om_transition_penalty_distance``: an added penalty when the transition
+  leading into the two positions differs.
+
+These were shipped through 0.5.0 under the names ``omloc``, ``omspell`` and
+``omstran``. They are **not** TraMineR's OMloc (Hollister 2009: substitution
+priced by the surrounding states, ``expcost`` / ``context``), OMspell (Studer
+& Ritschard 2016: OM over spell sequences with duration-sensitive costs,
+``expcost`` / ``tpow``) or OMstran (OM over transition sequences with an
+``otto`` origin/transition weight), and were renamed so that they no longer
+suggest they are. Implementing TraMineR's definitions is a separate, open
+item (``.scratch/issues/20``); use plain ``"om"`` for a TraMineR-comparable
+distance until then.
 """
 
 from __future__ import annotations
@@ -10,11 +23,11 @@ from __future__ import annotations
 import numba
 import numpy as np
 
-# ---------- OMloc (Localized OM) ----------
+# ---------- Boundary-weighted OM ----------
 
 
 @numba.jit(nopython=True, cache=True, nogil=True)
-def _omloc_kernel(
+def _om_boundary_kernel(
     seq_a: np.ndarray,
     seq_b: np.ndarray,
     indel_cost: float,
@@ -22,7 +35,7 @@ def _omloc_kernel(
     context_factor: float,
 ) -> float:
     """
-    Numba-optimized OMloc: position-dependent substitution costs.
+    Numba kernel: substitution costs weighted by distance from the ends.
 
     Substitution cost at position t is weighted by a context factor based
     on how far the position is from the nearest sequence boundary.
@@ -55,7 +68,7 @@ def _omloc_kernel(
     return dp[n, m]
 
 
-def omloc_distance(
+def om_boundary_weighted_distance(
     seq_a: np.ndarray,
     seq_b: np.ndarray,
     indel: float = 1.0,
@@ -65,11 +78,14 @@ def omloc_distance(
     normalize: bool = False,
 ) -> float:
     """
-    Compute Localized Optimal Matching distance.
+    Compute a boundary-weighted Optimal Matching distance.
 
-    OMloc weights substitution costs by position, giving more importance
-    to boundary positions. This is useful when the beginning and end of
-    sequences carry more structural meaning.
+    Substitution costs are scaled by ``1 + context_factor * (1 - p)`` where
+    ``p`` is the position's relative distance from the nearest sequence end,
+    so edits near the boundaries cost more than edits in the middle.
+
+    A yasqat heuristic, formerly named ``omloc``. It is **not** TraMineR's
+    OMloc; see the module docstring.
 
     Args:
         seq_a: First sequence (integer-encoded numpy array).
@@ -81,7 +97,7 @@ def omloc_distance(
         normalize: If True, normalize by max sequence length.
 
     Returns:
-        OMloc distance.
+        Boundary-weighted OM distance.
     """
     if len(seq_a) == 0 and len(seq_b) == 0:
         return 0.0
@@ -97,7 +113,7 @@ def omloc_distance(
     else:
         sm_matrix = sm.astype(np.float64)
 
-    distance = _omloc_kernel(seq_a, seq_b, indel, sm_matrix, context_factor)
+    distance = _om_boundary_kernel(seq_a, seq_b, indel, sm_matrix, context_factor)
 
     if normalize:
         max_len = max(len(seq_a), len(seq_b))
@@ -107,7 +123,7 @@ def omloc_distance(
     return float(distance)
 
 
-# ---------- OMspell (Spell-length sensitive OM) ----------
+# ---------- Spell-scaled OM ----------
 
 
 @numba.jit(nopython=True, cache=True, nogil=True)
@@ -133,7 +149,7 @@ def _compute_spell_lengths(seq: np.ndarray) -> np.ndarray:
 
 
 @numba.jit(nopython=True, cache=True, nogil=True)
-def _omspell_kernel(
+def _om_spell_scaled_kernel(
     seq_a: np.ndarray,
     seq_b: np.ndarray,
     indel_cost: float,
@@ -142,7 +158,7 @@ def _omspell_kernel(
     spell_lens_b: np.ndarray,
 ) -> float:
     """
-    Numba-optimized OMspell: spell-length weighted substitution costs.
+    Numba kernel: substitution costs scaled by spell length.
 
     Substitutions within longer spells are penalized more, as they
     represent more significant structural changes.
@@ -172,7 +188,7 @@ def _omspell_kernel(
     return dp[n, m]
 
 
-def omspell_distance(
+def om_spell_scaled_distance(
     seq_a: np.ndarray,
     seq_b: np.ndarray,
     indel: float = 1.0,
@@ -181,11 +197,14 @@ def omspell_distance(
     normalize: bool = False,
 ) -> float:
     """
-    Compute Spell-length sensitive Optimal Matching distance.
+    Compute a spell-scaled Optimal Matching distance.
 
-    OMspell reduces the substitution cost within long spells, reflecting
-    that changes within stable periods are less meaningful than changes
-    at transitions.
+    Each substitution cost is multiplied by
+    ``1 / sqrt(spell_len_a * spell_len_b)``, the lengths of the spells the two
+    positions belong to, so edits inside long stable spells cost less.
+
+    A yasqat heuristic, formerly named ``omspell``. It is **not** TraMineR's
+    OMspell; see the module docstring.
 
     Args:
         seq_a: First sequence (integer-encoded numpy array).
@@ -196,7 +215,7 @@ def omspell_distance(
         normalize: If True, normalize by max sequence length.
 
     Returns:
-        OMspell distance.
+        Spell-scaled OM distance.
     """
     if len(seq_a) == 0 and len(seq_b) == 0:
         return 0.0
@@ -215,7 +234,7 @@ def omspell_distance(
     spell_lens_a = _compute_spell_lengths(seq_a)
     spell_lens_b = _compute_spell_lengths(seq_b)
 
-    distance = _omspell_kernel(
+    distance = _om_spell_scaled_kernel(
         seq_a, seq_b, indel, sm_matrix, spell_lens_a, spell_lens_b
     )
 
@@ -227,11 +246,11 @@ def omspell_distance(
     return float(distance)
 
 
-# ---------- OMstran (Transition-sensitive OM) ----------
+# ---------- Transition-penalty OM ----------
 
 
 @numba.jit(nopython=True, cache=True, nogil=True)
-def _omstran_kernel(
+def _om_transition_penalty_kernel(
     seq_a: np.ndarray,
     seq_b: np.ndarray,
     indel_cost: float,
@@ -240,7 +259,7 @@ def _omstran_kernel(
     otto: float,
 ) -> float:
     """
-    Numba-optimized OMstran: transition-sensitive substitution costs.
+    Numba kernel: substitution cost plus a transition-difference penalty.
 
     Adds extra cost when a substitution changes the transition context.
     """
@@ -275,7 +294,7 @@ def _omstran_kernel(
     return dp[n, m]
 
 
-def omstran_distance(
+def om_transition_penalty_distance(
     seq_a: np.ndarray,
     seq_b: np.ndarray,
     indel: float = 1.0,
@@ -286,10 +305,14 @@ def omstran_distance(
     normalize: bool = False,
 ) -> float:
     """
-    Compute Transition-sensitive Optimal Matching distance.
+    Compute a transition-penalty Optimal Matching distance.
 
-    OMstran incorporates transition frequency information: substitutions
-    that change a common transition pattern are penalized more.
+    On top of the state substitution cost, a substitution pays
+    ``otto * |w_a - w_b|`` where ``w_a`` and ``w_b`` are the weights of the
+    transitions that led into the two positions.
+
+    A yasqat heuristic, formerly named ``omstran``. It is **not** TraMineR's
+    OMstran; see the module docstring.
 
     Args:
         seq_a: First sequence (integer-encoded numpy array).
@@ -303,7 +326,7 @@ def omstran_distance(
         normalize: If True, normalize by max sequence length.
 
     Returns:
-        OMstran distance.
+        Transition-penalty OM distance.
     """
     if len(seq_a) == 0 and len(seq_b) == 0:
         return 0.0
@@ -325,7 +348,9 @@ def omstran_distance(
     else:
         transition_weights = transition_weights.astype(np.float64)
 
-    distance = _omstran_kernel(seq_a, seq_b, indel, sm_matrix, transition_weights, otto)
+    distance = _om_transition_penalty_kernel(
+        seq_a, seq_b, indel, sm_matrix, transition_weights, otto
+    )
 
     if normalize:
         max_len = max(len(seq_a), len(seq_b))

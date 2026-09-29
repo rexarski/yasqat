@@ -70,6 +70,15 @@ class SequencePool:
             if col not in data.columns:
                 raise ValueError(f"Missing required column: {col}")
 
+        n_null = data[self._config.state_column].null_count()
+        if n_null:
+            raise ValueError(
+                f"State column '{self._config.state_column}' contains {n_null} "
+                f"null value(s). yasqat has no missing-state semantics: drop "
+                f"those rows (load_dataframe(..., drop_nulls=True)) or recode "
+                f"them to an explicit state before building a container."
+            )
+
         return data.sort([self._config.id_column, self._config.time_column])
 
     def _infer_alphabet(self) -> Alphabet:
@@ -167,20 +176,22 @@ class SequencePool:
 
         Args:
             method: Distance method ("om", "hamming", "lcs", "lcp", "rlcp",
-                "euclidean", "chi2", "dtw", "softdtw", "twed", "dhd", "omloc",
-                "omspell", "omstran", "nms", "nmsmst", "svrspell"). "dhd"
+                "euclidean", "chi2", "dtw", "softdtw", "twed", "dhd", "nms",
+                "nmsmst", "svrspell", and the yasqat OM heuristics
+                "om_boundary", "om_spellscaled", "om_transpenalty"). "dhd"
                 requires equal-length sequences; its ``position_costs`` array
                 is built from this pool via
                 :func:`yasqat.metrics.dhd.build_position_costs` unless passed
                 explicitly.
             n_jobs: Number of parallel workers. 1 = sequential (default).
-                -1 = use all available CPUs. Values > 1 use that many threads;
-                the numba kernels release the GIL, so threads overlap when the
-                kernel dominates each pair. That is the case for long
-                sequences (hundreds of time points: ~3× faster with 4
-                threads). For short sequences (a few dozen time points) the
-                per-pair Python overhead dominates and ``n_jobs=1`` is
-                faster; leave the default there.
+                -1 = use all available CPUs. Values > 1 split the pair list
+                into that many contiguous chunks and run each on its own
+                thread; the numba kernels release the GIL, so kernel time
+                overlaps while the per-pair Python overhead stays serialised.
+                The payoff therefore grows with sequence length: on 1,000
+                sequences, 4 threads are about 3× faster than sequential at
+                100 time points and beyond, but still slower at 24. For
+                short sequences (a few dozen time points) leave the default.
             **kwargs: Method-specific parameters.
 
         Returns:
@@ -200,9 +211,9 @@ class SequencePool:
             lcs_distance,
             nms_distance,
             nmsmst_distance,
-            omloc_distance,
-            omspell_distance,
-            omstran_distance,
+            om_boundary_weighted_distance,
+            om_spell_scaled_distance,
+            om_transition_penalty_distance,
             optimal_matching_distance,
             rlcp_distance,
             softdtw_distance,
@@ -225,9 +236,9 @@ class SequencePool:
             "softdtw": softdtw_distance,
             "twed": twed_distance,
             "dhd": dhd_distance,
-            "omloc": omloc_distance,
-            "omspell": omspell_distance,
-            "omstran": omstran_distance,
+            "om_boundary": om_boundary_weighted_distance,
+            "om_spellscaled": om_spell_scaled_distance,
+            "om_transpenalty": om_transition_penalty_distance,
             "nms": nms_distance,
             "nmsmst": nmsmst_distance,
             "svrspell": svrspell_distance,
@@ -267,21 +278,27 @@ class SequencePool:
                     distances[j, i] = dist
         else:
             import os
-            from concurrent.futures import ThreadPoolExecutor, as_completed
+            from concurrent.futures import ThreadPoolExecutor
 
-            workers = os.cpu_count() or 1 if n_jobs == -1 else n_jobs
+            workers = (os.cpu_count() or 1) if n_jobs == -1 else n_jobs
+            if workers < 1:
+                raise ValueError(f"n_jobs must be >= 1 or -1, got {n_jobs}")
             pairs = [(i, j) for i in range(n) for j in range(i + 1, n)]
+            # One task per worker, not one per pair: a Future per pair costs
+            # more than a short kernel call and made n_jobs>1 several times
+            # slower than sequential on typical 24-step sequences. Each task
+            # writes its own disjoint cells, so no locking is needed.
+            chunks = [pairs[k::workers] for k in range(workers)]
 
-            def _compute_pair(pair: tuple[int, int]) -> tuple[int, int, float]:
-                i, j = pair
-                return i, j, metric_fn(encoded[i], encoded[j], **kwargs)
-
-            with ThreadPoolExecutor(max_workers=workers) as executor:
-                futures = [executor.submit(_compute_pair, p) for p in pairs]
-                for future in as_completed(futures):
-                    i, j, dist = future.result()
+            def _compute_chunk(chunk: list[tuple[int, int]]) -> None:
+                for i, j in chunk:
+                    dist = metric_fn(encoded[i], encoded[j], **kwargs)
                     distances[i, j] = dist
                     distances[j, i] = dist
+
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                # list() re-raises any worker exception on the caller.
+                list(executor.map(_compute_chunk, chunks))
 
         return DistanceMatrix(values=distances, labels=ids)
 

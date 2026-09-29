@@ -161,6 +161,15 @@ class StateSequence:
             if col not in data.columns:
                 raise ValueError(f"Missing required column: {col}")
 
+        n_null = data[self._config.state_column].null_count()
+        if n_null:
+            raise ValueError(
+                f"State column '{self._config.state_column}' contains {n_null} "
+                f"null value(s). yasqat has no missing-state semantics: drop "
+                f"those rows (load_dataframe(..., drop_nulls=True)) or recode "
+                f"them to an explicit state before building a container."
+            )
+
         # Apply granularity truncation before sorting so downstream ops see
         # the bucketed time values (v0.3.2 hot-fix A6).
         data = self._apply_granularity(data, [self._config.time_column])

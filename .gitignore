@@ -64,7 +64,6 @@ venv.bak/
 
 # uv
 .uv/
-uv.lock
 
 # Spyder project settings
 .spyderproject

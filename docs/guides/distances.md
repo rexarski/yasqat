@@ -122,7 +122,7 @@ reference for the method names.
 
 | Family | Methods | What it is sensitive to |
 |---|---|---|
-| Edit distances | `om`, `omloc`, `omspell`, `omstran`, `nms`, `nmsmst`, `svrspell`, `twed` | order and timing, with tunable costs; the spell and transition variants weight durations or state changes |
+| Edit distances | `om`, `nms`, `nmsmst`, `svrspell`, `twed`, plus the yasqat heuristics `om_boundary`, `om_spellscaled`, `om_transpenalty` | order and timing, with tunable costs; the heuristics reweight boundaries, spells, or transitions (they are not TraMineR's OMloc/OMspell/OMstran) |
 | Position-wise | `hamming`, `dhd` | what happens at the same time point; DHD lets the cost depend on the position |
 | Common structure | `lcs`, `lcp`, `rlcp` | the longest common subsequence, prefix, or suffix; cheap and cost-free |
 | Distribution-based | `euclidean`, `chi2` | how much time each sequence spends in each state, ignoring order |
@@ -137,7 +137,8 @@ keyword arguments.
 - **Timing matters, and careers can be shifted:** OM with a transition-rate
   matrix is the field default and a sound first choice.
 - **Durations matter more than exact order** (how long someone stayed
-  unemployed): `omspell`, or a distribution distance if order barely matters.
+  unemployed): `om_spellscaled`, or a distribution distance if order barely
+  matters.
 - **What happens at the same age or calendar month is the question:**
   Hamming, or DHD when early differences should weigh more than late ones.
 - **You want something cost-free and fast to sanity-check a typology:** LCS.

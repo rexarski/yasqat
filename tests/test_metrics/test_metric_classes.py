@@ -54,9 +54,9 @@ def _check_dm(dm: DistanceMatrix, n: int = 3) -> None:
         "nms",
         "nmsmst",
         "svrspell",
-        "omloc",
-        "omspell",
-        "omstran",
+        "om_boundary",
+        "om_spellscaled",
+        "om_transpenalty",
     ],
 )
 class TestPairwiseDistanceByMethod:

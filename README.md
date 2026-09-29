@@ -25,8 +25,9 @@ Inspired by [TraMineR](http://traminer.unige.ch/) (R) and
   `SequencePool` for fast sequence manipulation. Interval-shaped input is
   sampled into a `StateSequence` via `StateSequence.from_intervals(df, time_points=...)`.
 - **Distance metrics** — Optimal Matching, Hamming, LCS, LCP, RLCP, DTW,
-  SoftDTW, Chi², Euclidean, DHD, TWED, and OM variants (OMloc, OMspell,
-  OMstran, NMS, NMSMST, SVRspell), with convenience length/similarity
+  SoftDTW, Chi², Euclidean, DHD, TWED, NMS, NMSMST, SVRspell, and three
+  yasqat OM heuristics (boundary-weighted, spell-scaled, transition-penalty;
+  not TraMineR's OMloc/OMspell/OMstran), with convenience length/similarity
   wrappers for LCS, LCP, and RLCP
 - **Substitution costs** — constant, transition-rate, indels, indelslog,
   future (chi-squared), features (Gower distance)

@@ -78,7 +78,9 @@ def optimal_matching_distance(
             - numpy array: Use directly as substitution costs.
             - "constant": Use constant cost (specified by sub_cost).
         sub_cost: Constant substitution cost (used when sm="constant").
-        normalize: If True, normalize by the maximum possible distance.
+        normalize: If True, divide by the length of the longer sequence
+            (TraMineR's ``maxlength`` normalisation). The result is bounded by
+            ``max(sub_cost, 2 * indel)``, not by 1.
 
     Returns:
         Optimal matching distance (0 = identical sequences).

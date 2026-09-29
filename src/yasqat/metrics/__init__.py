@@ -10,9 +10,9 @@ from yasqat.metrics.lcp import lcp_distance, lcp_length, lcp_similarity
 from yasqat.metrics.lcs import lcs_distance, lcs_length, lcs_similarity
 from yasqat.metrics.nms import nms_distance, nmsmst_distance, svrspell_distance
 from yasqat.metrics.om_variants import (
-    omloc_distance,
-    omspell_distance,
-    omstran_distance,
+    om_boundary_weighted_distance,
+    om_spell_scaled_distance,
+    om_transition_penalty_distance,
 )
 from yasqat.metrics.optimal_matching import optimal_matching_distance
 from yasqat.metrics.rlcp import rlcp_distance, rlcp_length, rlcp_similarity
@@ -34,9 +34,9 @@ __all__ = [
     "lcs_similarity",
     "nms_distance",
     "nmsmst_distance",
-    "omloc_distance",
-    "omspell_distance",
-    "omstran_distance",
+    "om_boundary_weighted_distance",
+    "om_spell_scaled_distance",
+    "om_transition_penalty_distance",
     "optimal_matching_distance",
     "rlcp_distance",
     "rlcp_length",
