@@ -14,6 +14,9 @@ from yasqat.metrics.om_variants import (
     om_spell_scaled_distance,
     om_transition_penalty_distance,
 )
+from yasqat.metrics.omloc import omloc_distance
+from yasqat.metrics.omspell import omspell_distance
+from yasqat.metrics.omstran import omstran_costs, omstran_distance
 from yasqat.metrics.optimal_matching import optimal_matching_distance
 from yasqat.metrics.rlcp import rlcp_distance, rlcp_length, rlcp_similarity
 from yasqat.metrics.softdtw import softdtw_distance
@@ -37,6 +40,10 @@ __all__ = [
     "om_boundary_weighted_distance",
     "om_spell_scaled_distance",
     "om_transition_penalty_distance",
+    "omloc_distance",
+    "omspell_distance",
+    "omstran_costs",
+    "omstran_distance",
     "optimal_matching_distance",
     "rlcp_distance",
     "rlcp_length",

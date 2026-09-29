@@ -134,3 +134,39 @@ class TestOmTransitionPenalty:
         d_raw = om_transition_penalty_distance(a, b)
         d_norm = om_transition_penalty_distance(a, b, normalize=True)
         assert d_norm == pytest.approx(d_raw / 3)
+
+
+class TestHeuristicPinnedValues:
+    """Hand-derived values for the three heuristics from their documented formulas."""
+
+    def test_boundary_weighted_hand_case(self) -> None:
+        """[0,0] vs [0,1], sub_cost 1, context_factor 0.5.
+
+        At the last cell both positions sit on a boundary (relative distance
+        0), so the weight is 1 + 0.5 * (1 - 0) = 1.5 and the substitution
+        costs 1.5, cheaper than a deletion plus an insertion (2).
+        """
+        a = np.array([0, 0], dtype=np.int32)
+        b = np.array([0, 1], dtype=np.int32)
+        got = om_boundary_weighted_distance(a, b, sub_cost=1.0, context_factor=0.5)
+        assert got == pytest.approx(1.5)
+
+    def test_spell_scaled_hand_case(self) -> None:
+        """[0,0] vs [0,1]: the second 0 sits in a spell of 2, the 1 in a spell of 1.
+
+        Substitution costs 2 / sqrt(2 * 1) = sqrt(2) < 2 for delete + insert.
+        """
+        a = np.array([0, 0], dtype=np.int32)
+        b = np.array([0, 1], dtype=np.int32)
+        assert om_spell_scaled_distance(a, b) == pytest.approx(np.sqrt(2.0))
+
+    def test_transition_penalty_hand_case(self) -> None:
+        """[0,1] vs [0,0], sub_cost 1, otto 0.5, identity transition weights.
+
+        The last substitution pays 1 plus 0.5 * |w(0->1) - w(0->0)| = 0.5,
+        so 1.5 beats delete + insert (2).
+        """
+        a = np.array([0, 1], dtype=np.int32)
+        b = np.array([0, 0], dtype=np.int32)
+        got = om_transition_penalty_distance(a, b, sub_cost=1.0, otto=0.5)
+        assert got == pytest.approx(1.5)

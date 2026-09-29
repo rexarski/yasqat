@@ -1,6 +1,6 @@
 # TraMineR fidelity and delivery audit: wrong formulas, impersonating metrics, no oracle tests, no CI
 
-**Status:** `ready-for-agent` (in progress on dev)
+**Status:** `resolved` (dev, 2026-09-29)
 **Priority:** high — work this before any other open issue
 **Type:** bug / process
 **Source:** critical review 2026-09-28, full evidence in
@@ -87,8 +87,11 @@ formulas; TraMineR is not installed on the dev machine.
       `om_boundary_weighted_distance` / `om_spell_scaled_distance` /
       `om_transition_penalty_distance`, keys `om_boundary` /
       `om_spellscaled` / `om_transpenalty`.
-- [ ] Implement TraMineR's real OMloc, OMspell, OMstran as new functions
-      from the C++/R source above (separate issue if it grows).
+- [x] Implement TraMineR's real OMloc, OMspell, OMstran from the C++/R
+      source: `metrics/omloc.py`, `metrics/omspell.py`, `metrics/omstran.py`
+      (+ `metrics/_normalize.py` for `normalizeDistance`), under the
+      TraMineR names and dispatch keys. OMstran covers TraMineR's defaults
+      only (`previous=FALSE`, `add.column=TRUE`).
 - [x] Fix the OM `normalize` docstring.
 - [x] Validate null states with a `ValueError` at the `SequencePool` /
       `StateSequence` boundary.
@@ -142,3 +145,10 @@ class/function clustering API (issue 16).
   turbulence, complexity, or OM-variant code, so it is not the source of
   the old formulas. Remaining: the real OMloc/OMspell/OMstran, and pinned
   tests for the renamed heuristics (currently identity/symmetry only).
+- 2026-09-29 (close): Implemented OMloc/OMspell/OMstran from the TraMineR
+  source under the TraMineR names; the heuristics keep their new names
+  and now have pinned tests. Also found and fixed on the way: plain OM's
+  `normalize=True` divided by length instead of `length * indel`
+  (TraMineR `maxlength`). Every task is done; resolving. Follow-ups worth
+  their own issues: OMstran `previous=TRUE`, OMslen, and a
+  TraMineR-style `norm=` option on the other OM-family metrics.

@@ -4,14 +4,22 @@
 
 ### Breaking changes
 
-- **The three OM heuristics are renamed** so they stop passing for
-  TraMineR's methods. `omloc_distance` → `om_boundary_weighted_distance`
-  (dispatch key `"om_boundary"`), `omspell_distance` →
-  `om_spell_scaled_distance` (`"om_spellscaled"`), `omstran_distance` →
-  `om_transition_penalty_distance` (`"om_transpenalty"`). The algorithms are
-  unchanged. None of them implements TraMineR's OMloc, OMspell, or OMstran
-  (checked against TraMineR 2.2-14 source); those remain unimplemented and
-  are tracked in `.scratch/issues/20`. No deprecation shim (pre-1.0).
+- **`omloc`, `omspell`, `omstran` now mean TraMineR's methods.** The 0.5.0
+  functions under those names were yasqat heuristics that never implemented
+  TraMineR's definitions; they are renamed `om_boundary_weighted_distance`
+  (dispatch key `"om_boundary"`), `om_spell_scaled_distance`
+  (`"om_spellscaled"`) and `om_transition_penalty_distance`
+  (`"om_transpenalty"`), algorithms unchanged, no deprecation shim
+  (pre-1.0). The names `omloc_distance`, `omspell_distance`,
+  `omstran_distance` and the keys `"omloc"`, `"omspell"`, `"omstran"` now
+  dispatch to new transcriptions of TraMineR 2.2-14 (see *Added*). Code
+  that called the old heuristics by the old names will silently get
+  different numbers: rename the call.
+- **`optimal_matching_distance(normalize=True)` divides by
+  `max(len) * indel`**, which is what TraMineR's `maxlength` does
+  (`seqdist` passes `length * indel` as the lengths). Previously it divided
+  by the length alone, so results differed from TraMineR whenever
+  `indel != 1`.
 - **`subsequence_count` now follows TraMineR `seqsubsn`**: it counts over
   the distinct-successive-states form by default (`dss=True`) and includes
   the empty subsequence. A one-state sequence counts 2; `AABB` counts 4
@@ -20,6 +28,39 @@
   reference is a sequence of the pool's maximum length cycling through the
   alphabet, and each value is `(T - 1) / (T_max - 1)`, clipped at 0. A
   never-changing sequence scores 0; values change for every sequence.
+
+### Added
+
+- **TraMineR's OMloc, OMspell and OMstran**, transcribed from the 2.2-14
+  source (`src/OMVIdistance.cpp`, `src/OMPerdistance.cpp`,
+  `R/seqdist-OMstran.R`, `R/seqdist.R`):
+  - `omloc_distance(seq_a, seq_b, sm, sub_cost, expcost=0.5, context=None,
+    normalize)` — Hollister's localized OM: the indel cost of a state is
+    `expcost * maxscost + context * (sm[prev, x] + sm[next, x]) / 2` with
+    `prev`/`next` taken from the other sequence around the position;
+    `context` defaults to `1 - 2 * expcost`. With the defaults it equals
+    plain OM with `indel = max(sm) / 2`.
+  - `omspell_distance(seq_a, seq_b, indel, sm, sub_cost, expcost=0.5,
+    tpow=1.0, normalize)` — OM over spell sequences: each spell carries
+    `d' = duration ** tpow - 1`; same-state spells cost `expcost * |d'_a -
+    d'_b|`, different states `sm[a, b] + expcost * (d'_a + d'_b)`, indels
+    `indel[state] + expcost * d'`. Normalisation uses time-point lengths.
+  - `omstran_distance(seq_a, seq_b, otto, indel, sm, sub_cost,
+    transindel="constant"|"prob"|"subcost", transition_rates, n_states,
+    normalize)` — OM over `(s_t, s_{t+1})` transition tokens with the
+    derived per-token indels and substitution matrix (`omstran_costs`
+    exposes them). `otto` is required, as in TraMineR; only TraMineR's
+    defaults `previous=FALSE`, `add.column=TRUE` are implemented.
+    `compute_distances(method="omstran", otto=...)` passes the pool's
+    alphabet size so all pairs share one token space.
+  - All three accept `normalize` as `False`, `True`/`"auto"` (TraMineR's
+    choice for these methods, `"yujianbo"`), or `"maxlength"`, `"gmean"`,
+    `"maxdist"`, `"yujianbo"`, computed exactly as
+    `DistanceCalculator::normalizeDistance` (`yasqat.metrics._normalize`).
+  - Tests pin hand-derived values and cross-check the numba kernels against
+    line-by-line Python transcriptions of the C++ on random pairs.
+- **Pinned values for the three yasqat OM heuristics** (previously only
+  identity/symmetry/positivity were tested).
 
 ### Fixed
 

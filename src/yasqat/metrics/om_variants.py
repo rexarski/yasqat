@@ -8,14 +8,10 @@
   leading into the two positions differs.
 
 These were shipped through 0.5.0 under the names ``omloc``, ``omspell`` and
-``omstran``. They are **not** TraMineR's OMloc (Hollister 2009: substitution
-priced by the surrounding states, ``expcost`` / ``context``), OMspell (Studer
-& Ritschard 2016: OM over spell sequences with duration-sensitive costs,
-``expcost`` / ``tpow``) or OMstran (OM over transition sequences with an
-``otto`` origin/transition weight), and were renamed so that they no longer
-suggest they are. Implementing TraMineR's definitions is a separate, open
-item (``.scratch/issues/20``); use plain ``"om"`` for a TraMineR-comparable
-distance until then.
+``omstran``. They are **not** TraMineR's OMloc, OMspell or OMstran and were
+renamed so that they no longer suggest they are. TraMineR's methods now live
+in :mod:`yasqat.metrics.omloc`, :mod:`yasqat.metrics.omspell` and
+:mod:`yasqat.metrics.omstran` under the names TraMineR uses.
 """
 
 from __future__ import annotations

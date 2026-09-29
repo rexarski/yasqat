@@ -176,9 +176,10 @@ class SequencePool:
 
         Args:
             method: Distance method ("om", "hamming", "lcs", "lcp", "rlcp",
-                "euclidean", "chi2", "dtw", "softdtw", "twed", "dhd", "nms",
-                "nmsmst", "svrspell", and the yasqat OM heuristics
-                "om_boundary", "om_spellscaled", "om_transpenalty"). "dhd"
+                "euclidean", "chi2", "dtw", "softdtw", "twed", "dhd", "omloc",
+                "omspell", "omstran", "nms", "nmsmst", "svrspell", and the
+                yasqat OM heuristics "om_boundary", "om_spellscaled",
+                "om_transpenalty"). "omstran" requires ``otto=``. "dhd"
                 requires equal-length sequences; its ``position_costs`` array
                 is built from this pool via
                 :func:`yasqat.metrics.dhd.build_position_costs` unless passed
@@ -214,6 +215,9 @@ class SequencePool:
             om_boundary_weighted_distance,
             om_spell_scaled_distance,
             om_transition_penalty_distance,
+            omloc_distance,
+            omspell_distance,
+            omstran_distance,
             optimal_matching_distance,
             rlcp_distance,
             softdtw_distance,
@@ -239,6 +243,9 @@ class SequencePool:
             "om_boundary": om_boundary_weighted_distance,
             "om_spellscaled": om_spell_scaled_distance,
             "om_transpenalty": om_transition_penalty_distance,
+            "omloc": omloc_distance,
+            "omspell": omspell_distance,
+            "omstran": omstran_distance,
             "nms": nms_distance,
             "nmsmst": nmsmst_distance,
             "svrspell": svrspell_distance,
@@ -250,6 +257,10 @@ class SequencePool:
         if method == "dhd" and "position_costs" not in kwargs:
             # Also validates that every sequence has the same length.
             kwargs["position_costs"] = build_position_costs(self)
+        if method == "omstran" and "n_states" not in kwargs:
+            # Transition tokens must be encoded over the whole alphabet so
+            # every pair shares one token space and one cost matrix.
+            kwargs["n_states"] = len(self._alphabet.states)
 
         sm_arg = kwargs.get("sm", "constant")
         if method == "om" and isinstance(sm_arg, str) and sm_arg == "constant":
