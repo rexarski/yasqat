@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.0 (2026-10-03)
 
 ### Breaking changes
 
@@ -41,7 +41,7 @@
   alphabet, and each value is `(T - 1) / (T_max - 1)`, clipped at 0. A
   never-changing sequence scores 0; values change for every sequence.
 
-### Added
+### New features
 
 - **TraMineR's OMloc, OMspell and OMstran**, transcribed from the 2.2-14
   source (`src/OMVIdistance.cpp`, `src/OMPerdistance.cpp`,
@@ -93,7 +93,14 @@
   exported from `yasqat.metrics` (the README advertised its methods, but it
   was not importable from the package).
 
-### Fixed
+- **`SequencePool.filter(criteria, combine="and")`** returns a new pool holding
+  only the matching sequences, keeping the parent's config and full alphabet.
+  It is the typed counterpart of `filter_sequences` (which still returns a
+  DataFrame), so "define a situation, then score it" is now one chain:
+  `pool.filter([...])` → `association_rules(...)` / `compute_distances(...)`
+  with no manual pool rebuild in between.
+
+### Bug fixes
 
 - **`build_substitution_matrix` now matches TraMineR `seqcost`** (checked
   against `R/seqcost.R` in 2.2-14): `"indelslog"` uses
@@ -127,7 +134,17 @@
   `int`/`signedinteger` assignment in `clustering/pam.py`; the mypy target
   moves to 3.12 because numpy's stubs use PEP 695 `type` statements.
 
-### Changed
+- **`cluster_quality` PBC and HG now match WeightedCluster's
+  `wcClusterQuality`.** PBC had its sign flipped (a good partition scored
+  negative) and HG was computed as a Pearson correlation equal to `-PBC`
+  rather than Hubert's Gamma. Both are now defined over the full distance
+  matrix as in the reference: PBC as minus the point-biserial correlation
+  with the same-cluster indicator, HG as the Goodman-Kruskal gamma between
+  distance and the different-cluster indicator. Both are positive for a good
+  partition. `R2` is unchanged and documented as the squared-distance variant
+  (WeightedCluster's `R2sq`). Values from `pam_range` change accordingly.
+
+### Other changes
 
 - **`n_jobs > 1` splits the pair list into one chunk per worker** instead
   of submitting a `Future` per pair. The per-pair path made
@@ -138,6 +155,21 @@
   `ValueError`.
 - **`pyarrow` dropped from the dependencies.** Nothing imported it.
 - **Python 3.14** added to the classifiers and the CI matrix.
+
+### Performance
+
+- **`n_jobs` now actually parallelises.** Every numba kernel in `yasqat.metrics`
+  is compiled with `nogil=True`, so the thread pool behind
+  `SequencePool.compute_distances(n_jobs=...)` overlaps kernel time instead of
+  serialising on the GIL. Pays off when the kernel dominates each pair: OM on
+  120 sequences × 300 time points runs 3× faster with `n_jobs=4`. For short
+  sequences the per-pair Python overhead still dominates and `n_jobs=1` stays
+  faster; the docstring now says which regime you are in.
+- **OM dispatch builds the constant substitution matrix once per pool**
+  instead of once per pair, and the OM wrapper no longer copies an array `sm`
+  on every call. Sequential OM on 400 sequences × 24 time points: 0.34 s →
+  0.19 s. Results are unchanged; a regression test pins the hoisted matrix to
+  the per-pair function.
 
 ### CI
 
@@ -158,42 +190,6 @@
   situation), a *Why yasqat* page (problem, approach, limits, roadmap), a
   plain-English glossary, four explanatory SVG diagrams, and the logo. The
   primer itself ships under `docs/_static/primer/`.
-
-### Added
-
-- **`SequencePool.filter(criteria, combine="and")`** returns a new pool holding
-  only the matching sequences, keeping the parent's config and full alphabet.
-  It is the typed counterpart of `filter_sequences` (which still returns a
-  DataFrame), so "define a situation, then score it" is now one chain:
-  `pool.filter([...])` → `association_rules(...)` / `compute_distances(...)`
-  with no manual pool rebuild in between.
-
-### Fixed
-
-- **`cluster_quality` PBC and HG now match WeightedCluster's
-  `wcClusterQuality`.** PBC had its sign flipped (a good partition scored
-  negative) and HG was computed as a Pearson correlation equal to `-PBC`
-  rather than Hubert's Gamma. Both are now defined over the full distance
-  matrix as in the reference: PBC as minus the point-biserial correlation
-  with the same-cluster indicator, HG as the Goodman-Kruskal gamma between
-  distance and the different-cluster indicator. Both are positive for a good
-  partition. `R2` is unchanged and documented as the squared-distance variant
-  (WeightedCluster's `R2sq`). Values from `pam_range` change accordingly.
-
-### Performance
-
-- **`n_jobs` now actually parallelises.** Every numba kernel in `yasqat.metrics`
-  is compiled with `nogil=True`, so the thread pool behind
-  `SequencePool.compute_distances(n_jobs=...)` overlaps kernel time instead of
-  serialising on the GIL. Pays off when the kernel dominates each pair: OM on
-  120 sequences × 300 time points runs 3× faster with `n_jobs=4`. For short
-  sequences the per-pair Python overhead still dominates and `n_jobs=1` stays
-  faster; the docstring now says which regime you are in.
-- **OM dispatch builds the constant substitution matrix once per pool**
-  instead of once per pair, and the OM wrapper no longer copies an array `sm`
-  on every call. Sequential OM on 400 sequences × 24 time points: 0.34 s →
-  0.19 s. Results are unchanged; a regression test pins the hoisted matrix to
-  the per-pair function.
 
 ## 0.5.0 (2026-07-11)
 

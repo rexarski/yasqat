@@ -31,10 +31,15 @@ Inspired by [TraMineR](http://traminer.unige.ch/) (R) and
   wrappers for LCS, LCP, and RLCP
 - **Substitution costs** — constant, transition-rate, indels, indelslog,
   future (chi-squared), features (Gower distance)
-- **Clustering** — PAM (k-medoids) with `.predict()`, CLARA, hierarchical
-  (scipy linkage); parallel pairwise distance computation via `n_jobs`
-- **Cluster quality** — silhouette (ASW), Point Biserial, Hubert's Gamma,
-  R², PAM range analysis, distance to center, representative extraction
+- **Clustering** — PAM (k-medoids; `result.predict()` assigns new
+  sequences), CLARA, hierarchical (scipy linkage); `pam_range` to choose k;
+  representative extraction
+- **Partition quality** (`yasqat.metrics`) — silhouette (ASW), Point
+  Biserial, Hubert's Gamma, R² matching WeightedCluster, distance to center
+- **Distance engine** — one registry for every metric with per-metric pool
+  preparation; distinct sequences computed once; substitution matrices by
+  TraMineR `seqcost` name (`"trate"`, `"indels"`, `"indelslog"`, `"future"`);
+  threaded pairwise computation via `n_jobs`
 - **Discrepancy analysis** — pseudo-ANOVA with permutation tests,
   multi-factor discrepancy, dissimilarity trees
 - **Descriptive statistics** — entropy, transition rates, complexity,
