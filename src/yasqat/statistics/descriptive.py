@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections import Counter
 from typing import TYPE_CHECKING, cast
 
 import numpy as np
@@ -129,11 +130,17 @@ def complexity_index(
     per_sequence: bool = False,
 ) -> float | pl.DataFrame:
     """
-    Calculate complexity index (Elzinga's complexity measure).
+    Calculate the complexity index (Gabadinho et al., 2010; TraMineR ``seqici``).
 
-    The complexity index combines the number of transitions with
-    the diversity of states. It is defined as:
-    C(s) = sqrt(n_transitions * n_distinct_states) / length
+    The index is the geometric mean of the normalised number of transitions
+    and the normalised longitudinal entropy:
+
+        ``C(x) = sqrt( (n_transitions(x) / (l - 1)) * (H(x) / log(k)) )``
+
+    where ``l`` is the sequence length, ``H`` the Shannon entropy of the
+    state distribution within the sequence, and ``k`` the number of states
+    in the pool's alphabet. It lies in [0, 1]; a sequence of length 1, or a one-state
+    alphabet, scores 0.
 
     Args:
         sequence: StateSequence or SequencePool.
@@ -143,14 +150,66 @@ def complexity_index(
         If per_sequence=False: Mean complexity across sequences.
         If per_sequence=True: DataFrame with sequence IDs and complexity.
     """
+    pool = SequencePool.coerce(sequence)
+    h_max = math.log(len(pool.alphabet)) if len(pool.alphabet) > 1 else 0.0
 
     def _complexity(states: list[str]) -> float:
         n = len(states)
-        if n <= 1:
+        if n <= 1 or h_max == 0.0:
             return 0.0
-        return float(np.sqrt(_n_transitions(states) * len(set(states))) / n)
+        counts = Counter(states)
+        entropy = -sum((c / n) * math.log(c / n) for c in counts.values())
+        return math.sqrt((_n_transitions(states) / (n - 1)) * (entropy / h_max))
 
-    return reduce_per_sequence(sequence, _complexity, "complexity", per_sequence)
+    return reduce_per_sequence(pool, _complexity, "complexity", per_sequence)
+
+
+def _spell_durations(states: list[str]) -> list[int]:
+    """Run-length encode ``states`` and return the spell durations in order."""
+    durations: list[int] = []
+    for i, s in enumerate(states):
+        if i > 0 and s == states[i - 1]:
+            durations[-1] += 1
+        else:
+            durations.append(1)
+    return durations
+
+
+def _to_dss(states: list[str]) -> list[str]:
+    """Collapse consecutive repeats: the distinct-successive-states form."""
+    return [s for i, s in enumerate(states) if i == 0 or s != states[i - 1]]
+
+
+def _n_distinct_subsequences(states: list[str]) -> int:
+    """Number of distinct subsequences of ``states`` *including* the empty one.
+
+    Standard DP: ``dp[i] = 2 * dp[i-1] - dp[last[c] - 1]`` where ``last[c]`` is
+    the previous position of the character just appended. Python big ints
+    handle the exponential growth.
+    """
+    dp = [0] * (len(states) + 1)
+    dp[0] = 1
+    last_seen: dict[str, int] = {}
+    for i in range(1, len(states) + 1):
+        dp[i] = 2 * dp[i - 1]
+        c = states[i - 1]
+        if c in last_seen:
+            dp[i] -= dp[last_seen[c] - 1]
+        last_seen[c] = i
+    return dp[len(states)]
+
+
+def _turbulence_of(states: list[str]) -> float:
+    """Elzinga & Liefbroer (2007) turbulence of one sequence."""
+    durations = _spell_durations(states)
+    n = len(durations)
+    if n == 0:
+        return 0.0
+    phi = _n_distinct_subsequences(_to_dss(states))
+    t_bar = sum(durations) / n
+    s2 = sum((d - t_bar) ** 2 for d in durations) / n
+    s2_max = (n - 1) * (1 - t_bar) ** 2
+    return math.log2(phi) + math.log2((s2_max + 1) / (s2 + 1))
 
 
 def turbulence(
@@ -158,16 +217,19 @@ def turbulence(
     per_sequence: bool = False,
 ) -> float | pl.DataFrame:
     """
-    Calculate turbulence index (Elzinga & Liefbroer, 2007).
+    Calculate the turbulence index (Elzinga & Liefbroer, 2007; TraMineR ``seqST``).
 
-    Turbulence measures the "unpredictability" of a sequence,
-    combining state changes with spell duration variability.
+        ``T(x) = log2( phi(x) * (s2_max(x) + 1) / (s2(x) + 1) )``
 
-    Formula: T(s) = log2(phi * (st(s) + 1) / tbar(s))
-    where:
-    - phi is the number of distinct subsequences
-    - st(s) is the variance of spell durations
-    - tbar(s) is the mean spell duration
+    where ``phi(x)`` is the number of distinct subsequences of the
+    distinct-successive-states form of ``x`` (the empty subsequence
+    included), ``s2(x)`` the variance of the spell durations, and
+    ``s2_max(x) = (n - 1) * (1 - t_bar)^2`` the maximum that variance can
+    take for ``n`` spells with mean duration ``t_bar``. The variance uses the
+    population denominator ``n``, which is the convention under which the
+    ``s2_max`` bound holds. A sequence that never changes state has ``phi = 2``
+    and scores exactly 1; the index grows with both the number of state
+    changes and the irregularity of spell durations.
 
     Args:
         sequence: StateSequence or SequencePool.
@@ -177,48 +239,7 @@ def turbulence(
         If per_sequence=False: Mean turbulence across sequences.
         If per_sequence=True: DataFrame with sequence IDs and turbulence.
     """
-    pool = SequencePool.coerce(sequence)
-
-    config = pool.config
-    id_col = config.id_column
-
-    # Get spells (run-length encoded) using vectorized to_sps
-    state_seq = pool.to_state_sequence()
-    sps = state_seq.to_sps()
-
-    # Vectorized turbulence computation using polars group_by
-    turb_df = (
-        sps.group_by(id_col)
-        .agg(
-            [
-                pl.len().alias("n_spells"),
-                pl.col("duration").var(ddof=0).alias("duration_var"),
-                pl.col("duration").mean().alias("mean_duration"),
-            ]
-        )
-        .with_columns(pl.col("duration_var").fill_null(0.0))
-        .with_columns(
-            pl.when(pl.col("n_spells") > 1)
-            .then(
-                (
-                    pl.col("n_spells")
-                    * (pl.col("duration_var") + 1)
-                    / pl.col("mean_duration")
-                )
-                .log(2)
-                .clip(lower_bound=0.0)
-            )
-            .otherwise(0.0)
-            .alias("turbulence")
-        )
-        .select([id_col, "turbulence"])
-        .sort(id_col)
-    )
-
-    if per_sequence:
-        return turb_df
-
-    return cast(float, turb_df["turbulence"].mean())
+    return reduce_per_sequence(sequence, _turbulence_of, "turbulence", per_sequence)
 
 
 def state_distribution(
@@ -549,18 +570,24 @@ def subsequence_count(
     per_sequence: bool = False,
     states_filter: list[str] | None = None,
     use_log: bool = False,
+    dss: bool = True,
 ) -> int | float | pl.DataFrame:
     """
-    Count the number of distinct subsequences from the DSS representation.
+    Count the distinct subsequences of each sequence (TraMineR ``seqsubsn``).
 
     Uses the DP formula: dp[i] = 2 * dp[i-1] - dp[last[c]] where last[c]
     is the dp value before the previous occurrence of character c.
 
+    As in TraMineR, the count includes the empty subsequence (so a one-state
+    sequence counts 2) and, by default, runs over the distinct-successive-
+    states form: consecutive repeats are collapsed first, which is the
+    ``phi`` term of :func:`turbulence`. Pass ``dss=False`` to count over the
+    full state sequence, one symbol per time point.
+
     When to use which: this measures the internal variety of each
     sequence — "how many distinct sub-patterns does a trajectory
-    contain?" (the phi ingredient of :func:`turbulence`). To count how
-    often each **complete sequence** occurs across the pool — "how many
-    people share this exact trajectory?" — use
+    contain?". To count how often each **complete sequence** occurs across
+    the pool — "how many people share this exact trajectory?" — use
     :func:`sequence_frequency_table` instead.
 
     For long sequences (>100 states), counts can grow astronomically large
@@ -571,8 +598,10 @@ def subsequence_count(
         sequence: StateSequence or SequencePool.
         per_sequence: If True, return counts for each sequence.
         states_filter: If provided, only count subsequences whose states
-            are all in this list.
+            are all in this list (applied after the ``dss`` collapse).
         use_log: If True, return log2 of the count to avoid huge integers.
+        dss: If True (default, TraMineR's ``DSS=TRUE``), count over the
+            distinct-successive-states form.
 
     Returns:
         If per_sequence=False: Mean distinct subsequence count (or log2 mean).
@@ -581,12 +610,14 @@ def subsequence_count(
     allowed = set(states_filter) if states_filter is not None else None
 
     def _count(states: list[str]) -> int | float:
+        if dss:
+            states = _to_dss(states)
         if allowed is not None:
             states = [s for s in states if s in allowed]
 
         n = len(states)
         if n == 0:
-            return 0
+            return 0.0 if use_log else 1  # only the empty subsequence
 
         if use_log:
             # Use log2 arithmetic to avoid overflow
@@ -603,17 +634,7 @@ def subsequence_count(
                 last[c] = i
             return log_dp[n]
 
-        # Standard DP — Python big ints handle overflow
-        dp = [0] * (n + 1)
-        dp[0] = 1
-        last_seen: dict[str, int] = {}
-        for i in range(1, n + 1):
-            dp[i] = 2 * dp[i - 1]
-            c = states[i - 1]
-            if c in last_seen:
-                dp[i] -= dp[last_seen[c] - 1]
-            last_seen[c] = i
-        return dp[n] - 1
+        return _n_distinct_subsequences(states)
 
     col_name = "log2_n_subsequences" if use_log else "n_subsequences"
     return reduce_per_sequence(sequence, _count, col_name, per_sequence)
@@ -624,11 +645,14 @@ def normalized_turbulence(
     per_sequence: bool = False,
 ) -> float | pl.DataFrame:
     """
-    Calculate normalized turbulence, rescaled to [0, 1].
+    Calculate turbulence rescaled to [0, 1] as TraMineR ``seqST(norm=TRUE)``.
 
-    Divides turbulence by the theoretical maximum for the given sequence
-    length. The maximum turbulence occurs when all positions are different
-    states with uniform spell durations of 1.
+    TraMineR's reference sequence is one of the pool's maximum length that
+    cycles through the alphabet (``A B C A B C ...``): every spell has
+    duration 1, so its turbulence is ``T_max = log2(phi_cycle)``. Each
+    sequence is then rescaled as ``(T - 1) / (T_max - 1)``, since 1 is the
+    minimum of the raw index, and clipped at 0. A one-state alphabet has
+    ``T_max = 1`` and every sequence scores 0.
 
     Args:
         sequence: StateSequence or SequencePool.
@@ -639,34 +663,20 @@ def normalized_turbulence(
         If per_sequence=True: DataFrame with sequence IDs and values.
     """
     pool = SequencePool.coerce(sequence)
+    states = list(pool.alphabet.states)
+    max_length = max((len(pool[i]) for i in pool.sequence_ids), default=0)
+    if len(states) > 1 and max_length > 0:
+        cycle = [states[i % len(states)] for i in range(max_length)]
+        t_max = math.log2(_n_distinct_subsequences(cycle))
+    else:
+        t_max = 1.0
 
-    config = pool.config
-    id_col = config.id_column
+    def _normalized(seq_states: list[str]) -> float:
+        if not seq_states or t_max <= 1.0:
+            return 0.0
+        return max((_turbulence_of(seq_states) - 1.0) / (t_max - 1.0), 0.0)
 
-    # Get raw turbulence per sequence
-    turb_df = turbulence(pool, per_sequence=True)
-    assert isinstance(turb_df, pl.DataFrame)
-
-    # Get sequence lengths using polars
-    lengths = pool.data.group_by(id_col).agg(pl.len().alias("_length"))
-
-    # Vectorized normalization: T_max = log2(n)
-    result = (
-        turb_df.join(lengths, on=id_col)
-        .with_columns(
-            pl.when(pl.col("_length") > 1)
-            .then(pl.col("turbulence") / pl.col("_length").cast(pl.Float64).log(2))
-            .otherwise(0.0)
-            .alias("normalized_turbulence")
-        )
-        .select([id_col, "normalized_turbulence"])
-        .sort(id_col)
-    )
-
-    if per_sequence:
-        return result
-
-    return cast(float, result["normalized_turbulence"].mean())
+    return reduce_per_sequence(pool, _normalized, "normalized_turbulence", per_sequence)
 
 
 def sequence_log_probability(

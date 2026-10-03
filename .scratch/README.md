@@ -11,10 +11,10 @@ there with a pointer to this tracker.
 
 | # | Issue | Type | Status |
 |---|-------|------|--------|
-| 01 | [OM substitution-matrix bug](issues/01-om-subcost-matrix-bug.md) | bug | `needs-info` |
+| 01 | [OM substitution-matrix bug](issues/01-om-subcost-matrix-bug.md) | bug | `resolved` (dev, not reproducible) |
 | 02 | [`frequent_subsequences()` enhancements](issues/02-frequent-subsequences-enhancements.md) | enhancement | `resolved` (0.5.0) |
 | 03 | [Normative indicators — more methods](issues/03-normative-indicators.md) | enhancement | `resolved` (0.5.0) |
-| 04 | [Revisit `compute_matrix()` reference](issues/04-compute-matrix-reference.md) | question | `needs-info` |
+| 04 | [Revisit `compute_matrix()` reference](issues/04-compute-matrix-reference.md) | question | `resolved` (dev, folded into 01) |
 | 05 | [`encode_states` / `recode_states` — keep or remove?](issues/05-encode-recode-states.md) | question | `resolved` (0.5.0) |
 | 06 | [StateSequence vs SequencePool roles](issues/06-statesequence-vs-pool-roles.md) | docs | `resolved` (0.5.0) |
 | 07 | [`sequence_frequency_table` vs `subsequence_count`](issues/07-freqtable-vs-subseqcount-docs.md) | docs | `resolved` (0.5.0) |
@@ -24,11 +24,12 @@ there with a pointer to this tracker.
 | 11 | [More time-series content](issues/11-time-series-content.md) | enhancement | `on-hold` |
 | 12 | [More subsequence mining](issues/12-more-subsequence-mining.md) | enhancement | `needs-triage` |
 | 13 | [New documentation website](issues/13-documentation-website.md) | docs | `resolved` (0.5.0) |
-| 15 | [Split distance engine out of SequencePool](issues/15-distance-engine-prepare-seam.md) | enhancement | `needs-triage` |
-| 16 | [Lift quality functions out of clustering/](issues/16-clustering-quality-placement.md) | enhancement | `needs-triage` |
+| 15 | [Split distance engine out of SequencePool](issues/15-distance-engine-prepare-seam.md) | enhancement | `resolved` (dev) |
+| 16 | [Lift quality functions out of clustering/](issues/16-clustering-quality-placement.md) | enhancement | `resolved` (dev) |
 | 17 | [n_jobs thread pool slower than sequential (GIL)](issues/17-njobs-threadpool-gil.md) | bug | `resolved` (dev) |
 | 18 | [`SequencePool.filter` — typed filter-then-score chain](issues/18-pool-filter-method.md) | enhancement | `resolved` (dev) |
 | 19 | [`cluster_quality`: PBC sign flipped, HG not a gamma](issues/19-cluster-quality-pbc-hg.md) | bug | `resolved` (dev) |
+| 20 | [TraMineR fidelity and delivery audit](issues/20-traminer-fidelity-and-delivery-audit.md) | bug / process | `resolved` (dev) |
 
 ## Status legend
 

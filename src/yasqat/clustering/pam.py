@@ -50,6 +50,38 @@ class PAMClusteringResult:
         """Return the sequence IDs of medoids."""
         return [self.sequence_ids[i] for i in self.medoid_indices]
 
+    def predict(self, distance_to_train: np.ndarray | DistanceMatrix) -> np.ndarray:
+        """
+        Assign new sequences to the nearest medoid of this partition.
+
+        Args:
+            distance_to_train: Distances of shape (n_new, n_train) from each
+                new sequence to every training sequence, as a numpy array or
+                a :class:`DistanceMatrix` (unwrapped; a new-vs-train block is
+                legitimately non-square).
+
+        Returns:
+            Cluster labels for each new sequence.
+
+        Raises:
+            ValueError: If the last dimension does not match the training size.
+        """
+        if isinstance(distance_to_train, DistanceMatrix):
+            distance_to_train = distance_to_train.values
+        distance_to_train = np.atleast_2d(np.asarray(distance_to_train))
+        n_train = len(self.labels)
+        if distance_to_train.shape[1] != n_train:
+            raise ValueError(
+                f"distance_to_train has shape {distance_to_train.shape}; "
+                f"expected last dim = n_train = {n_train}. Each row must "
+                "contain distances from a new point to every training point."
+            )
+        dist_to_medoids = distance_to_train[:, self.medoid_indices]
+        result: np.ndarray[tuple[Any, ...], np.dtype[Any]] = np.argmin(
+            dist_to_medoids, axis=1
+        ).astype(np.int32)
+        return result
+
     def to_dataframe(self) -> pl.DataFrame:
         """Convert to a polars DataFrame with id, cluster, and is_medoid columns."""
         import polars as pl
@@ -66,7 +98,7 @@ class PAMClusteringResult:
         )
 
 
-@numba.jit(nopython=True, cache=True)  # type: ignore[untyped-decorator]
+@numba.jit(nopython=True, cache=True)
 def _compute_cost(
     dist_matrix: np.ndarray,
     medoids: np.ndarray,
@@ -80,7 +112,7 @@ def _compute_cost(
     return total
 
 
-@numba.jit(nopython=True, cache=True)  # type: ignore[untyped-decorator]
+@numba.jit(nopython=True, cache=True)
 def _assign_clusters(
     dist_matrix: np.ndarray,
     medoids: np.ndarray,
@@ -103,7 +135,7 @@ def _assign_clusters(
     return labels
 
 
-@numba.jit(nopython=True, cache=True)  # type: ignore[untyped-decorator]
+@numba.jit(nopython=True, cache=True)
 def _pam_swap_step(
     dist_matrix: np.ndarray,
     medoids: np.ndarray,
@@ -240,12 +272,12 @@ def _initialize_medoids(
                 # All points are medoids or zero distance
                 remaining = [i for i in range(n) if i not in medoids]
                 if remaining:
-                    next_medoid = rng.choice(remaining)
+                    next_medoid = int(rng.choice(remaining))
                 else:
                     break
             else:
                 probs /= probs.sum()
-                next_medoid = rng.choice(n, p=probs)
+                next_medoid = int(rng.choice(n, p=probs))
 
             medoids.append(int(next_medoid))
 
@@ -345,115 +377,3 @@ def pam_clustering(
         total_cost=current_cost,
         n_iterations=n_iter + 1,
     )
-
-
-class PAMClustering:
-    """PAM (Partitioning Around Medoids) clustering algorithm class."""
-
-    name = "pam"
-
-    def __init__(
-        self,
-        n_clusters: int,
-        max_iter: int = 100,
-        init: str = "build",
-        random_state: int | np.random.Generator | None = None,
-    ) -> None:
-        """
-        Initialize PAM clustering.
-
-        Args:
-            n_clusters: Number of clusters to form.
-            max_iter: Maximum number of iterations.
-            init: Initialization method ("build", "random", "k-medoids++").
-            random_state: Random state for reproducibility.
-        """
-        self.n_clusters = n_clusters
-        self.max_iter = max_iter
-        self.init = init
-        self.random_state = random_state
-        self._result: PAMClusteringResult | None = None
-
-    def fit(
-        self,
-        distance_matrix: DistanceMatrix | np.ndarray,
-        sequence_ids: list[int | str] | None = None,
-    ) -> PAMClusteringResult:
-        """
-        Fit the clustering model to a distance matrix.
-
-        Args:
-            distance_matrix: Pairwise distance matrix.
-            sequence_ids: Optional sequence identifiers.
-
-        Returns:
-            PAMClusteringResult with cluster assignments.
-        """
-        self._result = pam_clustering(
-            distance_matrix,
-            self.n_clusters,
-            max_iter=self.max_iter,
-            init=self.init,
-            random_state=self.random_state,
-            sequence_ids=sequence_ids,
-        )
-        return self._result
-
-    @property
-    def labels(self) -> np.ndarray | None:
-        """Return cluster labels from the last fit."""
-        return self._result.labels if self._result else None
-
-    @property
-    def medoid_indices(self) -> np.ndarray | None:
-        """Return medoid indices from the last fit."""
-        return self._result.medoid_indices if self._result else None
-
-    @property
-    def result(self) -> PAMClusteringResult | None:
-        """Return the full result from the last fit."""
-        return self._result
-
-    def predict(self, distance_to_train: np.ndarray | DistanceMatrix) -> np.ndarray:
-        """
-        Assign new sequences to the nearest medoid.
-
-        Args:
-            distance_to_train: Distance matrix of shape (n_new, n_train)
-                where n_train matches the training set size. Each row
-                contains distances from a new point to all training points.
-                Accepts either a raw numpy array or a :class:`DistanceMatrix`
-                — the latter is unwrapped automatically.
-
-        Returns:
-            Cluster labels for each new point.
-
-        Raises:
-            ValueError: If fit() has not been called, or if the supplied
-                matrix shape is incompatible with the training set.
-        """
-        if self._result is None:
-            raise ValueError("Must call fit() before predict()")
-
-        # Unwrap DistanceMatrix for consistent indexing with the rest of the
-        # API. Not routed through DistanceMatrix.coerce: a new-vs-train
-        # distance block is legitimately non-square.
-        if isinstance(distance_to_train, DistanceMatrix):
-            distance_to_train = distance_to_train.values
-
-        distance_to_train = np.atleast_2d(np.asarray(distance_to_train))
-
-        medoid_indices = self._result.medoid_indices
-        n_train = len(self._result.labels)
-        if distance_to_train.shape[1] != n_train:
-            raise ValueError(
-                f"distance_to_train has shape {distance_to_train.shape}; "
-                f"expected last dim = n_train = {n_train}. Each row must "
-                "contain distances from a new point to every training point."
-            )
-
-        dist_to_medoids = distance_to_train[:, medoid_indices]
-        result: np.ndarray[tuple[Any, ...], np.dtype[Any]] = np.argmin(
-            dist_to_medoids, axis=1
-        ).astype(np.int32)
-        return result

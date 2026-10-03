@@ -60,8 +60,9 @@ and with pool-level filters that define the situation
 
 The reference implementation is TraMineR, an R package developed at the
 University of Geneva since 2008. yasqat treats it as the oracle for algorithm
-correctness, naming, and feature scope: the test suite pins expected values
-against TraMineR's output rather than asserting loose bounds. TanaT, a Python
+correctness, naming, and feature scope: tests pin expected values derived from
+the published formulas rather than asserting loose bounds, with a fixture of
+TraMineR's own output still to come. TanaT, a Python
 package, is a secondary reference for Python-specific adaptations. The aim is
 fidelity to proven methods in a modern Python form, not novelty in the
 algorithms.

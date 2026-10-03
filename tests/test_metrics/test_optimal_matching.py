@@ -66,9 +66,17 @@ class TestOptimalMatching:
         dist = optimal_matching_distance(seq_a, seq_b, normalize=False)
         assert dist == 8.0
 
-        # Normalized by max length (4)
+        # Normalized by max length (4) * indel (1): TraMineR "maxlength"
         dist_norm = optimal_matching_distance(seq_a, seq_b, normalize=True)
         assert dist_norm == 2.0
+
+    def test_normalized_distance_scales_with_indel(self) -> None:
+        """TraMineR maxlength divides by length * indel, not by length alone."""
+        seq_a = np.array([0, 0, 0, 0], dtype=np.int32)
+        seq_b = np.array([1, 1, 1, 1], dtype=np.int32)
+        # indel 0.5: cheapest is 4 deletions + 4 insertions = 4.0; / (4 * 0.5) = 2.0
+        assert optimal_matching_distance(seq_a, seq_b, indel=0.5) == 4.0
+        assert optimal_matching_distance(seq_a, seq_b, indel=0.5, normalize=True) == 2.0
 
     def test_empty_sequences(self) -> None:
         """Test distance between empty sequences."""

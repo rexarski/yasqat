@@ -7,8 +7,8 @@ import polars as pl
 import pytest
 
 from yasqat.clustering import pam_clustering
-from yasqat.clustering.quality import silhouette_scores
 from yasqat.core.pool import SequencePool
+from yasqat.metrics import silhouette_scores
 from yasqat.metrics.base import DistanceMatrix
 from yasqat.statistics.descriptive import complexity_index, longitudinal_entropy
 

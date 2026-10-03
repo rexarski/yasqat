@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "yasqat"
-version = "0.5.0"
+version = "0.6.0"
 description = "Yet Another Sequence Analytics Toolkit - A modern Python library for sequence analysis with polars"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -31,6 +31,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Typing :: Typed",
     "Topic :: Scientific/Engineering",
 ]
@@ -38,7 +39,6 @@ dependencies = [
     "polars>=1.0",
     "numpy>=1.26",
     "numba>=0.60",
-    "pyarrow>=15.0",  # Required for polars to_pandas() conversion
     "scipy>=1.11",  # Required for hierarchical clustering
 ]
 
@@ -101,7 +101,10 @@ known-first-party = ["yasqat"]
 
 
 [tool.mypy]
-python_version = "3.11"
+# 3.12 rather than the 3.11 floor: numpy's stubs use PEP 695 `type` statements,
+# which mypy refuses to parse under a 3.11 target. Nothing in yasqat relies on
+# 3.12-only semantics; ruff still targets py311.
+python_version = "3.12"
 strict = true
 warn_unused_configs = true
 mypy_path = "src"
@@ -111,7 +114,6 @@ module = [
     "polars.*",
     "numpy.*",
     "numba.*",
-    "pyarrow.*",
 ]
 ignore_missing_imports = true
 

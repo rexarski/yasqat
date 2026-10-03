@@ -36,9 +36,10 @@ plotting layer, so yasqat never competes with, or locks you out of, the
 plotting library you already use.
 
 **Fidelity over novelty.** TraMineR is the oracle for correctness, naming,
-and scope. The test suite pins expected values against it rather than
-asserting that results are positive. Where a method has a TraMineR name, the
-docstring says which.
+and scope. Where a method has a TraMineR name, the docstring says which; yasqat's
+own OM heuristics carry their own names (`om_boundary`, `om_spellscaled`,
+`om_transpenalty`) so they are not mistaken for TraMineR's. Expected values in
+the tests are derived by hand from TraMineR's source code, not from R runs.
 
 ## Deep modules, narrow seams
 
@@ -81,9 +82,9 @@ extent of it.
 
 ## Engineering discipline
 
-ruff (lint and format, 88 columns, Python 3.11 target) and mypy in strict mode
-run on every change. Tests pin exact values. Releases publish to PyPI from CI
-on a version tag. Architectural decisions are recorded as ADRs and the issue
+pytest, ruff (lint and format, 88 columns, Python 3.11 target), and mypy in
+strict mode run in CI on every push and pull request. Releases publish to
+PyPI from CI on a version tag. Architectural decisions are recorded as ADRs and the issue
 tracker lives in the repository as markdown, so the project's reasoning
 travels with the code.
 
@@ -95,11 +96,9 @@ changes are possible, land in minor bumps, and are documented in the
 
 The container question is settled: `SequencePool` is the canonical analysis
 container and `StateSequence` the representation view (ADR-0002). Remaining
-pre-1.0 work is narrower: routing discrepancy analysis through
-`DistanceMatrix` everywhere, a preparation seam inside the distance engine,
-settling where cluster-quality indices live, and growing the miner with gap
-and window constraints, closed and maximal patterns, and discriminant
-subsequences.
+pre-1.0 work: case weights, missing-state semantics, distances to a reference
+sequence, and growing the miner with gap and window constraints, closed and
+maximal patterns, and discriminant subsequences.
 
 If you read one thing: yasqat brings TraMineR-class sequence analysis to
 fast, DataFrame-native Python. It is usable today, on the way to a stable 1.0.

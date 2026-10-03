@@ -85,8 +85,8 @@ class TestBuildSubstitutionMatrix:
         assert sm.shape == (3, 3)
         for i in range(3):
             assert sm[i, i] == 0.0
-        # c(0,1) = log(1/0.5) + log(1/0.3)
-        expected = np.log(1.0 / 0.5) + np.log(1.0 / 0.3)
+        # TraMineR seqcost INDELSLOG: indel(a) = log(2 / (1 + freq(a)))
+        expected = np.log(2.0 / 1.5) + np.log(2.0 / 1.3)
         assert sm[0, 1] == pytest.approx(expected)
         assert sm[0, 1] == pytest.approx(sm[1, 0])
 
@@ -109,8 +109,9 @@ class TestBuildSubstitutionMatrix:
         assert sm.shape == (2, 2)
         assert sm[0, 0] == 0.0
         assert sm[1, 1] == 0.0
-        # Different transition patterns -> positive cost
-        assert sm[0, 1] > 0.0
+        # TraMineR seqcost FUTURE: sqrt(sum_k (p0k - p1k)^2 / colsum_k);
+        # column sums are 1 and 1, diffs 0.8 and -0.8 -> sqrt(1.28).
+        assert sm[0, 1] == pytest.approx(np.sqrt(1.28))
         assert sm[0, 1] == pytest.approx(sm[1, 0])
 
     def test_future_identical_distributions(self) -> None:
@@ -208,3 +209,21 @@ class TestDistanceMatrixCoerce:
         """Coercion inherits DistanceMatrix validation."""
         with pytest.raises(ValueError, match="square"):
             DistanceMatrix.coerce(np.zeros((2, 3)))
+
+
+class TestSeqcostEdgeCases:
+    def test_absent_state_gets_indel_one(self) -> None:
+        """seqcost.R sets NA frequencies to 1: an absent state's indel is 1, not huge."""
+        sm = build_substitution_matrix(
+            2, "indels", state_frequencies=np.array([1.0, 0.0])
+        )
+        assert sm[0, 1] == pytest.approx(1.0 + 1.0)
+        sm_log = build_substitution_matrix(
+            2, "indelslog", state_frequencies=np.array([1.0, 0.0])
+        )
+        assert sm_log[0, 1] == pytest.approx(0.0)  # log(2/2) + log(2/2)
+
+    def test_future_zero_column_ignored(self) -> None:
+        rates = np.array([[1.0, 0.0], [1.0, 0.0]])
+        sm = build_substitution_matrix(2, "future", transition_rates=rates)
+        assert sm[0, 1] == 0.0

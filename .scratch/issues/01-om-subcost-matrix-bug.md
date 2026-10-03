@@ -1,6 +1,6 @@
 # OM substitution-matrix bug
 
-**Status:** `needs-info` (deferred — blocked on a sharp repro)
+**Status:** `resolved` (dev, 2026-09-29 — not reproducible; regression tests added)
 **Type:** bug
 **Source:** migrated from `docs/superpowers/specs/2026-05-11-om-subcost-investigation.md` (2026-06-22); deferred from the v0.4.0 brainstorm
 **Related:** [#04 compute_matrix() reference](04-compute-matrix-reference.md) — likely the same defect
@@ -50,3 +50,15 @@ Most likely: **delta** (structural) feeding **alpha** (propagation).
   so there is no longer a divergent class path. If the subcost error persists it
   must live in the surviving free-function/pool path (alpha/beta/gamma) — still
   blocked on a repro. Status stays `needs-info`.
+- 2026-09-29: Systematic repro hunt on dev: `sm` passed to
+  `compute_distances("om", sm=...)` as an ndarray, list of lists, int
+  matrix, float32 matrix, asymmetric matrix, a matrix from
+  `substitution_cost_matrix("trate")`, from `build_substitution_matrix`,
+  with `sub_cost` also set, with `n_jobs=2`, on a pool with a wider
+  declared alphabet, on string ids, and through a coerced `StateSequence`
+  — all agree with a per-pair brute force; a too-small matrix raises the
+  documented `ValueError`. The only failure found was `sm="trate"` as a
+  *string*, which the wrapper rejected; that now resolves via the engine's
+  `prepare` hook. Regression tests: `tests/test_metrics/test_engine.py::
+  TestSubstitutionMatrixByName`. Reopen with a concrete input if the
+  original error reappears.

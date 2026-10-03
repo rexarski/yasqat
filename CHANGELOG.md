@@ -1,19 +1,97 @@
 # Changelog
 
-## Unreleased
+## 0.6.0 (2026-10-03)
 
-### Documentation
+### Breaking changes
 
-- **Documentation site rebuilt around the technical primer.** New *Concepts*
-  section (what sequence analysis is, the data model, the pipeline and its
-  seams), six *Guides* with runnable examples and their real outputs (loading,
-  distances with optimal matching worked by hand, clustering, statistics,
-  mining with every rule measure derived on paper, conditioning on a
-  situation), a *Why yasqat* page (problem, approach, limits, roadmap), a
-  plain-English glossary, four explanatory SVG diagrams, and the logo. The
-  primer itself ships under `docs/_static/primer/`.
+- **Quality indices moved to `yasqat.metrics`** (issue 16): `silhouette_scores`,
+  `silhouette_score`, `cluster_quality`, `distance_to_center` now live in
+  `yasqat.metrics.quality` and are exported from `yasqat.metrics`; they read
+  only a distance matrix, so `clustering/` no longer imports them. `k_range`
+  and `pam_range` stay in `yasqat.clustering` (new module
+  `clustering/k_selection.py`). Migrate
+  `from yasqat.clustering import cluster_quality` →
+  `from yasqat.metrics import cluster_quality`.
+- **One clustering entry point per algorithm.** The `PAMClustering` and
+  `HierarchicalClustering` classes are removed; `pam_clustering` and
+  `hierarchical_clustering` are the API. `predict` moved onto
+  `PAMClusteringResult`: `pam_clustering(dm, k).predict(new_to_train)`.
+- **`omloc`, `omspell`, `omstran` now mean TraMineR's methods.** The 0.5.0
+  functions under those names were yasqat heuristics that never implemented
+  TraMineR's definitions; they are renamed `om_boundary_weighted_distance`
+  (dispatch key `"om_boundary"`), `om_spell_scaled_distance`
+  (`"om_spellscaled"`) and `om_transition_penalty_distance`
+  (`"om_transpenalty"`), algorithms unchanged, no deprecation shim
+  (pre-1.0). The names `omloc_distance`, `omspell_distance`,
+  `omstran_distance` and the keys `"omloc"`, `"omspell"`, `"omstran"` now
+  dispatch to new transcriptions of TraMineR 2.2-14 (see *Added*). Code
+  that called the old heuristics by the old names will silently get
+  different numbers: rename the call.
+- **`optimal_matching_distance(normalize=True)` divides by
+  `max(len) * indel`**, which is what TraMineR's `maxlength` does
+  (`seqdist` passes `length * indel` as the lengths). Previously it divided
+  by the length alone, so results differed from TraMineR whenever
+  `indel != 1`.
+- **`subsequence_count` now follows TraMineR `seqsubsn`**: it counts over
+  the distinct-successive-states form by default (`dss=True`) and includes
+  the empty subsequence. A one-state sequence counts 2; `AABB` counts 4
+  (was 8). Pass `dss=False` for the full-sequence count (`AABB` → 9).
+- **`normalized_turbulence` now follows TraMineR `seqST(norm=TRUE)`**: the
+  reference is a sequence of the pool's maximum length cycling through the
+  alphabet, and each value is `(T - 1) / (T_max - 1)`, clipped at 0. A
+  never-changing sequence scores 0; values change for every sequence.
 
-### Added
+### New features
+
+- **TraMineR's OMloc, OMspell and OMstran**, transcribed from the 2.2-14
+  source (`src/OMVIdistance.cpp`, `src/OMPerdistance.cpp`,
+  `R/seqdist-OMstran.R`, `R/seqdist.R`):
+  - `omloc_distance(seq_a, seq_b, sm, sub_cost, expcost=0.5, context=None,
+    normalize)` — Hollister's localized OM: the indel cost of a state is
+    `expcost * maxscost + context * (sm[prev, x] + sm[next, x]) / 2` with
+    `prev`/`next` taken from the other sequence around the position;
+    `context` defaults to `1 - 2 * expcost`. With the defaults it equals
+    plain OM with `indel = max(sm) / 2`.
+  - `omspell_distance(seq_a, seq_b, indel, sm, sub_cost, expcost=0.5,
+    tpow=1.0, normalize)` — OM over spell sequences: each spell carries
+    `d' = duration ** tpow - 1`; same-state spells cost `expcost * |d'_a -
+    d'_b|`, different states `sm[a, b] + expcost * (d'_a + d'_b)`, indels
+    `indel[state] + expcost * d'`. Normalisation uses time-point lengths.
+  - `omstran_distance(seq_a, seq_b, otto, indel, sm, sub_cost,
+    transindel="constant"|"prob"|"subcost", transition_rates, n_states,
+    normalize)` — OM over `(s_t, s_{t+1})` transition tokens with the
+    derived per-token indels and substitution matrix (`omstran_costs`
+    exposes them). `otto` is required, as in TraMineR; only TraMineR's
+    defaults `previous=FALSE`, `add.column=TRUE` are implemented.
+    `compute_distances(method="omstran", otto=...)` passes the pool's
+    alphabet size so all pairs share one token space.
+  - All three accept `normalize` as `False`, `True`/`"auto"` (TraMineR's
+    choice for these methods, `"yujianbo"`), or `"maxlength"`, `"gmean"`,
+    `"maxdist"`, `"yujianbo"`, computed exactly as
+    `DistanceCalculator::normalizeDistance` (`yasqat.metrics._normalize`).
+  - Tests pin hand-derived values and cross-check the numba kernels against
+    line-by-line Python transcriptions of the C++ on random pairs.
+- **Pinned values for the three yasqat OM heuristics** (previously only
+  identity/symmetry/positivity were tested).
+
+- **Pairwise distance engine** (`yasqat.metrics.engine`, issue 15). Metrics
+  are registered as `MetricSpec(fn, prepare)`; the `prepare(pool, kwargs)`
+  hook derives pool-level inputs once (substitution matrix, DHD position
+  costs, OMstran alphabet size), so `core/pool.py` no longer knows any
+  metric's internals. `SequencePool.compute_distances` keeps its signature
+  and delegates; `compute_distance_matrix(pool, method, ...)` is the free
+  function behind it.
+- **Distinct-sequence deduplication.** The engine computes each distinct
+  pair once and expands the result to the full matrix, as TraMineR's
+  `seqdist` does. Cost drops from C(n, 2) to C(u, 2) kernel calls for `u`
+  distinct trajectories; results are unchanged.
+- **Substitution matrices by name.** Every metric that takes `sm` accepts a
+  TraMineR `seqcost` method name (`"constant"`, `"trate"`, `"indels"`,
+  `"indelslog"`, `"future"`), built once for the pool's alphabet via
+  `pool_substitution_matrix`. `statistics.substitution_cost_matrix` gains the
+  same methods and a `sub_cost` argument. `build_substitution_matrix` is now
+  exported from `yasqat.metrics` (the README advertised its methods, but it
+  was not importable from the package).
 
 - **`SequencePool.filter(criteria, combine="and")`** returns a new pool holding
   only the matching sequences, keeping the parent's config and full alphabet.
@@ -22,7 +100,39 @@
   `pool.filter([...])` → `association_rules(...)` / `compute_distances(...)`
   with no manual pool rebuild in between.
 
-### Fixed
+### Bug fixes
+
+- **`build_substitution_matrix` now matches TraMineR `seqcost`** (checked
+  against `R/seqcost.R` in 2.2-14): `"indelslog"` uses
+  `log(2 / (1 + freq))` per state, not `log(1 / freq)`; `"future"` is the
+  chi-square distance `sqrt(sum_k (p_ak - p_bk)^2 / colsum_k)`, not an
+  un-rooted symmetric chi-square; states absent from the data get indel 1
+  instead of a 1e10 cost. `"trate"`, `"constant"` and `"features"` were
+  already correct.
+- **`turbulence` now computes Elzinga & Liefbroer's index (TraMineR
+  `seqST`).** The previous code used the spell count where the formula uses
+  the number of distinct subsequences of the DSS, divided by the mean spell
+  duration, and had no maximum-variance term; a sequence that never changed
+  state scored 0 where the index is 1. Now
+  `T = log2(phi * (s2_max + 1) / (s2 + 1))` with `phi` counting the empty
+  subsequence and `s2_max = (n - 1)(1 - t_bar)^2`, exactly TraMineR's
+  `type=1` (population variance, checked against `seqST.R` and
+  `seqivardur.R` in 2.2-14). Values change for every sequence.
+- **`complexity_index` now computes Gabadinho et al.'s index (TraMineR
+  `seqici`)**: the geometric mean of the normalised transition count and the
+  normalised entropy, `sqrt((transitions / (l - 1)) * (H / log|A|))`. The
+  previous `sqrt(transitions * distinct_states) / l` was not a published index.
+  Values change for every sequence.
+- **Null states are rejected with a `ValueError`** at the `SequencePool` /
+  `StateSequence` boundary, instead of a `TypeError` from the alphabet sort.
+  yasqat has no missing-state semantics; use `load_dataframe(...,
+  drop_nulls=True)` or recode nulls to an explicit state.
+- **`optimal_matching_distance(normalize=True)` docstring** said "maximum
+  possible distance"; the code divides by the longer length (TraMineR
+  `maxlength`), which is unchanged and now documented.
+- **mypy passes again.** Three stale `type: ignore` comments and one
+  `int`/`signedinteger` assignment in `clustering/pam.py`; the mypy target
+  moves to 3.12 because numpy's stubs use PEP 695 `type` statements.
 
 - **`cluster_quality` PBC and HG now match WeightedCluster's
   `wcClusterQuality`.** PBC had its sign flipped (a good partition scored
@@ -33,6 +143,18 @@
   distance and the different-cluster indicator. Both are positive for a good
   partition. `R2` is unchanged and documented as the squared-distance variant
   (WeightedCluster's `R2sq`). Values from `pam_range` change accordingly.
+
+### Other changes
+
+- **`n_jobs > 1` splits the pair list into one chunk per worker** instead
+  of submitting a `Future` per pair. The per-pair path made
+  `compute_distances(n_jobs=4)` six times slower than sequential on 1,000
+  sequences of 24 time points. With chunking, 4 threads run 3× faster than
+  sequential at 100 time points (7.0 s → 2.2 s) and 3.6× at 300, and are
+  1.9× slower at 24. The docstring states that regime. `n_jobs=0` raises
+  `ValueError`.
+- **`pyarrow` dropped from the dependencies.** Nothing imported it.
+- **Python 3.14** added to the classifiers and the CI matrix.
 
 ### Performance
 
@@ -48,6 +170,26 @@
   on every call. Sequential OM on 400 sequences × 24 time points: 0.34 s →
   0.19 s. Results are unchanged; a regression test pins the hoisted matrix to
   the per-pair function.
+
+### CI
+
+- **New `ci` workflow** runs pytest on Python 3.11–3.14 plus ruff check,
+  ruff format, and mypy on every push to `main`/`dev` and every pull request.
+  `uv.lock` is now committed and CI runs `--locked`.
+- Tests for turbulence, complexity, and subsequence counts pin values
+  derived by hand from TraMineR's source (`seqST.R`, `seqivardur.R`,
+  `seqsubsn.R`, `seqici.R`, `seqtransn.R`, 2.2-14).
+
+### Documentation
+
+- **Documentation site rebuilt around the technical primer.** New *Concepts*
+  section (what sequence analysis is, the data model, the pipeline and its
+  seams), six *Guides* with runnable examples and their real outputs (loading,
+  distances with optimal matching worked by hand, clustering, statistics,
+  mining with every rule measure derived on paper, conditioning on a
+  situation), a *Why yasqat* page (problem, approach, limits, roadmap), a
+  plain-English glossary, four explanatory SVG diagrams, and the logo. The
+  primer itself ships under `docs/_static/primer/`.
 
 ## 0.5.0 (2026-07-11)
 

@@ -122,7 +122,8 @@ reference for the method names.
 
 | Family | Methods | What it is sensitive to |
 |---|---|---|
-| Edit distances | `om`, `omloc`, `omspell`, `omstran`, `nms`, `nmsmst`, `svrspell`, `twed` | order and timing, with tunable costs; the spell and transition variants weight durations or state changes |
+| Edit distances | `om`, `omloc`, `omspell`, `omstran`, `nms`, `nmsmst`, `svrspell`, `twed` | order and timing, with tunable costs; OMloc prices indels by their context, OMspell compares spells and their durations, OMstran compares transitions (all three transcribed from TraMineR) |
+| yasqat heuristics | `om_boundary`, `om_spellscaled`, `om_transpenalty` | OM with costs reweighted near the boundaries, inside long spells, or across differing transitions; yasqat's own, not TraMineR methods |
 | Position-wise | `hamming`, `dhd` | what happens at the same time point; DHD lets the cost depend on the position |
 | Common structure | `lcs`, `lcp`, `rlcp` | the longest common subsequence, prefix, or suffix; cheap and cost-free |
 | Distribution-based | `euclidean`, `chi2` | how much time each sequence spends in each state, ignoring order |

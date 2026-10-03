@@ -1,5 +1,7 @@
 """Tests for descriptive statistics."""
 
+import math
+
 import numpy as np
 import polars as pl
 import pytest
@@ -149,6 +151,19 @@ class TestSequenceLength:
         assert result["length"].to_list() == [4, 4, 4]
 
 
+def _abcd_pool() -> SequencePool:
+    """AABB, ABAB, AAAA, ABCD over the inferred alphabet {A, B, C, D}."""
+    seqs = ["AABB", "ABAB", "AAAA", "ABCD"]
+    rows = [
+        (sid, t, st)
+        for sid, seq in enumerate(seqs, start=1)
+        for t, st in enumerate(seq)
+    ]
+    return SequencePool(
+        pl.DataFrame(rows, schema=["id", "time", "state"], orient="row")
+    )
+
+
 class TestComplexityIndex:
     """Tests for complexity index."""
 
@@ -169,15 +184,38 @@ class TestComplexityIndex:
         assert complexity == 0.0
 
     def test_complexity_per_sequence(self, sequence_pool: SequencePool) -> None:
-        """Test complexity per sequence with value verification."""
+        """Pin seqici on the shared fixture (alphabet A-D, length 4).
+
+        Each sequence has 2 transitions out of 3 and the state distribution
+        (2, 1, 1)/4, so C = sqrt((2/3) * (H / log 4)) with
+        H = -(0.5 ln 0.5 + 2 * 0.25 ln 0.25) = 1.0397.
+        """
         result = complexity_index(sequence_pool, per_sequence=True)
 
         assert isinstance(result, pl.DataFrame)
         assert len(result) == 3
-        # All three sequences have 3 spells and 3 distinct states,
-        # so complexity should be positive and identical across them
+        expected = math.sqrt((2 / 3) * (1.0397207708399179 / math.log(4)))
         for val in result["complexity"].to_list():
-            assert val > 0.0
+            assert val == pytest.approx(expected)
+        assert expected == pytest.approx(0.7071067811865476)
+
+    def test_complexity_matches_seqici_formula(self) -> None:
+        """Pin TraMineR seqici values derived by hand over alphabet {A,B,C,D}.
+
+        C = sqrt((transitions / (l - 1)) * (H / log|A|)). Values are computed
+        from the published formula (Gabadinho et al. 2010); no R run backs
+        them yet (.scratch/issues/20).
+        """
+        pool = _abcd_pool()
+        result = complexity_index(pool, per_sequence=True)
+        assert result["complexity"].to_list() == pytest.approx(
+            [0.408248290463863, 0.7071067811865476, 0.0, 1.0]
+        )
+
+    def test_complexity_single_state_alphabet_is_zero(self) -> None:
+        """A one-state alphabet has log|A| = 0; the index is defined as 0."""
+        data = pl.DataFrame({"id": [1, 1], "time": [0, 1], "state": ["A", "A"]})
+        assert complexity_index(SequencePool(data)) == 0.0
 
 
 class TestTurbulence:
@@ -196,18 +234,42 @@ class TestTurbulence:
 
         turb = turbulence(pool)
 
-        # Single spell = zero turbulence
-        assert turb == 0.0
+        # Single spell: phi = 2 (empty + "A"), zero variance -> log2(2) = 1,
+        # the minimum of Elzinga's index (TraMineR seqST returns 1 as well).
+        assert turb == 1.0
 
     def test_turbulence_per_sequence(self, sequence_pool: SequencePool) -> None:
-        """Test turbulence per sequence with value verification."""
+        """Pin seqST on the shared fixture.
+
+        Every sequence has DSS of three distinct states (phi = 8) and spell
+        durations (2, 1, 1): t_bar = 4/3, s2 = 2/9, s2_max = 2 * (1/3)^2 = 2/9,
+        so T = log2(8 * (2/9 + 1) / (2/9 + 1)) = 3.
+        """
         result = turbulence(sequence_pool, per_sequence=True)
 
         assert isinstance(result, pl.DataFrame)
         assert len(result) == 3
-        # All three sequences have multiple spells, so turbulence > 0
-        for val in result["turbulence"].to_list():
-            assert val > 0.0
+        assert result["turbulence"].to_list() == pytest.approx([3.0, 3.0, 3.0])
+
+    def test_turbulence_matches_seqst_formula(self) -> None:
+        """Pin TraMineR seqST values derived by hand.
+
+        T = log2(phi * (s2_max + 1) / (s2 + 1)), phi counting the empty
+        subsequence of the DSS. AABB: phi=4 -> 3; ABAB: phi=12 -> log2(12);
+        AAAA: phi=2 -> 1; ABCD: phi=16 -> 4. No R run backs these yet
+        (.scratch/issues/20).
+        """
+        result = turbulence(_abcd_pool(), per_sequence=True)
+        assert result["turbulence"].to_list() == pytest.approx(
+            [3.0, math.log2(12), 1.0, 4.0]
+        )
+
+    def test_turbulence_uses_duration_variance(self) -> None:
+        """AAAB: durations (3, 1), t_bar = 2, s2 = 1, s2_max = 1, phi = 4 -> 2."""
+        data = pl.DataFrame(
+            {"id": [1] * 4, "time": [0, 1, 2, 3], "state": ["A", "A", "A", "B"]}
+        )
+        assert turbulence(SequencePool(data)) == pytest.approx(2.0)
 
 
 class TestStateDistribution:
@@ -655,7 +717,7 @@ class TestSubsequenceCount:
         data = pl.DataFrame({"id": [1], "time": [0], "state": ["A"]})
         pool = SequencePool(data)
         result = subsequence_count(pool, per_sequence=True)
-        assert result["n_subsequences"][0] == 1  # just "A"
+        assert result["n_subsequences"][0] == 2  # "" and "A"
 
     def test_all_different(self) -> None:
         data = pl.DataFrame(
@@ -663,8 +725,8 @@ class TestSubsequenceCount:
         )
         pool = SequencePool(data)
         result = subsequence_count(pool, per_sequence=True)
-        # "A","B","C","AB","AC","BC","ABC" = 7
-        assert result["n_subsequences"][0] == 7
+        # "", "A","B","C","AB","AC","BC","ABC" = 8
+        assert result["n_subsequences"][0] == 8
 
     def test_all_same(self) -> None:
         data = pl.DataFrame(
@@ -672,19 +734,31 @@ class TestSubsequenceCount:
         )
         pool = SequencePool(data)
         result = subsequence_count(pool, per_sequence=True)
-        # "A","AA","AAA" = 3
-        assert result["n_subsequences"][0] == 3
+        # DSS is "A": "" and "A" = 2 (TraMineR seqsubsn default DSS=TRUE)
+        assert result["n_subsequences"][0] == 2
+        assert subsequence_count(pool, dss=False) == 4  # "", A, AA, AAA
 
     def test_per_sequence(self, sequence_pool: SequencePool) -> None:
         result = subsequence_count(sequence_pool, per_sequence=True)
         assert isinstance(result, pl.DataFrame)
         assert len(result) == 3
-        assert all(v > 0 for v in result["n_subsequences"].to_list())
+        # DSS forms ABC / ABC / BCD: 2**3 = 8 subsequences each, empty included.
+        assert result["n_subsequences"].to_list() == [8, 8, 8]
+
+    def test_dss_collapses_repeats_first(self) -> None:
+        """Default counts over the DSS: AABB -> AB -> "", A, B, AB = 4."""
+        data = pl.DataFrame(
+            {"id": [1] * 4, "time": [0, 1, 2, 3], "state": ["A", "A", "B", "B"]}
+        )
+        pool = SequencePool(data)
+        assert subsequence_count(pool) == 4
+        # Full sequence AABB: "", A, B, AA, AB, BB, AAB, ABB, AABB = 9.
+        assert subsequence_count(pool, dss=False) == 9
 
     def test_aggregate(self, sequence_pool: SequencePool) -> None:
         result = subsequence_count(sequence_pool)
         assert isinstance(result, float)
-        assert result == pytest.approx(11.0)
+        assert result == pytest.approx(8.0)
 
 
 class TestNormalizedTurbulence:
@@ -695,15 +769,37 @@ class TestNormalizedTurbulence:
             {"id": [1, 1, 1, 1], "time": [0, 1, 2, 3], "state": ["A", "A", "A", "A"]}
         )
         pool = SequencePool(data)
-        result = normalized_turbulence(pool)
-        assert result == 0.0
+        # Raw T = 1 is the minimum; TraMineR rescales (T - 1) / (T_max - 1).
+        assert normalized_turbulence(pool) == 0.0
 
     def test_in_range(self, sequence_pool: SequencePool) -> None:
         result = normalized_turbulence(sequence_pool, per_sequence=True)
         assert isinstance(result, pl.DataFrame)
         assert len(result) == 3
+        # T = 3 each (see TestTurbulence). Reference: length 4 cycling the
+        # alphabet A B C D -> phi = 16, T_max = 4 -> (3 - 1) / (4 - 1).
         for val in result["normalized_turbulence"].to_list():
-            assert val == pytest.approx(0.729716, abs=1e-4)
+            assert val == pytest.approx(2 / 3)
+
+    def test_matches_seqst_norm_on_abcd_pool(self) -> None:
+        """T_max = 4 for the ABCD cycle; AABB 2/3, ABAB (log2 12 - 1)/3, AAAA 0."""
+        result = normalized_turbulence(_abcd_pool(), per_sequence=True)
+        assert result["normalized_turbulence"].to_list() == pytest.approx(
+            [2 / 3, (math.log2(12) - 1) / 3, 0.0, 1.0]
+        )
+
+    def test_reference_cycles_a_small_alphabet(self) -> None:
+        """Two states, length 4: reference A B A B has phi = 12, T_max = log2 12."""
+        data = pl.DataFrame(
+            {"id": [1] * 4, "time": [0, 1, 2, 3], "state": ["A", "B", "A", "B"]}
+        )
+        assert normalized_turbulence(SequencePool(data)) == pytest.approx(1.0)
+
+    def test_all_distinct_states_reach_one(self) -> None:
+        data = pl.DataFrame(
+            {"id": [1] * 4, "time": [0, 1, 2, 3], "state": ["A", "B", "C", "D"]}
+        )
+        assert normalized_turbulence(SequencePool(data)) == pytest.approx(1.0)
 
     def test_aggregate(self, sequence_pool: SequencePool) -> None:
         result = normalized_turbulence(sequence_pool)
@@ -780,5 +876,5 @@ class TestSubsequenceCountPattern:
             alphabet=Alphabet(states=("A", "B", "C")),
         )
         result = subsequence_count(seq, states_filter=["C"])
-        assert result == 0
+        assert result == 1  # only the empty subsequence remains
         assert result >= 0.0

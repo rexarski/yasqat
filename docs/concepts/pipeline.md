@@ -12,7 +12,7 @@ module owns one concept, and the seams between them are deliberately narrow.
 | `yasqat.io` | loaders and savers: CSV, Parquet, JSON, DataFrame | getting a `SequencePool` |
 | `yasqat.core` | `Alphabet`, `SequenceConfig`, `SequencePool`, `StateSequence` | the data model, distances, filtering |
 | `yasqat.metrics` | pairwise distance functions and `DistanceMatrix` | a single distance between two arrays; substitution matrices |
-| `yasqat.clustering` | PAM, CLARA, hierarchical; quality indices; representatives | a typology |
+| `yasqat.clustering` | PAM, CLARA, hierarchical; choosing k; representatives | a typology |
 | `yasqat.statistics` | transition rates, descriptive and normative indicators, mining, discrepancy | describing and testing |
 | `yasqat.filters` | criteria: length, time, state, prefix, query | defining a situation |
 | `yasqat.synthetic` | Markov and financial-journey generators | tests, demos, benchmarks |
@@ -25,9 +25,12 @@ them tells you where to look when something needs extending.
 **One metric seam.** A metric is a free function
 `name_distance(seq_a, seq_b, **kwargs) -> float` over integer-encoded arrays,
 with the inner loop compiled by numba. Every metric is registered in one
-dispatch dictionary inside `SequencePool.compute_distances`, which is the sole
-path for pairwise and matrix computation. Adding a metric is adding a function
-and a dictionary entry.
+dictionary in `yasqat.metrics.engine`, together with an optional `prepare`
+hook that derives pool-level inputs once (a substitution matrix sized to the
+alphabet, DHD position costs); `SequencePool.compute_distances` delegates to
+that engine, which is the sole path for pairwise and matrix computation and
+computes each distinct pair of sequences once. Adding a metric is adding a
+function and a dictionary entry.
 
 **One encoding seam.** States become integers only in
 `SequencePool.get_encoded_sequence`, via the pool's `Alphabet`.

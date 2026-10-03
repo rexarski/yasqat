@@ -1,6 +1,6 @@
 # Lift distance-matrix quality functions out of clustering/
 
-**Status:** `needs-triage`
+**Status:** `resolved` (dev, 2026-10-03)
 **Type:** enhancement / architecture
 **Source:** architecture review 2026-07-11, candidate D (Speculative;
 deferred from the 0.5.0 review)
@@ -37,11 +37,17 @@ release wire. Marked Speculative in the review.
 
 ## Tasks
 
-- [ ] Triage: decide destination module for the quality functions.
-- [ ] Decide the canonical clustering entry points (class vs. function).
-- [ ] Move + update imports, docs, and the `clustering`/target `__all__`.
+- [x] Triage: decide destination module for the quality functions.
+- [x] Decide the canonical clustering entry points (class vs. function).
+- [x] Move + update imports, docs, and the `clustering`/target `__all__`.
 
 ## Comments
 
 - 2026-07-11: Filed from the architecture review (candidate D). See issue 15
   for the sibling deferred candidate (B).
+- 2026-10-03: User approved the recommendation (functions only, quality under
+  `yasqat.metrics`). Shipped: `metrics/quality.py` holds the four matrix-only
+  indices; `clustering/k_selection.py` holds `k_range` / `pam_range` (they run
+  PAM, so they stay on the algorithm side); `PAMClustering` and
+  `HierarchicalClustering` deleted, `predict` moved onto
+  `PAMClusteringResult`. Breaking, listed in the changelog for 0.6.0.

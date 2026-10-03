@@ -220,6 +220,17 @@ class TestSubstitutionCostMatrix:
         # Should be symmetric
         assert np.allclose(sm, sm.T)
 
+    def test_seqcost_methods_via_pool(self, sequence_pool: SequencePool) -> None:
+        for method in ("indels", "indelslog", "future"):
+            sm = substitution_cost_matrix(sequence_pool, method=method)
+            assert sm.shape == (4, 4)
+            assert np.allclose(np.diag(sm), 0)
+            assert np.allclose(sm, sm.T)
+        assert (
+            substitution_cost_matrix(sequence_pool, "constant", sub_cost=1.5)[0, 1]
+            == 1.5
+        )
+
     def test_invalid_method(self, sequence_pool: SequencePool) -> None:
         """Test error on invalid method."""
         with pytest.raises(ValueError, match="Unknown method"):
