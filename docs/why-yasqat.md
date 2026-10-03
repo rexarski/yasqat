@@ -96,11 +96,9 @@ changes are possible, land in minor bumps, and are documented in the
 
 The container question is settled: `SequencePool` is the canonical analysis
 container and `StateSequence` the representation view (ADR-0002). Remaining
-pre-1.0 work is narrower: routing discrepancy analysis through
-`DistanceMatrix` everywhere, a preparation seam inside the distance engine,
-settling where cluster-quality indices live, and growing the miner with gap
-and window constraints, closed and maximal patterns, and discriminant
-subsequences.
+pre-1.0 work: case weights, missing-state semantics, distances to a reference
+sequence, and growing the miner with gap and window constraints, closed and
+maximal patterns, and discriminant subsequences.
 
 If you read one thing: yasqat brings TraMineR-class sequence analysis to
 fast, DataFrame-native Python. It is usable today, on the way to a stable 1.0.

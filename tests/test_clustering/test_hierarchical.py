@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 
 from yasqat.clustering.hierarchical import (
-    HierarchicalClustering,
     HierarchicalClusteringResult,
     hierarchical_clustering,
 )
@@ -153,36 +152,3 @@ class TestHierarchicalClustering:
             hierarchical_clustering(
                 simple_distance_matrix, n_clusters=2, sequence_ids=["a", "b"]
             )
-
-
-class TestHierarchicalClusteringClass:
-    """Tests for HierarchicalClustering class."""
-
-    def test_class_interface(self, simple_distance_matrix: np.ndarray) -> None:
-        """Test class-based interface."""
-        clusterer = HierarchicalClustering(n_clusters=2, method="ward")
-        result = clusterer.fit(simple_distance_matrix)
-
-        assert isinstance(result, HierarchicalClusteringResult)
-        assert clusterer.labels is not None
-        assert len(clusterer.labels) == 4
-
-    def test_result_property(self, simple_distance_matrix: np.ndarray) -> None:
-        """Test result property."""
-        clusterer = HierarchicalClustering(n_clusters=2)
-
-        # Before fit
-        assert clusterer.result is None
-
-        # After fit
-        clusterer.fit(simple_distance_matrix)
-        assert clusterer.result is not None
-        assert clusterer.result.n_clusters == 2
-
-    def test_class_with_sequence_ids(self, simple_distance_matrix: np.ndarray) -> None:
-        """Test class with sequence IDs."""
-        seq_ids = ["seq1", "seq2", "seq3", "seq4"]
-        clusterer = HierarchicalClustering(n_clusters=2)
-        result = clusterer.fit(simple_distance_matrix, sequence_ids=seq_ids)
-
-        assert result.sequence_ids == seq_ids

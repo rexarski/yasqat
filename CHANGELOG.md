@@ -4,6 +4,18 @@
 
 ### Breaking changes
 
+- **Quality indices moved to `yasqat.metrics`** (issue 16): `silhouette_scores`,
+  `silhouette_score`, `cluster_quality`, `distance_to_center` now live in
+  `yasqat.metrics.quality` and are exported from `yasqat.metrics`; they read
+  only a distance matrix, so `clustering/` no longer imports them. `k_range`
+  and `pam_range` stay in `yasqat.clustering` (new module
+  `clustering/k_selection.py`). Migrate
+  `from yasqat.clustering import cluster_quality` →
+  `from yasqat.metrics import cluster_quality`.
+- **One clustering entry point per algorithm.** The `PAMClustering` and
+  `HierarchicalClustering` classes are removed; `pam_clustering` and
+  `hierarchical_clustering` are the API. `predict` moved onto
+  `PAMClusteringResult`: `pam_clustering(dm, k).predict(new_to_train)`.
 - **`omloc`, `omspell`, `omstran` now mean TraMineR's methods.** The 0.5.0
   functions under those names were yasqat heuristics that never implemented
   TraMineR's definitions; they are renamed `om_boundary_weighted_distance`

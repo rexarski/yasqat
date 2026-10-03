@@ -1,32 +1,20 @@
-"""Clustering algorithms for sequence analysis."""
+"""Clustering algorithms for sequence analysis.
+
+Partition quality indices (silhouette, PBC, HG, R2, distance to center) read
+only a distance matrix and live in :mod:`yasqat.metrics.quality`.
+"""
 
 from yasqat.clustering.clara import clara_clustering
-from yasqat.clustering.hierarchical import (
-    HierarchicalClustering,
-    hierarchical_clustering,
-)
-from yasqat.clustering.pam import PAMClustering, pam_clustering
-from yasqat.clustering.quality import (
-    cluster_quality,
-    distance_to_center,
-    k_range,
-    pam_range,
-    silhouette_score,
-    silhouette_scores,
-)
+from yasqat.clustering.hierarchical import hierarchical_clustering
+from yasqat.clustering.k_selection import k_range, pam_range
+from yasqat.clustering.pam import pam_clustering
 from yasqat.clustering.representatives import extract_representatives
 
 __all__ = [
-    "HierarchicalClustering",
-    "PAMClustering",
     "clara_clustering",
-    "cluster_quality",
-    "distance_to_center",
     "extract_representatives",
     "hierarchical_clustering",
     "k_range",
     "pam_clustering",
     "pam_range",
-    "silhouette_score",
-    "silhouette_scores",
 ]

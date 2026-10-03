@@ -38,8 +38,9 @@ for cluster, medoid_id in enumerate(result.get_medoid_ids()):
     print(cluster, pool.get_sequence(medoid_id))
 ```
 
-A `PAMClustering` class with `fit` and `predict` is also exported, for the
-case where new sequences must be assigned to an existing typology.
+To assign new sequences to an existing typology, compute their distances to
+the training sequences and call `result.predict(new_to_train)`; each new
+sequence gets the label of its nearest medoid.
 
 ## Choosing the number of clusters
 
@@ -76,7 +77,7 @@ directions, which is normal:
   always rises with `k`, so look for the elbow rather than the maximum.
 
 The definitions follow WeightedCluster's `wcClusterQuality`, the reference on
-the TraMineR side. `cluster_quality(dm, labels)` returns the same four indices
+the TraMineR side. `cluster_quality(dm, labels)` (in `yasqat.metrics`) returns the same four indices
 for a single partition. Reading the table above, three clusters is the
 defensible choice: ASW does not collapse and R² gains most of its value
 there.

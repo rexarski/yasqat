@@ -12,7 +12,7 @@ module owns one concept, and the seams between them are deliberately narrow.
 | `yasqat.io` | loaders and savers: CSV, Parquet, JSON, DataFrame | getting a `SequencePool` |
 | `yasqat.core` | `Alphabet`, `SequenceConfig`, `SequencePool`, `StateSequence` | the data model, distances, filtering |
 | `yasqat.metrics` | pairwise distance functions and `DistanceMatrix` | a single distance between two arrays; substitution matrices |
-| `yasqat.clustering` | PAM, CLARA, hierarchical; quality indices; representatives | a typology |
+| `yasqat.clustering` | PAM, CLARA, hierarchical; choosing k; representatives | a typology |
 | `yasqat.statistics` | transition rates, descriptive and normative indicators, mining, discrepancy | describing and testing |
 | `yasqat.filters` | criteria: length, time, state, prefix, query | defining a situation |
 | `yasqat.synthetic` | Markov and financial-journey generators | tests, demos, benchmarks |

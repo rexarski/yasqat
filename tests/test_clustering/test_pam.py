@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from yasqat.clustering.pam import PAMClustering, PAMClusteringResult, pam_clustering
+from yasqat.clustering.pam import PAMClusteringResult, pam_clustering
 
 
 @pytest.fixture
@@ -198,48 +198,9 @@ class TestPAMClustering:
             )
 
 
-class TestPAMClusteringClass:
-    """Tests for PAMClustering class."""
-
-    def test_class_interface(self, simple_distance_matrix: np.ndarray) -> None:
-        """Test class-based interface."""
-        clusterer = PAMClustering(n_clusters=2, init="build")
-        result = clusterer.fit(simple_distance_matrix)
-
-        assert isinstance(result, PAMClusteringResult)
-        assert clusterer.labels is not None
-        assert clusterer.medoid_indices is not None
-
-    def test_result_property(self, simple_distance_matrix: np.ndarray) -> None:
-        """Test result property."""
-        clusterer = PAMClustering(n_clusters=2)
-
-        # Before fit
-        assert clusterer.result is None
-        assert clusterer.labels is None
-        assert clusterer.medoid_indices is None
-
-        # After fit
-        clusterer.fit(simple_distance_matrix)
-        assert clusterer.result is not None
-
-    def test_class_with_all_options(self, large_distance_matrix: np.ndarray) -> None:
-        """Test class with all options."""
-        clusterer = PAMClustering(
-            n_clusters=3,
-            max_iter=50,
-            init="k-medoids++",
-            random_state=123,
-        )
-        result = clusterer.fit(large_distance_matrix)
-
-        assert result.n_clusters == 3
-        assert len(result.medoid_indices) == 3
-
-
-class TestPAMClusteringPredict:
+class TestPAMClusteringResultPredict:
     def test_predict_assigns_to_nearest_medoid(self) -> None:
-        """predict() should assign new points to the nearest medoid."""
+        """result.predict() assigns new points to the nearest medoid."""
         train_dist = np.array(
             [
                 [0, 1, 5, 6],
@@ -249,11 +210,10 @@ class TestPAMClusteringPredict:
             ],
             dtype=np.float64,
         )
+        result = pam_clustering(train_dist, n_clusters=2, sequence_ids=[0, 1, 2, 3])
+        assert isinstance(result, PAMClusteringResult)
 
-        pam = PAMClustering(n_clusters=2)
-        pam.fit(train_dist, sequence_ids=[0, 1, 2, 3])
-
-        # New distance matrix: rows = new points, columns = training points
+        # Rows = new points, columns = training points.
         new_dist = np.array(
             [
                 [0.5, 0.5, 5.5, 6.5],  # close to 0,1
@@ -261,14 +221,14 @@ class TestPAMClusteringPredict:
             ],
             dtype=np.float64,
         )
-
-        labels = pam.predict(new_dist)
-        assert len(labels) == 2
+        labels = result.predict(new_dist)
+        assert labels.tolist() == [result.labels[0], result.labels[2]]
         assert labels[0] != labels[1]
 
-    def test_predict_before_fit_raises(self) -> None:
-        """predict() should raise if called before fit()."""
-        pam = PAMClustering(n_clusters=2)
-        new_dist = np.array([[1, 2], [3, 4]], dtype=np.float64)
-        with pytest.raises(ValueError, match=r"fit.*before"):
-            pam.predict(new_dist)
+    def test_predict_checks_shape(self) -> None:
+        train_dist = np.array([[0, 1, 5], [1, 0, 5], [5, 5, 0]], dtype=np.float64)
+        result = pam_clustering(train_dist, n_clusters=2)
+        labels = result.predict(np.array([[0.2, 0.9, 5.0]]))
+        assert labels.tolist() == [result.labels[0]]
+        with pytest.raises(ValueError, match="expected last dim"):
+            result.predict(np.array([[1.0, 2.0]]))

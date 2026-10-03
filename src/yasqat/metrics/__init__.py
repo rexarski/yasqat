@@ -24,6 +24,12 @@ from yasqat.metrics.omloc import omloc_distance
 from yasqat.metrics.omspell import omspell_distance
 from yasqat.metrics.omstran import omstran_costs, omstran_distance
 from yasqat.metrics.optimal_matching import optimal_matching_distance
+from yasqat.metrics.quality import (
+    cluster_quality,
+    distance_to_center,
+    silhouette_score,
+    silhouette_scores,
+)
 from yasqat.metrics.rlcp import rlcp_distance, rlcp_length, rlcp_similarity
 from yasqat.metrics.softdtw import softdtw_distance
 from yasqat.metrics.twed import twed_distance
@@ -34,8 +40,10 @@ __all__ = [
     "MetricSpec",
     "build_substitution_matrix",
     "chi2_distance",
+    "cluster_quality",
     "compute_distance_matrix",
     "dhd_distance",
+    "distance_to_center",
     "dtw_distance",
     "euclidean_distance",
     "hamming_distance",
@@ -59,6 +67,8 @@ __all__ = [
     "rlcp_distance",
     "rlcp_length",
     "rlcp_similarity",
+    "silhouette_score",
+    "silhouette_scores",
     "softdtw_distance",
     "svrspell_distance",
     "twed_distance",
